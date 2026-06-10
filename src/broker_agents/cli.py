@@ -1650,6 +1650,14 @@ def run_deal(
             f"[bold]Investor response letters directory:[/bold] "
             f"{response_letter_dir}"
         )
+    if result.investor_follow_up_memo_paths:
+        follow_up_memo_dir = next(
+            iter(result.investor_follow_up_memo_paths.values())
+        ).parent
+        console.print(
+            f"[bold]Investor follow-up memos directory:[/bold] "
+            f"{follow_up_memo_dir}"
+        )
 
 
 @app.command("run-deals")

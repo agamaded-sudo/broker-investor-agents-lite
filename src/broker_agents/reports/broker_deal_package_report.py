@@ -4,6 +4,9 @@ from pathlib import Path
 
 from broker_agents.deals.deal_executive_summary import BrokerDealExecutiveSummary
 from broker_agents.deals.investor_interest_response import InvestorInterestResponse
+from broker_agents.reports.investor_follow_up_memo_report import (
+    get_investor_follow_up_focus,
+)
 
 INVESTOR_ORDER = ["Buffett", "Munger", "Fisher", "Lynch", "Bogle"]
 
@@ -24,6 +27,7 @@ def generate_broker_deal_package_report(
     warnings: list[str],
     executive_summary: BrokerDealExecutiveSummary,
     investor_response_letter_paths: dict[str, Path] | None = None,
+    investor_follow_up_memo_paths: dict[str, Path] | None = None,
     source_verification_summary: dict | None = None,
 ) -> str:
     """Generate a broker-facing package of independent investor responses."""
@@ -177,7 +181,28 @@ def generate_broker_deal_package_report(
                 "these letters as a vote, ranking, or consensus."
             ),
             "",
-            "## 8. Investor Response Details",
+            "## 8. Investor Follow-Up Memos",
+            "",
+            "| Investor | Follow-Up Memo Path | Primary Evidence Focus |",
+            "| --- | --- | --- |",
+        ]
+    )
+    memo_paths = investor_follow_up_memo_paths or {}
+    for response in investor_responses:
+        memo_path = memo_paths.get(response.investor, Path("Not available"))
+        lines.append(
+            f"| {response.investor} | {memo_path} | "
+            f"{get_investor_follow_up_focus(response.investor)} |"
+        )
+    lines.extend(
+        [
+            "",
+            (
+                "These memos translate independent investor concerns into evidence "
+                "collection tasks. They do not change decisions or authorize action."
+            ),
+            "",
+            "## 9. Investor Response Details",
             "",
         ]
     )
@@ -236,7 +261,7 @@ def generate_broker_deal_package_report(
     ]
     lines.extend(
         [
-            "## 9. Broker Interpretation",
+            "## 10. Broker Interpretation",
             "",
             f"- Conditional interest: {_join(conditional)}.",
             f"- Watchlist or research interest: {_join(watchlist)}.",
@@ -249,7 +274,7 @@ def generate_broker_deal_package_report(
             ),
             "- These independent responses are not averaged, ranked, or combined.",
             "",
-            "## 10. Next Backoffice Actions",
+            "## 11. Next Backoffice Actions",
             "",
             "- Collect missing investor-specific evidence.",
             "- Validate source provenance and methodology.",
@@ -257,7 +282,7 @@ def generate_broker_deal_package_report(
             "- Rerun the five investor agents independently.",
             "- Prepare investor-specific follow-up memos.",
             "",
-            "## 11. Safety Check",
+            "## 12. Safety Check",
             "",
             "- No recommendation.",
             "- No ranking.",

@@ -40,6 +40,9 @@ from broker_agents.reports.broker_deal_package_report import (
     generate_broker_deal_package_report,
 )
 from broker_agents.reports.investor_report import save_investor_report
+from broker_agents.reports.investor_follow_up_memo_report import (
+    save_investor_follow_up_memos,
+)
 from broker_agents.reports.investor_response_letter import (
     save_investor_response_letters,
 )
@@ -68,6 +71,7 @@ class BrokerDealWorkflowResult:
     investor_reports: dict[str, Path]
     investor_summary_path: Path
     investor_response_letter_paths: dict[str, Path]
+    investor_follow_up_memo_paths: dict[str, Path]
     broker_deal_package_path: Path
     applied_enrichment_sources: list[str]
     skipped_enrichment_sources: list[str]
@@ -92,6 +96,10 @@ class BrokerDealWorkflowResult:
         data["investor_response_letter_paths"] = {
             name: str(path)
             for name, path in self.investor_response_letter_paths.items()
+        }
+        data["investor_follow_up_memo_paths"] = {
+            name: str(path)
+            for name, path in self.investor_follow_up_memo_paths.items()
         }
         return data
 
@@ -232,6 +240,13 @@ def run_broker_deal_workflow(
     }
     source_status = _source_status(enriched_pack)
     source_matrix = summarize_source_verification_matrix(analysis_pack)
+    memo_paths = save_investor_follow_up_memos(
+        ticker_upper,
+        company_name,
+        responses,
+        source_matrix.to_dict(),
+        deal_dir / "investor_follow_up_memos",
+    )
     warnings = list(enrichment.warnings)
     executive_summary = build_broker_deal_executive_summary(
         ticker=ticker_upper,
@@ -255,6 +270,7 @@ def run_broker_deal_workflow(
             warnings=warnings,
             executive_summary=executive_summary,
             investor_response_letter_paths=letters_by_investor,
+            investor_follow_up_memo_paths=memo_paths,
             source_verification_summary=source_matrix.to_dict(),
         ),
         encoding="utf-8",
@@ -279,6 +295,7 @@ def run_broker_deal_workflow(
         investor_reports=investor_reports,
         investor_summary_path=summary_path,
         investor_response_letter_paths=letters_by_investor,
+        investor_follow_up_memo_paths=memo_paths,
         broker_deal_package_path=package_path,
         applied_enrichment_sources=enrichment.applied_sources,
         skipped_enrichment_sources=enrichment.skipped_sources,
