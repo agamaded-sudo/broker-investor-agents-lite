@@ -1,0 +1,1 @@
+"""Financial table parser placeholder."""

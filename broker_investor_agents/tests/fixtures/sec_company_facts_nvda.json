@@ -1,0 +1,21 @@
+{
+  "ticker": "NVDA",
+  "company_name": "NVIDIA Corporation",
+  "cik": "0001045810",
+  "fiscal_year": "FY2025",
+  "period": "FY2025",
+  "source_url": "https://data.sec.gov/api/xbrl/companyfacts/CIK0001045810.json",
+  "source_name": "SEC Company Facts fixture for NVIDIA FY2025",
+  "confidence": "high",
+  "facts": {
+    "revenue": 130497,
+    "gross_profit": 97858,
+    "operating_income": 81453,
+    "net_income": 72880,
+    "operating_cash_flow": 64089,
+    "capital_expenditure": 3236,
+    "cash_and_equivalents": 43210,
+    "long_term_debt": 8462,
+    "shareholders_equity": 78879
+  }
+}

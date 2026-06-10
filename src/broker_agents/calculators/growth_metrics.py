@@ -1,0 +1,1 @@
+"""Growth metrics calculator placeholder."""

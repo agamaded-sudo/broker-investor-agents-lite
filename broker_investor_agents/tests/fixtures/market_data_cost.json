@@ -1,0 +1,22 @@
+{
+  "ticker": "COST",
+  "company_name": "Costco Wholesale Corporation",
+  "as_of_date": "2026-06-01",
+  "currency": "USD",
+  "current_price": 920,
+  "market_cap": 410000,
+  "enterprise_value": 404500,
+  "pe": 56.0,
+  "forward_pe": 48.0,
+  "p_fcf": 61.2,
+  "ps": 1.6,
+  "pb": 16.4,
+  "ev_revenue": 1.59,
+  "ev_ebitda": 35.0,
+  "ev_ebit": null,
+  "fcf_yield": 0.016,
+  "dividend_yield": 0.005,
+  "source_name": "Market Data Fixture",
+  "source_url": "fixture://market-data/COST/2026-06-01",
+  "confidence": "medium"
+}

@@ -1,0 +1,35 @@
+method_name: Buffett Method
+agent_name: buffett_agent
+orientation: Long-term business ownership at a sensible price.
+
+principles:
+  - Understandable business with durable economics.
+  - Evidence of a moat and pricing power.
+  - Capable, shareholder-oriented management.
+  - Consistent earnings and free cash flow.
+  - Intrinsic value materially above price.
+
+scorecard:
+  - criterion: business_quality
+    weight: 0.25
+  - criterion: durable_competitive_advantage
+    weight: 0.25
+  - criterion: management_and_capital_allocation
+    weight: 0.20
+  - criterion: financial_strength
+    weight: 0.15
+  - criterion: margin_of_safety
+    weight: 0.15
+
+red_flags:
+  - Excessive leverage.
+  - Commodity economics without durable cost advantage.
+  - Persistent share dilution.
+  - Unclear accounting quality.
+
+report_sections:
+  - owner_earnings_view
+  - moat_assessment
+  - management_assessment
+  - intrinsic_value_range
+  - margin_of_safety

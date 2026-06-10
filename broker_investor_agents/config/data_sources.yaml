@@ -1,0 +1,36 @@
+source_policy:
+  preferred_order:
+    - company_filings
+    - company_investor_relations
+    - exchange_data
+    - regulator_data
+    - reputable_market_data_provider
+    - reputable_news_or_research
+
+  confidence_scale:
+    min: 0.0
+    max: 1.0
+    high_confidence_threshold: 0.85
+    medium_confidence_threshold: 0.65
+
+sources:
+  sec_edgar:
+    type: regulator
+    base_url: https://www.sec.gov/edgar
+    confidence_default: 0.95
+    notes: Primary source for US public company filings.
+
+  company_ir:
+    type: company
+    confidence_default: 0.90
+    notes: Company-published reports, presentations, and press releases.
+
+  market_data_provider:
+    type: vendor
+    confidence_default: 0.80
+    notes: Placeholder for API-based market and fundamentals data.
+
+  news_research:
+    type: secondary
+    confidence_default: 0.65
+    notes: Used for qualitative context and scuttlebutt only.

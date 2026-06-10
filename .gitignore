@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.pytest_tmp*/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Environments
+.env
+.venv/
+venv/
+env/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Local data outputs
+data/raw/*
+data/interim/*
+data/clean/*
+data/outputs/*
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+!data/clean/.gitkeep
+!data/outputs/.gitkeep
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,35 @@
+method_name: Munger Method
+agent_name: munger_agent
+orientation: Great businesses, clear incentives, simplicity, and error avoidance.
+
+principles:
+  - Prefer obvious quality over fragile complexity.
+  - Examine incentives, culture, and decision-making.
+  - Avoid avoidable stupidity before seeking brilliance.
+  - Demand resilience across business cycles.
+  - Use multidisciplinary checks where relevant.
+
+scorecard:
+  - criterion: business_simplicity
+    weight: 0.20
+  - criterion: quality_and_durability
+    weight: 0.25
+  - criterion: incentives_and_culture
+    weight: 0.20
+  - criterion: resilience
+    weight: 0.20
+  - criterion: error_risk
+    weight: 0.15
+
+red_flags:
+  - Management incentives that reward value destruction.
+  - Business model opacity.
+  - Accounting or financing complexity.
+  - Dependence on heroic forecasts.
+
+report_sections:
+  - simplicity_test
+  - incentive_map
+  - quality_assessment
+  - inversion_checklist
+  - final_judgment

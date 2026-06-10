@@ -1,0 +1,18 @@
+{
+  "ticker": "MSFT",
+  "company_name": "Microsoft Corporation",
+  "as_of_date": "2026-06-01",
+  "currency": "USD",
+  "pe_5y_median": 34,
+  "pe_10y_median": 31,
+  "p_fcf_5y_median": 35,
+  "p_fcf_10y_median": 30,
+  "ev_ebitda_5y_median": 24,
+  "ev_ebitda_10y_median": 21,
+  "current_vs_5y_p_fcf_percentile": 0.80,
+  "current_vs_10y_p_fcf_percentile": 0.85,
+  "valuation_history_confidence": "medium_market_fixture",
+  "source_name": "Historical Valuation Fixture",
+  "source_url": "fixture://historical-valuation/MSFT/2026-06-01",
+  "confidence": "medium"
+}

@@ -1,0 +1,18 @@
+{
+  "ticker": "COST",
+  "company_name": "Costco Wholesale Corporation",
+  "as_of_date": "2026-06-01",
+  "currency": "USD",
+  "pe_5y_median": 39,
+  "pe_10y_median": 34,
+  "p_fcf_5y_median": 42,
+  "p_fcf_10y_median": 36,
+  "ev_ebitda_5y_median": 25,
+  "ev_ebitda_10y_median": 21,
+  "current_vs_5y_p_fcf_percentile": 0.90,
+  "current_vs_10y_p_fcf_percentile": 0.94,
+  "valuation_history_confidence": "medium_market_fixture",
+  "source_name": "Historical Valuation Fixture",
+  "source_url": "fixture://historical-valuation/COST/2026-06-01",
+  "confidence": "medium"
+}

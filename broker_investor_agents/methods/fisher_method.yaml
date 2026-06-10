@@ -1,0 +1,35 @@
+method_name: Fisher Method
+agent_name: fisher_agent
+orientation: Qualitative growth investing with deep business investigation.
+
+principles:
+  - Seek long growth runways.
+  - Assess research, sales, and operating excellence.
+  - Evaluate management depth and integrity.
+  - Use scuttlebutt-style qualitative evidence.
+  - Prefer companies that can compound for many years.
+
+scorecard:
+  - criterion: growth_runway
+    weight: 0.25
+  - criterion: product_and_research_strength
+    weight: 0.20
+  - criterion: sales_and_execution
+    weight: 0.15
+  - criterion: management_depth
+    weight: 0.20
+  - criterion: qualitative_evidence
+    weight: 0.20
+
+red_flags:
+  - Growth dependent on one product cycle.
+  - Weak customer or employee signals.
+  - Management depth concentrated in one person.
+  - Deteriorating innovation rate.
+
+report_sections:
+  - growth_runway
+  - scuttlebutt_summary
+  - management_depth
+  - innovation_and_execution
+  - long_term_compounding_case

@@ -1,0 +1,359 @@
+metadata:
+  schema_name: backoffice_data_pack_v2
+  schema_version: 2
+  company_name: Apple Inc.
+  ticker: AAPL
+  analysis_date: 2026-06-05
+  latest_annual_period: FY2024
+  latest_quarterly_period: FY2025 Q2 placeholder period
+  reporting_standard: US GAAP
+  data_entry_mode: manual_example
+  units: millions_usd_except_per_share_and_percentages
+  notes:
+    - Manual Apple example using approximate values.
+    - Not produced by automated data fetching.
+
+company_identity:
+  company_name: Apple Inc.
+  ticker: AAPL
+  exchange: NASDAQ
+  market: USA
+  currency: USD
+  sector: Technology
+  industry: Consumer Electronics / Services / Software
+  fiscal_year_end: Late September
+  reporting_standard: US GAAP
+
+business_model:
+  summary: Apple designs, manufactures, and sells smartphones, personal computers, tablets, wearables, accessories, and related services. Revenue is driven by hardware product sales and an expanding services ecosystem.
+  revenue_model:
+    - Hardware product sales across iPhone, Mac, iPad, and wearables.
+    - Services revenue from App Store, subscriptions, licensing, AppleCare, payments, and cloud services.
+    - Accessories and ecosystem-adjacent products.
+  neutral_observations:
+    - iPhone remains the largest reported product category.
+    - Services revenue is a major recurring ecosystem contributor.
+    - Product cycles, geographic demand, and services growth remain important monitoring areas.
+
+products_customers_revenue_segments:
+  segments:
+    - name: iPhone
+      revenue: 201183
+      operating_income: unavailable
+      examples:
+        - iPhone
+    - name: Mac
+      revenue: 29984
+      operating_income: unavailable
+      examples:
+        - MacBook
+        - Mac desktop
+    - name: iPad
+      revenue: 26694
+      operating_income: unavailable
+      examples:
+        - iPad
+    - name: Wearables, Home and Accessories
+      revenue: 37005
+      operating_income: unavailable
+      examples:
+        - Apple Watch
+        - AirPods
+        - Home accessories
+    - name: Services
+      revenue: 96169
+      operating_income: unavailable
+      examples:
+        - App Store
+        - AppleCare
+        - iCloud
+        - Subscriptions
+        - Licensing
+        - Payments
+  customer_groups:
+    - Consumers
+    - Developers
+    - Enterprises
+    - Education customers
+    - Services subscribers
+
+financial_statements_summary:
+  annual:
+    period: FY2024
+    revenue: 391035
+    gross_profit: 180683
+    operating_income: 123216
+    net_income: 93736
+    operating_cash_flow: 118254
+    capex: 9447
+    free_cash_flow: 108807
+    cash_and_short_term_investments: 65171
+    total_assets: 364980
+    long_term_debt: 85750
+    total_liabilities: 308030
+    shareholders_equity: 56950
+    dividends_paid: 15234
+    share_repurchases: 94949
+  quarterly:
+    period: FY2025 Q2 placeholder
+    period_description: Placeholder quarterly period for manual pipeline testing
+    revenue: unavailable
+    operating_income: unavailable
+    net_income: unavailable
+    diluted_eps: unavailable
+    services_revenue: unavailable
+    services_growth: unavailable
+
+calculated_financial_metrics:
+  period: FY2024
+  gross_margin: 0.462
+  operating_margin: 0.315
+  net_margin: 0.240
+  free_cash_flow_margin: 0.278
+  operating_cash_flow_margin: 0.302
+  return_on_equity_proxy: 1.646
+  debt_to_equity: 1.506
+  cash_to_long_term_debt: 0.760
+  notes:
+    - Metrics are manually calculated from approximate input values.
+    - Return on equity proxy uses ending shareholders equity and is affected by Apple's capital return policy.
+
+quality_of_earnings:
+  observations:
+    - Net income is supported by operating cash flow in the manual FY2024 snapshot.
+    - Free cash flow remains materially positive after capex.
+    - Product-level profitability and services margin detail are limited in this example.
+  gaps:
+    - Product-level profitability missing.
+    - Services margin details limited.
+
+competitive_position_moat_indicators:
+  moat_sources:
+    - Integrated hardware, software, and services ecosystem.
+    - Brand strength and customer loyalty.
+    - Developer ecosystem and App Store distribution.
+    - Installed base monetization through services.
+  neutral_observations:
+    - Competition remains significant across smartphones, PCs, tablets, wearables, and digital services.
+    - Ecosystem strength should be checked against retention, upgrade cycles, and services adoption data.
+
+growth_drivers:
+  drivers:
+    - Services revenue growth.
+    - Installed base monetization.
+    - Product ecosystem expansion.
+    - Wearables and accessories adoption.
+    - Potential AI-enabled device and services features.
+  watch_items:
+    - iPhone replacement cycle.
+    - Services growth durability.
+    - China and global consumer demand sensitivity.
+
+sector_specific_operating_kpis:
+  product_ecosystem:
+    installed_base_notes: exact installed base number unavailable in this manual example
+    product_mix:
+      iphone_revenue: 201183
+      mac_revenue: 29984
+      ipad_revenue: 26694
+      wearables_home_accessories_revenue: 37005
+      services_revenue: 96169
+    gross_margin: 0.462
+    share_repurchases: 94949
+  services:
+    services_revenue: 96169
+    services_growth: placeholder_unavailable
+    services_margin_details: limited
+  software:
+    retention_churn: unavailable
+  cloud:
+    microsoft_cloud_revenue_q3_fy26: unavailable
+  gaps:
+    - Detailed customer retention missing.
+    - Installed base exact number missing.
+    - Services margin details limited.
+    - Product-level profitability missing.
+
+management_ownership_incentives:
+  management_notes:
+    - Management compensation details are not included in this manual example.
+    - Ownership and incentive alignment require proxy statement review.
+  gaps:
+    - Management compensation details missing.
+
+capital_allocation:
+  period: FY2024
+  dividends_paid: 15234
+  share_repurchases: 94949
+  capex: 9447
+  observations:
+    - Capital allocation includes substantial share repurchases and dividends.
+    - Share repurchases are a major part of Apple's capital return profile.
+
+capex_owner_earnings_proxy:
+  operating_cash_flow: 118254
+  capex: 9447
+  free_cash_flow: 108807
+  owner_earnings_proxy: 108807
+  caveat: Maintenance versus growth capex is not disclosed, so free cash flow is only a rough owner earnings proxy.
+  gaps:
+    - Maintenance vs growth capex not disclosed.
+
+historical_valuation:
+  current_snapshot_only: false
+  pe_5y_median: 29
+  pe_10y_median: 24
+  p_fcf_5y_median: 27
+  p_fcf_10y_median: 22
+  ev_ebitda_5y_median: 22
+  ev_ebitda_10y_median: 17
+  current_vs_5y_p_fcf_percentile: 0.55
+  current_vs_10y_p_fcf_percentile: 0.70
+  valuation_history_confidence: medium_placeholder
+  observations:
+    - Valuation history values are approximate manual placeholders and require source verification.
+  gaps:
+    - Valuation history source verification required.
+    - 5Y/10Y valuation data validation required.
+
+peer_comparison:
+  status: incomplete
+  candidate_peers:
+    - MSFT
+    - GOOGL
+    - Samsung Electronics
+    - AMZN
+    - META
+  observations:
+    - Peer comparison is incomplete and should include growth, margin, capital return, balance sheet, and valuation metrics.
+  gaps:
+    - Peer comparison incomplete.
+
+valuation_snapshot:
+  status: market_data_placeholder
+  market_cap: 3000000
+  observations:
+    - Current market capitalization, enterprise value, and valuation multiples should be supplied by market data.
+    - Market data source confidence is medium until exact provider and timestamp are recorded.
+
+risk_register:
+  risks:
+    - name: Product cycle dependence
+      description: Hardware revenue can be affected by replacement cycles and consumer demand.
+      severity: medium
+    - name: Services regulation
+      description: App Store, payments, privacy, and platform policies may face regulatory scrutiny.
+      severity: medium
+    - name: Supply chain concentration
+      description: Global manufacturing and supplier dependencies can create operational risk.
+      severity: medium
+    - name: Market expectations
+      description: A large, well-followed company may already reflect substantial quality and ecosystem expectations.
+      severity: medium
+
+scuttlebutt:
+  status: weak_unavailable
+  observations:
+    - No direct customer, developer, supplier, employee, or channel checks are included in this manual example.
+  gaps:
+    - Scuttlebutt weak/unavailable.
+
+market_awareness:
+  observations:
+    - Investor expectations likely reflect brand quality, ecosystem durability, and capital returns.
+    - Current market data should be refreshed before any valuation conclusion.
+  missing_items:
+    - Current share price.
+    - Market capitalization.
+    - Enterprise value.
+    - Analyst expectations.
+
+index_benchmark_alternative:
+  benchmark_candidates:
+    - SPY
+    - VTI
+    - QQQ
+  observations:
+    - Benchmark comparison should evaluate opportunity cost versus broad market and technology-heavy indexes.
+    - Benchmark/index weights are not included in this manual example.
+  gaps:
+    - Benchmark/index weights missing.
+
+portfolio_context_form:
+  status: missing
+  provided: false
+  observations:
+    - No investor-specific portfolio size, concentration, tax, liquidity, or mandate context is provided.
+  gaps:
+    - Portfolio context missing.
+
+investor_data_map:
+  buffett:
+    relevant_sections:
+      - business_model
+      - calculated_financial_metrics
+      - quality_of_earnings
+      - competitive_position_moat_indicators
+      - capex_owner_earnings_proxy
+      - valuation_snapshot
+  munger:
+    relevant_sections:
+      - business_model
+      - competitive_position_moat_indicators
+      - management_ownership_incentives
+      - risk_register
+  fisher:
+    relevant_sections:
+      - growth_drivers
+      - sector_specific_operating_kpis
+      - scuttlebutt
+      - management_ownership_incentives
+  lynch:
+    relevant_sections:
+      - products_customers_revenue_segments
+      - financial_statements_summary
+      - calculated_financial_metrics
+      - peer_comparison
+  bogle:
+    relevant_sections:
+      - index_benchmark_alternative
+      - market_awareness
+      - portfolio_context_form
+
+sources_confidence_data_gaps:
+  source_log:
+    - source_id: aapl_10k_2024
+      source_name: Apple FY2024 Form 10-K
+      source_type: company
+      retrieved_at: 2026-06-05
+      confidence: high
+      confidence_score: 0.95
+      freshness: historical
+      notes: Official Apple annual report figures, manually entered for pilot use.
+    - source_id: aapl_q2_2025_placeholder
+      source_name: Apple FY2025 Q2 placeholder source
+      source_type: company
+      retrieved_at: 2026-06-05
+      confidence: medium
+      confidence_score: 0.70
+      freshness: unknown
+      notes: Placeholder quarterly period for manual pipeline testing; exact quarterly values not entered.
+    - source_id: market_data_current_placeholder
+      source_name: Current market data placeholder
+      source_type: vendor
+      retrieved_at: 2026-06-05
+      confidence: medium
+      confidence_score: 0.70
+      freshness: unknown
+      notes: Market price, index weights, and valuation multiples still need a timestamped source.
+  known_gaps:
+    - Detailed customer retention missing.
+    - Installed base exact number missing.
+    - Services margin details limited.
+    - Product-level profitability missing.
+    - Valuation history source verification required.
+    - 5Y/10Y valuation data validation required.
+    - Peer comparison incomplete.
+    - Benchmark/index weights missing.
+    - Portfolio context missing.
+    - Management compensation details missing.

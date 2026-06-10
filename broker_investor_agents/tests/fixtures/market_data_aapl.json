@@ -1,0 +1,22 @@
+{
+  "ticker": "AAPL",
+  "company_name": "Apple Inc.",
+  "as_of_date": "2026-06-01",
+  "currency": "USD",
+  "current_price": 195,
+  "market_cap": 3000000,
+  "enterprise_value": 3020000,
+  "pe": 32.0,
+  "forward_pe": 29.0,
+  "p_fcf": 27.6,
+  "ps": 7.7,
+  "pb": 52.7,
+  "ev_revenue": 7.7,
+  "ev_ebitda": 23.0,
+  "ev_ebit": 24.5,
+  "fcf_yield": 0.036,
+  "dividend_yield": 0.005,
+  "source_name": "Market Data Fixture",
+  "source_url": "fixture://market-data/AAPL/2026-06-01",
+  "confidence": "medium"
+}

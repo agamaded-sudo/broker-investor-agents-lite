@@ -1,0 +1,1 @@
+"""Regulatory filings fetcher placeholder."""

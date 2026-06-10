@@ -1,0 +1,21 @@
+{
+  "ticker": "COST",
+  "company_name": "Costco Wholesale Corporation",
+  "as_of_date": "2026-06-01",
+  "currency": "USD",
+  "revenue_cagr_3y": 0.08,
+  "revenue_cagr_5y": 0.09,
+  "eps_cagr_3y": 0.11,
+  "eps_cagr_5y": 0.12,
+  "fcf_cagr_3y": 0.06,
+  "fcf_cagr_5y": 0.08,
+  "forward_revenue_growth": 0.07,
+  "forward_eps_growth": 0.09,
+  "current_pe": 56.0,
+  "peg_ratio": 6.22,
+  "growth_quality_label": "durable membership-led retail growth but expensive valuation",
+  "growth_data_confidence": "medium_market_fixture",
+  "source_name": "Growth PEG Fixture",
+  "source_url": "fixture://growth-peg/COST/2026-06-01",
+  "confidence": "medium"
+}

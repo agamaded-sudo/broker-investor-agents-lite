@@ -1,0 +1,21 @@
+{
+  "ticker": "MSFT",
+  "company_name": "Microsoft Corporation",
+  "cik": "0000789019",
+  "fiscal_year": "FY2025",
+  "period": "FY2025",
+  "source_url": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000789019.json",
+  "source_name": "SEC Company Facts fixture for Microsoft FY2025",
+  "confidence": "high",
+  "facts": {
+    "revenue": 281700,
+    "gross_profit": 193900,
+    "operating_income": 128500,
+    "net_income": 101800,
+    "operating_cash_flow": 136200,
+    "capital_expenditure": 64600,
+    "cash_and_equivalents": 94600,
+    "long_term_debt": 40200,
+    "shareholders_equity": 343500
+  }
+}

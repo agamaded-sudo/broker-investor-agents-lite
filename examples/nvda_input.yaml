@@ -1,0 +1,365 @@
+metadata:
+  schema_name: backoffice_data_pack_v2
+  schema_version: 2
+  company_name: NVIDIA Corporation
+  ticker: NVDA
+  analysis_date: 2026-06-06
+  latest_annual_period: FY2025
+  latest_quarterly_period: latest placeholder period
+  reporting_standard: US GAAP
+  data_entry_mode: manual_example
+  units: millions_usd_except_per_share_and_percentages
+  notes:
+    - Manual NVIDIA example using approximate and simplified values.
+    - Not produced by automated data fetching.
+
+company_identity:
+  company_name: NVIDIA Corporation
+  ticker: NVDA
+  exchange: NASDAQ
+  market: USA
+  currency: USD
+  sector: Technology
+  industry: Semiconductors / GPUs / AI Compute
+  fiscal_year_end: Late January
+  reporting_standard: US GAAP
+
+business_model:
+  summary: NVIDIA designs GPUs, accelerated computing platforms, networking products, and software ecosystems used in gaming, data centers, AI training and inference, professional visualization, automotive, and edge computing.
+  revenue_model:
+    - Accelerated computing processors and systems.
+    - Data center networking products and platforms.
+    - Gaming and professional visualization GPUs.
+    - Automotive, edge computing, and software ecosystem products.
+  neutral_observations:
+    - Data center and AI compute are the largest current growth drivers.
+    - Semiconductor demand, customer concentration, supply availability, and product cycles are material variables.
+    - Hardware platforms are supported by software and developer ecosystem adoption.
+
+products_customers_revenue_segments:
+  segments:
+    - name: Compute & Networking
+      revenue: 116193
+      operating_income: unavailable
+      examples:
+        - Data center GPUs
+        - Accelerated computing systems
+        - Networking products
+    - name: Graphics
+      revenue: 14304
+      operating_income: unavailable
+      examples:
+        - Gaming GPUs
+        - Professional visualization
+    - name: Data Center
+      revenue: 115186
+      operating_income: unavailable
+      examples:
+        - AI training and inference
+        - Data center accelerators
+    - name: Gaming
+      revenue: 11700
+      operating_income: unavailable
+      examples:
+        - GeForce GPUs
+    - name: Professional Visualization
+      revenue: 1900
+      operating_income: unavailable
+      examples:
+        - Workstation graphics
+    - name: Automotive
+      revenue: 1700
+      operating_income: unavailable
+      examples:
+        - Vehicle computing platforms
+  customer_groups:
+    - Hyperscale cloud providers
+    - Enterprises
+    - AI model developers
+    - Gaming customers
+    - Automotive manufacturers
+    - Research and public sector organizations
+
+financial_statements_summary:
+  annual:
+    period: FY2025
+    revenue: 130497
+    gross_profit: 97858
+    operating_income: 81453
+    net_income: 72880
+    operating_cash_flow: 64089
+    capex: 3236
+    free_cash_flow: 60853
+    cash_and_short_term_investments: 43210
+    total_assets: 111601
+    long_term_debt: 8462
+    total_liabilities: 32722
+    shareholders_equity: 78879
+    dividends_paid: 834
+    share_repurchases: 33100
+  quarterly:
+    period: latest placeholder period
+    period_description: Placeholder quarterly period for manual pipeline testing
+    revenue: unavailable
+    operating_income: unavailable
+    net_income: unavailable
+    diluted_eps: unavailable
+    data_center_revenue: unavailable
+    data_center_growth: unavailable
+
+calculated_financial_metrics:
+  period: FY2025
+  gross_margin: 0.750
+  operating_margin: 0.624
+  net_margin: 0.558
+  free_cash_flow_margin: 0.466
+  operating_cash_flow_margin: 0.491
+  return_on_equity_proxy: 0.924
+  debt_to_equity: 0.107
+  cash_to_long_term_debt: 5.106
+  notes:
+    - Metrics are manually calculated from approximate input values.
+    - Revenue segment values are simplified and may use different presentation groupings.
+
+quality_of_earnings:
+  observations:
+    - Net income is supported by substantial operating cash flow in the manual FY2025 snapshot.
+    - Free cash flow remains high after relatively low direct capex.
+    - Normalized cycle earnings and working-capital effects require deeper review.
+  gaps:
+    - Normalized cycle earnings missing.
+    - Inventory cycle details missing.
+
+competitive_position_moat_indicators:
+  moat_sources:
+    - Accelerated computing hardware and software ecosystem.
+    - Developer adoption and platform tooling.
+    - Scale in AI compute and data center products.
+    - Product performance and system-level integration.
+  neutral_observations:
+    - Competition remains significant across GPUs, custom accelerators, networking, and AI software.
+    - Platform durability should be checked against customer concentration, product roadmaps, and alternative compute architectures.
+
+growth_drivers:
+  drivers:
+    - AI training and inference demand.
+    - Data center accelerated computing adoption.
+    - Networking and system platform growth.
+    - Software ecosystem and developer adoption.
+    - Automotive and edge computing opportunities.
+  watch_items:
+    - Hyperscaler demand durability.
+    - Supply availability and foundry dependency.
+    - Product transition execution.
+    - Semiconductor inventory and capacity cycle.
+
+sector_specific_operating_kpis:
+  semiconductor:
+    data_center_revenue: 115186
+    data_center_growth_placeholder: unavailable
+    gross_margin: 0.750
+    r_and_d_intensity_placeholder: unavailable
+    customer_concentration_placeholder: unavailable
+    supply_chain_dependency_placeholder: unavailable
+    inventory_cycle_placeholder: unavailable
+    product_roadmap_placeholder: incomplete
+  gaps:
+    - Customer concentration details missing.
+    - Hyperscaler demand durability missing.
+    - Inventory cycle details missing.
+    - Supply chain / foundry dependency details missing.
+    - Product roadmap evidence incomplete.
+
+management_ownership_incentives:
+  management_notes:
+    - Management compensation details are not included in this manual example.
+    - Ownership, compensation, and product investment incentives require proxy statement review.
+  gaps:
+    - Management compensation details missing.
+
+capital_allocation:
+  period: FY2025
+  dividends_paid: 834
+  share_repurchases: 33100
+  capex: 3236
+  observations:
+    - Capital allocation includes significant share repurchases and modest dividends.
+    - Direct capex is low relative to operating cash flow, while supply capacity also depends on external manufacturing partners.
+
+capex_owner_earnings_proxy:
+  operating_cash_flow: 64089
+  capex: 3236
+  free_cash_flow: 60853
+  owner_earnings_proxy: 60853
+  caveat: Maintenance versus growth capex and external supply commitments are not fully separated, so free cash flow is only a preliminary owner earnings proxy.
+  gaps:
+    - Maintenance vs growth capex not disclosed.
+
+historical_valuation:
+  current_snapshot_only: false
+  pe_5y_median: 48
+  pe_10y_median: 42
+  p_fcf_5y_median: 45
+  p_fcf_10y_median: 38
+  ev_ebitda_5y_median: 40
+  ev_ebitda_10y_median: 32
+  current_vs_5y_p_fcf_percentile: 0.75
+  current_vs_10y_p_fcf_percentile: 0.80
+  valuation_history_confidence: medium_placeholder
+  observations:
+    - Valuation history values are approximate manual placeholders and require source verification.
+    - Normalized cycle valuation is not established.
+  gaps:
+    - Valuation history source verification required.
+    - 5Y/10Y valuation data validation required.
+    - Normalized cycle earnings missing.
+
+peer_comparison:
+  status: incomplete
+  candidate_peers:
+    - AMD
+    - AVGO
+    - INTC
+    - TSM
+    - QCOM
+  observations:
+    - Peer comparison should consider AI compute exposure, product roadmaps, margins, customer concentration, capital intensity, and valuation.
+  gaps:
+    - Peer comparison incomplete.
+
+valuation_snapshot:
+  status: market_data_placeholder
+  market_cap: 3000000
+  pe: 41.2
+  p_fcf: null
+  observations:
+    - Market capitalization and P/E are approximate placeholders.
+    - P/FCF and FCF yield should be derived from market cap and free cash flow.
+    - Market data confidence is medium until an exact provider and timestamp are recorded.
+
+risk_register:
+  risks:
+    - name: Customer concentration
+      description: Demand may be concentrated among large cloud and technology customers.
+      severity: high
+    - name: Semiconductor demand cycle
+      description: AI compute demand, inventory, and capacity conditions may change quickly.
+      severity: high
+    - name: Supply chain and foundry dependency
+      description: Manufacturing and advanced packaging depend on external partners and constrained capacity.
+      severity: high
+    - name: Product roadmap execution
+      description: Rapid platform transitions require timely product and software execution.
+      severity: medium
+    - name: Valuation expectations
+      description: Market valuation may embed sustained high growth and margin expectations.
+      severity: high
+
+scuttlebutt:
+  status: weak_unavailable
+  observations:
+    - No direct hyperscaler, enterprise customer, developer, supplier, employee, or channel checks are included.
+  gaps:
+    - Scuttlebutt weak/unavailable.
+
+market_awareness:
+  observations:
+    - Investor expectations likely reflect strong AI and data center demand.
+    - Current market data and earnings expectations should be refreshed before any valuation conclusion.
+  missing_items:
+    - Current share price.
+    - Exact timestamped market capitalization.
+    - Analyst expectations.
+    - Normalized cycle earnings assumptions.
+
+index_benchmark_alternative:
+  benchmark_candidates:
+    - SPY
+    - VTI
+    - QQQ
+    - SOXX
+  observations:
+    - Benchmark comparison should include broad market, technology-heavy, and semiconductor index alternatives.
+    - Benchmark and index weights are not included.
+  gaps:
+    - Benchmark/index weights missing.
+
+portfolio_context_form:
+  status: missing
+  provided: false
+  observations:
+    - No investor-specific portfolio size, concentration, tax, liquidity, or drawdown context is provided.
+  gaps:
+    - Portfolio context missing.
+
+investor_data_map:
+  buffett:
+    relevant_sections:
+      - business_model
+      - calculated_financial_metrics
+      - quality_of_earnings
+      - competitive_position_moat_indicators
+      - capex_owner_earnings_proxy
+      - valuation_snapshot
+  munger:
+    relevant_sections:
+      - business_model
+      - competitive_position_moat_indicators
+      - management_ownership_incentives
+      - risk_register
+  fisher:
+    relevant_sections:
+      - growth_drivers
+      - sector_specific_operating_kpis
+      - scuttlebutt
+      - management_ownership_incentives
+  lynch:
+    relevant_sections:
+      - products_customers_revenue_segments
+      - financial_statements_summary
+      - calculated_financial_metrics
+      - peer_comparison
+  bogle:
+    relevant_sections:
+      - index_benchmark_alternative
+      - market_awareness
+      - portfolio_context_form
+
+sources_confidence_data_gaps:
+  source_log:
+    - source_id: nvda_10k_2025_placeholder
+      source_name: NVIDIA FY2025 Form 10-K placeholder
+      source_type: company
+      retrieved_at: 2026-06-06
+      confidence: high
+      confidence_score: 0.95
+      freshness: historical
+      notes: Official NVIDIA annual report placeholder figures, manually entered for pipeline testing.
+    - source_id: nvda_latest_quarter_placeholder
+      source_name: NVIDIA latest quarter placeholder
+      source_type: company
+      retrieved_at: 2026-06-06
+      confidence: high
+      confidence_score: 0.90
+      freshness: unknown
+      notes: Placeholder quarterly period; exact quarterly values are not entered.
+    - source_id: market_data_current_placeholder
+      source_name: Current market data placeholder
+      source_type: vendor
+      retrieved_at: 2026-06-06
+      confidence: medium
+      confidence_score: 0.70
+      freshness: unknown
+      notes: Market price, benchmark weights, and exact valuation multiples require a timestamped source.
+  known_gaps:
+    - Customer concentration details missing.
+    - Hyperscaler demand durability missing.
+    - Inventory cycle details missing.
+    - Supply chain / foundry dependency details missing.
+    - Product roadmap evidence incomplete.
+    - Valuation history source verification required.
+    - 5Y/10Y valuation data validation required.
+    - Peer comparison incomplete.
+    - Benchmark/index weights missing.
+    - Portfolio context missing.
+    - Normalized cycle earnings missing.

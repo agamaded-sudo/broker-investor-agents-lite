@@ -1,0 +1,21 @@
+{
+  "ticker": "MSFT",
+  "company_name": "Microsoft Corporation",
+  "as_of_date": "2026-06-01",
+  "currency": "USD",
+  "revenue_cagr_3y": 0.13,
+  "revenue_cagr_5y": 0.12,
+  "eps_cagr_3y": 0.15,
+  "eps_cagr_5y": 0.14,
+  "fcf_cagr_3y": 0.08,
+  "fcf_cagr_5y": 0.10,
+  "forward_revenue_growth": 0.14,
+  "forward_eps_growth": 0.13,
+  "current_pe": 31.2,
+  "peg_ratio": 2.40,
+  "growth_quality_label": "high-quality compounder growth",
+  "growth_data_confidence": "medium_market_fixture",
+  "source_name": "Growth PEG Fixture",
+  "source_url": "fixture://growth-peg/MSFT/2026-06-01",
+  "confidence": "medium"
+}

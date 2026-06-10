@@ -1,0 +1,22 @@
+{
+  "ticker": "MSFT",
+  "company_name": "Microsoft Corporation",
+  "as_of_date": "2026-06-01",
+  "currency": "USD",
+  "current_price": 430,
+  "market_cap": 3180000,
+  "enterprise_value": 3120000,
+  "pe": 31.2,
+  "forward_pe": 29.5,
+  "p_fcf": 44.4,
+  "ps": 11.3,
+  "pb": 9.3,
+  "ev_revenue": 11.1,
+  "ev_ebitda": 23.8,
+  "ev_ebit": 24.3,
+  "fcf_yield": 0.023,
+  "dividend_yield": 0.007,
+  "source_name": "Market Data Fixture",
+  "source_url": "fixture://market-data/MSFT/2026-06-01",
+  "confidence": "medium"
+}

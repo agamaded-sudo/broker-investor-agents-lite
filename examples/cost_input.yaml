@@ -1,0 +1,351 @@
+metadata:
+  schema_name: backoffice_data_pack_v2
+  schema_version: 2
+  company_name: Costco Wholesale Corporation
+  ticker: COST
+  analysis_date: 2026-06-09
+  latest_annual_period: FY2025
+  latest_quarterly_period: latest placeholder period
+  reporting_standard: US GAAP
+  data_entry_mode: manual_example
+  units: millions_usd_except_per_share_and_percentages
+  notes:
+    - Deterministic offline test values, not live data.
+    - Manual retail and membership model example.
+
+company_identity:
+  company_name: Costco Wholesale Corporation
+  ticker: COST
+  exchange: NASDAQ
+  market: USA
+  country: USA
+  currency: USD
+  sector: Consumer Staples / Consumer Defensive
+  industry: Membership Warehouse Retail
+  business_model_type: retail_membership
+  fiscal_year_end: Late August or early September
+  reporting_standard: US GAAP
+
+business_model:
+  business_model_type: retail_membership
+  summary: Costco operates membership-based warehouse clubs, generating revenue from merchandise sales and high-margin membership fees. The business is characterized by low gross margins, high inventory turnover, strong customer loyalty, recurring membership renewal economics, and disciplined cost control.
+  revenue_model:
+    - Warehouse merchandise sales at disciplined low markups.
+    - Recurring annual membership fees.
+    - Ancillary services and international warehouse operations.
+  neutral_observations:
+    - Membership renewal and customer loyalty support recurring economics.
+    - Low margins require strong inventory turnover and operating discipline.
+    - Growth depends on comparable sales, warehouse expansion, and membership growth.
+
+products_customers_revenue_segments:
+  segments:
+    - name: Merchandise Sales
+      revenue: 249653
+      operating_income: unavailable
+      examples:
+        - Foods and sundries
+        - Non-foods
+        - Fresh foods
+        - Ancillary businesses
+    - name: Membership Fees
+      revenue: 4800
+      operating_income: unavailable
+      examples:
+        - Gold Star memberships
+        - Executive memberships
+  customer_groups:
+    - Paid member households
+    - Small businesses
+    - Value-oriented consumers
+    - International warehouse members
+
+financial_statements_summary:
+  annual:
+    period: FY2025
+    revenue: 254453
+    gross_profit: 32000
+    operating_income: 9210
+    net_income: 7290
+    operating_cash_flow: 11500
+    capex: 4800
+    free_cash_flow: 6700
+    cash_and_short_term_investments: 12000
+    total_assets: 75000
+    long_term_debt: 6500
+    total_liabilities: 50000
+    shareholders_equity: 25000
+    dividends_paid: 2000
+    share_repurchases: 800
+  income_statement:
+    - period: FY2025
+      revenue: 254453
+      gross_profit: 32000
+      operating_income: 9210
+      operating_income_ebit: 9210
+      net_income: 7290
+  balance_sheet:
+    - period: FY2025
+      cash_and_equivalents: 12000
+      total_assets: 75000
+      long_term_debt: 6500
+      total_liabilities: 50000
+      shareholders_equity: 25000
+  cash_flow_statement:
+    - period: FY2025
+      operating_cash_flow: 11500
+      capital_expenditure: 4800
+      capital_expenditures: 4800
+      capex: 4800
+      free_cash_flow: 6700
+      dividends_paid: 2000
+      share_repurchases: 800
+  quarterly:
+    period: latest placeholder period
+    revenue: unavailable
+    comparable_sales_growth: unavailable
+    membership_fee_revenue: unavailable
+
+calculated_financial_metrics:
+  period: FY2025
+  gross_margin: 0.126
+  operating_margin: 0.036
+  net_margin: 0.029
+  free_cash_flow_margin: 0.026
+  operating_cash_flow_margin: 0.045
+  return_on_equity_proxy: 0.292
+  debt_to_equity: 0.260
+  cash_to_long_term_debt: 1.846
+  inventory_turnover: 11.5
+  notes:
+    - Low retail margins are paired with high inventory turnover.
+    - Metrics are manually calculated from deterministic placeholder values.
+
+quality_of_earnings:
+  observations:
+    - Membership fees provide a recurring high-margin economic contribution.
+    - Operating cash flow exceeds net income in the placeholder snapshot.
+    - Inventory discipline and working-capital timing remain important.
+  gaps:
+    - Five-to-ten-year normalized owner earnings history missing.
+    - Maintenance versus growth warehouse capex split missing.
+
+competitive_position_moat_indicators:
+  moat_sources:
+    - Strong membership renewal.
+    - Low price reputation.
+    - Disciplined merchandising.
+    - High inventory turnover.
+    - Strong customer loyalty.
+  neutral_observations:
+    - Membership economics and scale may support customer value and supplier terms.
+    - Retail competition and cost pressure remain material.
+
+growth_drivers:
+  drivers:
+    - Membership renewal and paid household growth.
+    - Comparable sales growth.
+    - New warehouse openings.
+    - International expansion.
+    - Disciplined pricing and merchandising.
+  watch_items:
+    - Renewal rate durability.
+    - Store economics and expansion returns.
+    - Wage and logistics costs.
+    - Inventory turnover and markdown discipline.
+
+sector_specific_operating_kpis:
+  retail:
+    membership_fee_revenue: 4800
+    paid_households_millions: 75
+    cardholders_millions: 135
+    renewal_rate_us_canada: 0.93
+    renewal_rate_worldwide: 0.90
+    comparable_sales_growth: 0.05
+    store_count: 875
+    inventory_turnover: 11.5
+  gaps:
+    - Membership cohort retention details missing.
+    - New warehouse unit economics missing.
+    - Traffic and average ticket detail missing.
+
+management_ownership_incentives:
+  management_notes:
+    - Management compensation and insider ownership are not included in this manual example.
+    - Cost discipline and long-term membership economics require source-backed review.
+  gaps:
+    - Management compensation details missing.
+    - Insider ownership missing.
+
+capital_allocation:
+  period: FY2025
+  dividends_paid: 2000
+  share_repurchases: 800
+  capex: 4800
+  observations:
+    - Reinvestment primarily supports warehouses, logistics, and operating infrastructure.
+    - Dividends exceed repurchases in the placeholder snapshot.
+
+capex_owner_earnings_proxy:
+  operating_cash_flow: 11500
+  capex: 4800
+  free_cash_flow: 6700
+  owner_earnings_proxy: 6700
+  caveat: Warehouse expansion capex is not separated from maintenance capex.
+  gaps:
+    - Maintenance versus growth capex split missing.
+
+historical_valuation:
+  current_snapshot_only: false
+  pe_5y_median: 39
+  pe_10y_median: 34
+  p_fcf_5y_median: 42
+  p_fcf_10y_median: 36
+  ev_ebitda_5y_median: 25
+  ev_ebitda_10y_median: 21
+  current_vs_5y_p_fcf_percentile: 0.90
+  current_vs_10y_p_fcf_percentile: 0.94
+  valuation_history_confidence: medium_placeholder
+  observations:
+    - Historical valuation values are manual placeholders requiring source verification.
+  gaps:
+    - Historical valuation methodology validation required.
+
+peer_comparison:
+  status: incomplete
+  candidate_peers:
+    - WMT
+    - TGT
+    - BJ
+    - KR
+  gaps:
+    - Peer membership economics and valuation comparison incomplete.
+
+valuation_snapshot:
+  status: market_data_placeholder
+  current_price: 920
+  market_cap: 410000
+  enterprise_value: 404500
+  pe: 56.0
+  forward_pe: 48.0
+  p_fcf: 61.2
+  fcf_yield: 0.016
+  dividend_yield: 0.005
+  observations:
+    - Market data values are deterministic placeholders.
+    - Current valuation appears demanding relative to cash flow and growth.
+
+risk_register:
+  risks:
+    - name: Thin retail margins
+      description: Small changes in merchandise margin or costs can affect earnings.
+      severity: high
+    - name: Wage and logistics cost pressure
+      description: Labor, freight, and distribution costs can pressure operating margins.
+      severity: medium
+    - name: Valuation risk
+      description: Market valuation may require sustained high-quality execution.
+      severity: high
+    - name: International expansion execution
+      description: New markets require disciplined warehouse economics and localization.
+      severity: medium
+    - name: Retail competition
+      description: Price, convenience, e-commerce, and assortment competition remain significant.
+      severity: medium
+
+scuttlebutt:
+  status: weak_unavailable
+  observations:
+    - No direct member, employee, supplier, competitor, or warehouse field checks are included.
+  gaps:
+    - Customer loyalty evidence requires field validation.
+    - Product and warehouse experience scuttlebutt missing.
+
+market_awareness:
+  observations:
+    - The market may price Costco as a durable membership compounder.
+    - Valuation expectations require comparison with membership and earnings growth.
+  missing_items:
+    - Forward estimate methodology validation.
+    - Exact timestamped market source validation.
+
+index_benchmark_alternative:
+  benchmark_candidates:
+    - SPY
+    - VTI
+    - XLP
+  observations:
+    - Broad market and consumer staples funds may already provide indirect exposure.
+  gaps:
+    - Benchmark-relative risk missing.
+    - Index and ETF weights missing.
+
+portfolio_context_form:
+  status: missing
+  provided: false
+  gaps:
+    - Portfolio context missing.
+
+investor_data_map:
+  buffett:
+    relevant_sections:
+      - business_model
+      - quality_of_earnings
+      - capex_owner_earnings_proxy
+      - historical_valuation
+      - valuation_snapshot
+  munger:
+    relevant_sections:
+      - competitive_position_moat_indicators
+      - management_ownership_incentives
+      - capital_allocation
+      - risk_register
+  fisher:
+    relevant_sections:
+      - growth_drivers
+      - sector_specific_operating_kpis
+      - scuttlebutt
+  lynch:
+    relevant_sections:
+      - products_customers_revenue_segments
+      - calculated_financial_metrics
+      - valuation_snapshot
+  bogle:
+    relevant_sections:
+      - index_benchmark_alternative
+      - portfolio_context_form
+
+sources_confidence_data_gaps:
+  source_log:
+    - source_id: cost_10k_2025_placeholder
+      source_name: Costco FY2025 Form 10-K placeholder
+      source_type: company
+      retrieved_at: 2026-06-09
+      confidence: high
+      confidence_score: 0.95
+      freshness: historical
+      notes: Official-like annual figures manually entered for offline testing.
+    - source_id: cost_latest_quarter_placeholder
+      source_name: Costco latest quarter placeholder
+      source_type: company
+      retrieved_at: 2026-06-09
+      confidence: high
+      confidence_score: 0.90
+      freshness: unknown
+      notes: Quarterly values are not entered.
+    - source_id: market_data_current_placeholder
+      source_name: Current market data placeholder
+      source_type: vendor
+      retrieved_at: 2026-06-09
+      confidence: medium
+      confidence_score: 0.70
+      freshness: unknown
+      notes: Market values require fixture or provider verification.
+  known_gaps:
+    - Maintenance versus growth capex split missing.
+    - Long-term normalized owner earnings history missing.
+    - Management incentives and insider ownership missing.
+    - Customer and member scuttlebutt missing.
+    - Peer comparison incomplete.
+    - Benchmark-relative risk missing.
+    - Index and ETF weights missing.

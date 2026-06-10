@@ -1,0 +1,58 @@
+portfolio_context:
+  provided: true
+  investor_profile:
+    portfolio_name: "Manual Test Portfolio"
+    base_currency: USD
+    investment_horizon: "long_term"
+    portfolio_style: "hybrid"
+    drawdown_tolerance: "medium"
+    prefers_index_core: true
+
+  current_holdings:
+    index_funds:
+      - ticker: VOO
+        name: Vanguard S&P 500 ETF
+        weight: 0.40
+      - ticker: QQQ
+        name: Invesco QQQ Trust
+        weight: 0.15
+      - ticker: VXUS
+        name: Vanguard Total International Stock ETF
+        weight: 0.20
+      - ticker: BND
+        name: Vanguard Total Bond Market ETF
+        weight: 0.10
+
+    direct_stocks:
+      - ticker: MSFT
+        weight: 0.00
+      - ticker: AAPL
+        weight: 0.00
+      - ticker: NVDA
+        weight: 0.00
+
+    cash_weight: 0.15
+
+  constraints:
+    maximum_single_stock_weight: 0.05
+    maximum_sector_weight_technology: 0.35
+    satellite_positions_allowed: true
+    minimum_index_core_weight: 0.60
+
+  indirect_exposure_estimates:
+    MSFT:
+      via_index_funds: 0.035
+      current_direct: 0.00
+      current_total: 0.035
+    AAPL:
+      via_index_funds: 0.034
+      current_direct: 0.00
+      current_total: 0.034
+    NVDA:
+      via_index_funds: 0.030
+      current_direct: 0.00
+      current_total: 0.030
+
+  notes:
+    - "Manual example only."
+    - "Weights are placeholders for testing Bogle logic."

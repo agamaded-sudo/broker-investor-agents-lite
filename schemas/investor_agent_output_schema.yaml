@@ -1,0 +1,50 @@
+schema_name: investor_agent_output_schema
+version: 1
+description: Common output contract for investor-style analysis agents.
+
+required_fields:
+  - agent_name
+  - method_name
+  - ticker
+  - company_name
+  - analysis_date
+  - thesis
+  - scorecard
+  - valuation_view
+  - risks
+  - missing_information
+  - confidence
+  - conclusion
+
+scorecard:
+  scale:
+    min: 0
+    max: 5
+  required:
+    - criterion
+    - score
+    - rationale
+    - evidence_refs
+
+valuation_view:
+  required:
+    - base_case
+    - upside_case
+    - downside_case
+    - margin_of_safety
+    - key_assumptions
+
+confidence:
+  required:
+    - overall
+    - data_quality
+    - method_fit
+    - unresolved_gaps
+
+conclusion:
+  allowed_labels:
+    - compelling
+    - watchlist
+    - neutral
+    - avoid
+    - insufficient_data

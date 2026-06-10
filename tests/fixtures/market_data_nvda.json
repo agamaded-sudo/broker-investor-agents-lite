@@ -1,0 +1,22 @@
+{
+  "ticker": "NVDA",
+  "company_name": "NVIDIA Corporation",
+  "as_of_date": "2026-06-01",
+  "currency": "USD",
+  "current_price": 122,
+  "market_cap": 3000000,
+  "enterprise_value": 2960000,
+  "pe": 41.2,
+  "forward_pe": 34.0,
+  "p_fcf": 49.3,
+  "ps": 23.0,
+  "pb": 38.0,
+  "ev_revenue": 22.7,
+  "ev_ebitda": 35.5,
+  "ev_ebit": 36.3,
+  "fcf_yield": 0.020,
+  "dividend_yield": 0.0003,
+  "source_name": "Market Data Fixture",
+  "source_url": "fixture://market-data/NVDA/2026-06-01",
+  "confidence": "medium"
+}

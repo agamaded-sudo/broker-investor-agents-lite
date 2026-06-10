@@ -1,0 +1,31 @@
+project:
+  name: broker_investor_agents
+  version: 0.1.0
+  stage: scaffold
+
+runtime:
+  environment: local
+  log_level: INFO
+  timezone: UTC
+  fail_on_schema_error: true
+
+paths:
+  data_root: data
+  raw: data/raw
+  interim: data/interim
+  clean: data/clean
+  outputs: data/outputs
+  reports: data/outputs/reports
+
+analysis:
+  default_currency: USD
+  default_market: US
+  fiscal_years_required: 5
+  quarterly_periods_required: 8
+  require_source_confidence: true
+  require_benchmark_context: true
+
+reports:
+  format: markdown
+  include_backoffice_appendix: true
+  include_source_table: true

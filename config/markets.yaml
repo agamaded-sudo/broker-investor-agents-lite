@@ -1,0 +1,25 @@
+markets:
+  US:
+    name: United States
+    currency: USD
+    primary_exchanges:
+      - NYSE
+      - NASDAQ
+      - AMEX
+    regulator: SEC
+    filing_system: EDGAR
+    trading_calendar: NYSE
+
+  GLOBAL:
+    name: Global
+    currency: USD
+    primary_exchanges: []
+    regulator: mixed
+    filing_system: mixed
+    trading_calendar: mixed
+
+security_types:
+  - common_stock
+  - adr
+  - etf
+  - index

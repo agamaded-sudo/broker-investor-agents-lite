@@ -1,0 +1,18 @@
+{
+  "ticker": "NVDA",
+  "company_name": "NVIDIA Corporation",
+  "as_of_date": "2026-06-01",
+  "currency": "USD",
+  "pe_5y_median": 48,
+  "pe_10y_median": 42,
+  "p_fcf_5y_median": 45,
+  "p_fcf_10y_median": 38,
+  "ev_ebitda_5y_median": 40,
+  "ev_ebitda_10y_median": 32,
+  "current_vs_5y_p_fcf_percentile": 0.75,
+  "current_vs_10y_p_fcf_percentile": 0.80,
+  "valuation_history_confidence": "medium_market_fixture",
+  "source_name": "Historical Valuation Fixture",
+  "source_url": "fixture://historical-valuation/NVDA/2026-06-01",
+  "confidence": "medium"
+}

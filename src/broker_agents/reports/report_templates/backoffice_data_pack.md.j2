@@ -1,0 +1,234 @@
+# {{ company_identity.company_name | default(metadata.company_name, true) }} Backoffice Data Pack
+
+Neutral backoffice research summary generated from the manual YAML input. This report does not include an investment recommendation.
+
+## Report Metadata
+
+- Schema: {{ metadata.schema_name | default("not provided", true) }} v{{ metadata.schema_version | default("not provided", true) }}
+- Analysis date: {{ metadata.analysis_date | default("not provided", true) }}
+- Latest annual period: {{ metadata.latest_annual_period | default("not provided", true) }}
+- Latest quarterly period: {{ metadata.latest_quarterly_period | default("not provided", true) }}
+- Reporting standard: {{ metadata.reporting_standard | default(company_identity.reporting_standard, true) }}
+- Units: {{ metadata.units | default("not provided", true) }}
+
+## Company Identity
+
+- Company: {{ company_identity.company_name | default("not provided", true) }}
+- Ticker: {{ company_identity.ticker | default("not provided", true) }}
+- Exchange: {{ company_identity.exchange | default("not provided", true) }}
+- Market: {{ company_identity.market | default("not provided", true) }}
+- Currency: {{ company_identity.currency | default("not provided", true) }}
+- Sector: {{ company_identity.sector | default("not provided", true) }}
+- Industry: {{ company_identity.industry | default("not provided", true) }}
+- Fiscal year end: {{ company_identity.fiscal_year_end | default("not provided", true) }}
+
+## Business Model
+
+{{ business_model.summary | default("No business model summary provided.", true) }}
+
+{% if business_model.revenue_model %}
+Revenue model notes:
+{% for item in business_model.revenue_model %}
+- {{ item }}
+{% endfor %}
+{% endif %}
+
+{% if business_model.neutral_observations %}
+Neutral observations:
+{% for item in business_model.neutral_observations %}
+- {{ item }}
+{% endfor %}
+{% endif %}
+
+## Data Quality Summary
+
+- Overall Data Quality: Medium
+- Strong data areas: official financial statements, FY2025 financials, FY26 Q3 notes
+- Weak data areas: historical valuation ranges, scuttlebutt, portfolio context, customer retention, maintenance vs growth capex
+
+## Company Signal Summary
+
+- Business Model Type: {{ company_signals.business_model_type }}
+- Primary growth engine: {{ company_signals.primary_growth_engine }}
+- Dominant revenue stream: {{ company_signals.dominant_revenue_stream }}
+- Capex Profile: {{ company_signals.capex_profile }}
+- Major capex issue: {{ company_signals.major_capex_issue }}
+- Major margin issue: {{ company_signals.major_margin_issue }}
+- Fisher angle: {{ company_signals.investor_specific_angles.fisher }}
+- Lynch angle: {{ company_signals.investor_specific_angles.lynch }}
+- Bogle angle: {{ company_signals.investor_specific_angles.bogle }}
+- Major data gaps:
+{% for gap in company_signals.major_data_gaps %}
+  - {{ gap }}
+{% else %}
+  - No major data gaps listed.
+{% endfor %}
+
+## Financial Highlights
+
+| Metric | FY2025 value | Source ID |
+| --- | ---: | --- |
+| Revenue | {{ annual.revenue | millions }} | {{ annual_source_id }} |
+| Gross profit | {{ annual.gross_profit | millions }} | {{ annual_source_id }} |
+| Operating income | {{ annual.operating_income | millions }} | {{ annual_source_id }} |
+| Net income | {{ annual.net_income | millions }} | {{ annual_source_id }} |
+| Operating cash flow | {{ annual.operating_cash_flow | millions }} | {{ annual_source_id }} |
+| Capex | {{ annual.capex | millions }} | {{ annual_source_id }} |
+| Free cash flow | {{ annual.free_cash_flow | millions }} | {{ annual_source_id }} |
+| Cash and short-term investments | {{ annual.cash_and_short_term_investments | millions }} | {{ annual_source_id }} |
+| Total assets | {{ annual.total_assets | millions }} | {{ annual_source_id }} |
+| Long-term debt | {{ annual.long_term_debt | millions }} | {{ annual_source_id }} |
+| Shareholders equity | {{ annual.shareholders_equity | millions }} | {{ annual_source_id }} |
+| Dividends paid | {{ annual.dividends_paid | millions }} | {{ annual_source_id }} |
+| Share repurchases | {{ annual.share_repurchases | millions }} | {{ annual_source_id }} |
+
+## Segment Data
+
+| Segment | Revenue | Operating income |
+| --- | ---: | ---: |
+{% for segment in segments %}
+| {{ segment.name }} | {{ segment.revenue | millions }} | {{ segment.operating_income | millions }} |
+{% else %}
+| not provided | not provided | not provided |
+{% endfor %}
+
+## FY26 Q3 Notes
+
+- Period: {{ quarterly.period_description | default(quarterly.period, true) }}
+- Revenue: {{ quarterly.revenue | millions }} (Source: {{ quarterly_source_id }})
+- Operating income: {{ quarterly.operating_income | millions }} (Source: {{ quarterly_source_id }})
+- Net income: {{ quarterly.net_income | millions }} (Source: {{ quarterly_source_id }})
+- Diluted EPS: {{ quarterly.diluted_eps | default("not provided", true) }}
+- Microsoft Cloud revenue: {{ quarterly.microsoft_cloud_revenue | millions }} (Source: {{ quarterly_source_id }})
+- Microsoft Cloud growth: {{ quarterly.microsoft_cloud_growth | percent }} (Source: {{ quarterly_source_id }})
+- Azure and other cloud services growth: {{ quarterly.azure_and_other_cloud_services_growth | percent }} (Source: {{ quarterly_source_id }})
+
+## Calculated Metrics
+
+| Metric | Value |
+| --- | ---: |
+| Gross margin | {{ metrics.gross_margin | default("not provided", true) }} |
+| Operating margin | {{ metrics.operating_margin | default("not provided", true) }} |
+| Net margin | {{ metrics.net_margin | default("not provided", true) }} |
+| Free cash flow margin | {{ metrics.free_cash_flow_margin | default("not provided", true) }} |
+| Operating cash flow margin | {{ metrics.operating_cash_flow_margin | default("not provided", true) }} |
+| Return on equity proxy | {{ metrics.return_on_equity_proxy | default("not provided", true) }} |
+| Debt to equity | {{ metrics.debt_to_equity | default("not provided", true) }} |
+| Cash to long-term debt | {{ metrics.cash_to_long_term_debt | default("not provided", true) }} |
+
+{% if metrics.notes %}
+Notes:
+{% for note in metrics.notes %}
+- {{ note }}
+{% endfor %}
+{% endif %}
+
+## Quality of Earnings
+
+{% for item in quality_of_earnings.observations | default([], true) %}
+- {{ item }}
+{% else %}
+- No quality of earnings observations provided.
+{% endfor %}
+
+## Growth Drivers
+
+{% for driver in growth_drivers %}
+- {{ driver }}
+{% else %}
+- No growth drivers provided.
+{% endfor %}
+
+## Capex & Owner Earnings Proxy
+
+- Operating cash flow: {{ capex_owner_earnings_proxy.operating_cash_flow | default("not provided", true) }}
+- Capex: {{ capex_owner_earnings_proxy.capex | default("not provided", true) }}
+- Free cash flow: {{ capex_owner_earnings_proxy.free_cash_flow | default("not provided", true) }}
+- Owner earnings proxy: {{ capex_owner_earnings_proxy.owner_earnings_proxy | default("not provided", true) }}
+- Caveat: {{ capex_owner_earnings_proxy.caveat | default("not provided", true) }}
+
+### Preliminary Owner Earnings Snapshot
+
+- Operating Cash Flow: {{ owner_earnings_snapshot.operating_cash_flow | millions }}
+- Capex: {{ owner_earnings_snapshot.capex | millions }}
+- Free Cash Flow / Owner Earnings Proxy: {{ owner_earnings_snapshot.owner_earnings_proxy | millions }}
+- FCF Margin: {{ owner_earnings_snapshot.fcf_margin | ratio_percent }}
+- Capex / OCF: {{ owner_earnings_snapshot.capex_to_ocf | ratio_percent }}
+- Capex Intensity Label: {{ owner_earnings_snapshot.capex_intensity_label }}
+- Owner Earnings Quality Label: {{ owner_earnings_snapshot.owner_earnings_quality_label }}
+{% for note in owner_earnings_snapshot.notes %}
+- Note: {{ note }}
+{% endfor %}
+
+## Valuation Snapshot
+
+- Status: {{ valuation_snapshot.status | default("not provided", true) }}
+- Market Cap: {{ valuation_guardrails.market_cap | millions }}
+- P/E: {{ valuation_guardrails.pe | multiple }}
+- P/FCF: {{ valuation_guardrails.p_fcf | multiple }}
+- Earnings Yield: {{ valuation_guardrails.earnings_yield | yield }}
+- FCF Yield: {{ valuation_guardrails.fcf_yield | yield }}
+- Valuation Status: {{ valuation_guardrails.valuation_status }}
+- Valuation Confidence: {{ valuation_guardrails.valuation_confidence }}
+{% for note in valuation_guardrails.notes %}
+- Valuation note: {{ note }}
+{% endfor %}
+{% for item in valuation_snapshot.observations | default([], true) %}
+- {{ item }}
+{% else %}
+- No valuation observations provided.
+{% endfor %}
+
+## Risk Register
+
+| Risk | Severity | Description |
+| --- | --- | --- |
+{% for risk in risk_register %}
+| {{ risk.name }} | {{ risk.severity }} | {{ risk.description }} |
+{% else %}
+| not provided | not provided | not provided |
+{% endfor %}
+
+## Scuttlebutt
+
+- Status: {{ scuttlebutt.status | default("not provided", true) }}
+{% for item in scuttlebutt.observations | default([], true) %}
+- {{ item }}
+{% else %}
+- No scuttlebutt observations provided.
+{% endfor %}
+
+## Benchmark / Index
+
+{% if benchmark.benchmark_candidates %}
+Benchmark candidates:
+{% for candidate in benchmark.benchmark_candidates %}
+- {{ candidate }}
+{% endfor %}
+{% endif %}
+
+{% for item in benchmark.observations | default([], true) %}
+- {{ item }}
+{% else %}
+- No benchmark observations provided.
+{% endfor %}
+
+## Sources and Data Gaps
+
+### Sources
+
+| Source ID | Source name | Confidence | Freshness | Notes |
+| --- | --- | --- | --- | --- |
+{% for source in source_log %}
+| {{ source.source_id }} | {{ source.source_name }} | {{ source.confidence }} | {{ source.freshness }} | {{ source.notes }} |
+{% else %}
+| not provided | not provided | not provided | not provided | not provided |
+{% endfor %}
+
+### Data Gaps
+
+{% for gap in known_gaps %}
+- {{ gap }}
+{% else %}
+- No known gaps provided.
+{% endfor %}

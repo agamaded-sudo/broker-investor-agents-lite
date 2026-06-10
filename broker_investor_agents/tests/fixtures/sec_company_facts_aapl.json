@@ -1,0 +1,21 @@
+{
+  "ticker": "AAPL",
+  "company_name": "Apple Inc.",
+  "cik": "0000320193",
+  "fiscal_year": "FY2024",
+  "period": "FY2024",
+  "source_url": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json",
+  "source_name": "SEC Company Facts fixture for Apple FY2024",
+  "confidence": "high",
+  "facts": {
+    "revenue": 391035,
+    "gross_profit": 180683,
+    "operating_income": 123216,
+    "net_income": 93736,
+    "operating_cash_flow": 118254,
+    "capital_expenditure": 9447,
+    "cash_and_equivalents": 65171,
+    "long_term_debt": 85750,
+    "shareholders_equity": 56950
+  }
+}

@@ -1,0 +1,334 @@
+metadata:
+  schema_name: backoffice_data_pack_v2
+  schema_version: 2
+  company_name: Microsoft Corporation
+  ticker: MSFT
+  analysis_date: 2026-06-05
+  latest_annual_period: FY2025
+  latest_quarterly_period: FY26 Q3, three months ended March 31, 2026
+  reporting_standard: US GAAP
+  data_entry_mode: manual_example
+  units: millions_usd_except_per_share_and_percentages
+  notes:
+    - Manual pilot example using approximate values.
+    - Not produced by automated data fetching.
+
+company_identity:
+  company_name: Microsoft Corporation
+  ticker: MSFT
+  exchange: NASDAQ
+  market: USA
+  currency: USD
+  sector: Technology
+  industry: Software / Cloud / AI
+  fiscal_year_end: June 30
+  reporting_standard: US GAAP
+
+business_model:
+  summary: Microsoft sells enterprise and consumer software, cloud infrastructure, AI services, devices, gaming, and professional network products.
+  revenue_model:
+    - Commercial cloud subscriptions and consumption.
+    - Enterprise software licensing and support.
+    - Consumer subscriptions, devices, gaming, search, and advertising.
+  neutral_observations:
+    - Cloud and AI infrastructure demand are major current growth drivers.
+    - Capex intensity has increased with AI infrastructure buildout.
+    - Business remains diversified across software, cloud, and consumer platforms.
+
+products_customers_revenue_segments:
+  segments:
+    - name: Productivity and Business Processes
+      revenue: 120800
+      operating_income: 69800
+      examples:
+        - Office Commercial
+        - Microsoft 365
+        - LinkedIn
+        - Dynamics
+    - name: Intelligent Cloud
+      revenue: 106300
+      operating_income: 44600
+      examples:
+        - Azure
+        - Server products
+        - Enterprise services
+    - name: More Personal Computing
+      revenue: 54600
+      operating_income: 14200
+      examples:
+        - Windows
+        - Devices
+        - Gaming
+        - Search and news advertising
+  customer_groups:
+    - Enterprises
+    - Small and medium businesses
+    - Developers
+    - Public sector organizations
+    - Consumers
+
+financial_statements_summary:
+  annual:
+    period: FY2025
+    revenue: 281700
+    gross_profit: 193900
+    operating_income: 128500
+    net_income: 101800
+    operating_cash_flow: 136200
+    capex: 64600
+    free_cash_flow: 71600
+    cash_and_short_term_investments: 94600
+    total_assets: 619000
+    long_term_debt: 40200
+    total_liabilities: 275500
+    shareholders_equity: 343500
+    dividends_paid: 24100
+    share_repurchases: 18400
+  quarterly:
+    period: FY26 Q3
+    period_description: Three months ended March 31, 2026
+    revenue: 82900
+    operating_income: 38400
+    net_income: 31800
+    diluted_eps: 4.27
+    microsoft_cloud_revenue: 54500
+    microsoft_cloud_growth: 0.29
+    azure_and_other_cloud_services_growth: 0.40
+
+calculated_financial_metrics:
+  period: FY2025
+  gross_margin: 0.688
+  operating_margin: 0.456
+  net_margin: 0.361
+  free_cash_flow_margin: 0.254
+  operating_cash_flow_margin: 0.484
+  return_on_equity_proxy: 0.296
+  debt_to_equity: 0.117
+  cash_to_long_term_debt: 2.353
+  notes:
+    - Metrics are manually calculated from approximate input values.
+    - Return on equity proxy uses ending shareholders equity.
+
+quality_of_earnings:
+  observations:
+    - Net income is supported by operating cash flow in the manual FY2025 snapshot.
+    - Free cash flow remains positive after elevated capex.
+    - Maintenance versus growth capex is not disclosed in this example.
+  gaps:
+    - Maintenance vs growth capex not disclosed.
+    - Customer retention/churn missing.
+
+competitive_position_moat_indicators:
+  moat_sources:
+    - Enterprise switching costs.
+    - Developer and partner ecosystem.
+    - Integrated productivity, cloud, operating system, security, and AI stack.
+    - Scale advantages in cloud infrastructure.
+  neutral_observations:
+    - Competition remains intense in cloud infrastructure, AI models, productivity software, search, and gaming.
+    - AI leadership may require sustained capital investment.
+
+growth_drivers:
+  drivers:
+    - Azure and other cloud services growth.
+    - Microsoft Cloud revenue growth.
+    - AI infrastructure and Copilot adoption.
+    - Security, data, and developer platform expansion.
+    - LinkedIn and Dynamics growth opportunities.
+  watch_items:
+    - Durability of AI monetization.
+    - Gross margin impact from infrastructure investment.
+    - Enterprise IT budget sensitivity.
+
+sector_specific_operating_kpis:
+  cloud:
+    microsoft_cloud_revenue_q3_fy26: 54500
+    microsoft_cloud_growth_q3_fy26: 0.29
+    azure_and_other_cloud_services_growth_q3_fy26: 0.40
+  software:
+    retention_churn: unavailable
+    commercial_seat_growth: unavailable
+  gaps:
+    - Customer retention/churn missing.
+
+management_ownership_incentives:
+  management_notes:
+    - Management compensation details are not included in this manual example.
+    - Ownership and incentive alignment require proxy statement review.
+  gaps:
+    - Management compensation details missing.
+
+capital_allocation:
+  period: FY2025
+  dividends_paid: 24100
+  share_repurchases: 18400
+  capex: 64600
+  observations:
+    - Capital allocation includes dividends, repurchases, and heavy cloud and AI infrastructure investment.
+    - Balance sheet remains liquid relative to long-term debt in this manual snapshot.
+
+capex_owner_earnings_proxy:
+  operating_cash_flow: 136200
+  capex: 64600
+  free_cash_flow: 71600
+  owner_earnings_proxy: 71600
+  caveat: Maintenance versus growth capex is not disclosed, so free cash flow is only a rough owner earnings proxy.
+  gaps:
+    - Maintenance vs growth capex not disclosed.
+
+historical_valuation:
+  current_snapshot_only: false
+  pe_5y_median: 34
+  pe_10y_median: 31
+  p_fcf_5y_median: 35
+  p_fcf_10y_median: 30
+  ev_ebitda_5y_median: 24
+  ev_ebitda_10y_median: 21
+  current_vs_5y_p_fcf_percentile: 0.80
+  current_vs_10y_p_fcf_percentile: 0.85
+  valuation_history_confidence: medium_placeholder
+  observations:
+    - Valuation history values are approximate manual placeholders and require source verification.
+  gaps:
+    - Valuation history source verification required.
+    - 5Y/10Y valuation data validation required.
+
+peer_comparison:
+  status: incomplete
+  candidate_peers:
+    - AAPL
+    - GOOGL
+    - AMZN
+    - ORCL
+    - CRM
+  observations:
+    - Peer comparison is incomplete and should be expanded with growth, margin, balance sheet, and valuation metrics.
+  gaps:
+    - Peer comparison incomplete.
+
+valuation_snapshot:
+  status: market_data_placeholder
+  market_cap: 3180000
+  observations:
+    - Current market capitalization, enterprise value, and valuation multiples should be supplied by market data.
+    - Market data source confidence is medium until exact provider and timestamp are recorded.
+
+risk_register:
+  risks:
+    - name: AI infrastructure capital intensity
+      description: Elevated capex could pressure free cash flow if demand or monetization disappoints.
+      severity: medium
+    - name: Cloud competition
+      description: Azure competes with AWS, Google Cloud, and specialized AI infrastructure providers.
+      severity: medium
+    - name: Regulatory scrutiny
+      description: Large platform scale may attract antitrust, privacy, security, and AI regulation.
+      severity: medium
+    - name: Cybersecurity and operational resilience
+      description: Enterprise trust depends on secure and reliable products and cloud services.
+      severity: high
+
+scuttlebutt:
+  status: weak_unavailable
+  observations:
+    - No direct customer, supplier, employee, or channel checks are included in this manual example.
+  gaps:
+    - Scuttlebutt weak/unavailable.
+
+market_awareness:
+  observations:
+    - Investor expectations likely reflect cloud and AI growth.
+    - Current market data should be refreshed before any valuation conclusion.
+  missing_items:
+    - Current share price.
+    - Market capitalization.
+    - Enterprise value.
+    - Analyst expectations.
+
+index_benchmark_alternative:
+  benchmark_candidates:
+    - SPY
+    - VTI
+    - QQQ
+  observations:
+    - Benchmark comparison should evaluate opportunity cost versus broad market and technology-heavy indexes.
+    - Index weights are not included in this manual example.
+  gaps:
+    - Index weights missing.
+
+portfolio_context_form:
+  status: missing
+  observations:
+    - No investor-specific portfolio size, concentration, tax, liquidity, or mandate context is provided.
+  gaps:
+    - Portfolio context missing.
+
+investor_data_map:
+  buffett:
+    relevant_sections:
+      - business_model
+      - calculated_financial_metrics
+      - quality_of_earnings
+      - competitive_position_moat_indicators
+      - capex_owner_earnings_proxy
+      - valuation_snapshot
+  munger:
+    relevant_sections:
+      - business_model
+      - competitive_position_moat_indicators
+      - management_ownership_incentives
+      - risk_register
+  fisher:
+    relevant_sections:
+      - growth_drivers
+      - sector_specific_operating_kpis
+      - scuttlebutt
+      - management_ownership_incentives
+  lynch:
+    relevant_sections:
+      - products_customers_revenue_segments
+      - financial_statements_summary
+      - calculated_financial_metrics
+      - peer_comparison
+  bogle:
+    relevant_sections:
+      - index_benchmark_alternative
+      - market_awareness
+      - portfolio_context_form
+
+sources_confidence_data_gaps:
+  source_log:
+    - source_id: msft_ar_2025
+      source_name: Microsoft FY2025 Annual Report
+      source_type: company
+      retrieved_at: 2026-06-05
+      confidence: high
+      confidence_score: 0.95
+      freshness: current
+      notes: Official Microsoft annual report figures, manually entered for pilot use.
+    - source_id: msft_fy26_q3
+      source_name: Microsoft FY26 Q3 Earnings Release
+      source_type: company
+      retrieved_at: 2026-06-05
+      confidence: high
+      confidence_score: 0.95
+      freshness: current
+      notes: Official Microsoft quarterly figures and cloud growth notes, manually entered for pilot use.
+    - source_id: market_data_current
+      source_name: Current market data placeholder
+      source_type: vendor
+      retrieved_at: 2026-06-05
+      confidence: medium
+      confidence_score: 0.70
+      freshness: unknown
+      notes: Market price, index weights, and valuation multiples still need a timestamped source.
+  known_gaps:
+    - Valuation history source verification required.
+    - 5Y/10Y valuation data validation required.
+    - Peer comparison incomplete.
+    - Scuttlebutt weak/unavailable.
+    - Index weights missing.
+    - Portfolio context missing.
+    - Maintenance vs growth capex not disclosed.
+    - Management compensation details missing.
+    - Customer retention/churn missing.

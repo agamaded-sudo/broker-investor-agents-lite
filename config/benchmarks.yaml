@@ -1,0 +1,32 @@
+benchmarks:
+  broad_market:
+    ticker: SPY
+    name: S&P 500 ETF
+    category: large_cap_us_equity
+    use_cases:
+      - relative_return
+      - volatility
+      - drawdown
+      - valuation_context
+
+  total_market:
+    ticker: VTI
+    name: Vanguard Total Stock Market ETF
+    category: total_us_equity
+    use_cases:
+      - bogle_comparison
+      - opportunity_cost
+
+  quality:
+    ticker: QUAL
+    name: iShares MSCI USA Quality Factor ETF
+    category: factor_quality
+    use_cases:
+      - quality_context
+
+  bonds:
+    ticker: BND
+    name: Vanguard Total Bond Market ETF
+    category: aggregate_bonds
+    use_cases:
+      - asset_allocation_context

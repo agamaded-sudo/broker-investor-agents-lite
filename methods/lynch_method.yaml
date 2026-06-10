@@ -1,0 +1,43 @@
+method_name: Lynch Method
+agent_name: lynch_agent
+orientation: Understandable companies with earnings growth at reasonable prices.
+
+principles:
+  - Classify the company before judging it.
+  - Prefer understandable business drivers.
+  - Compare earnings growth with valuation.
+  - Watch debt, inventories, margins, and cash flow.
+  - Look for simple, testable investment stories.
+
+categories:
+  - slow_grower
+  - stalwart
+  - fast_grower
+  - cyclical
+  - turnaround
+  - asset_play
+
+scorecard:
+  - criterion: category_fit
+    weight: 0.15
+  - criterion: growth_vs_price
+    weight: 0.25
+  - criterion: balance_sheet
+    weight: 0.15
+  - criterion: business_story
+    weight: 0.20
+  - criterion: operating_trends
+    weight: 0.25
+
+red_flags:
+  - High debt for the category.
+  - Growth story unsupported by earnings.
+  - Deteriorating margins or inventory quality.
+  - Valuation detached from realistic growth.
+
+report_sections:
+  - company_category
+  - simple_story
+  - growth_price_check
+  - operating_trends
+  - watch_items

@@ -1,0 +1,22 @@
+{
+  "ticker": "COST",
+  "company_name": "Costco Wholesale Corporation",
+  "cik": "0000909832",
+  "fiscal_year": "FY2025",
+  "period": "FY2025",
+  "source_url": "fixture://sec-company-facts/COST/FY2025",
+  "source_name": "SEC Company Facts Fixture",
+  "confidence": "high",
+  "facts": {
+    "revenue": 254453,
+    "gross_profit": 32000,
+    "operating_income": 9210,
+    "net_income": 7290,
+    "operating_cash_flow": 11500,
+    "capital_expenditure": 4800,
+    "free_cash_flow": 6700,
+    "cash_and_equivalents": 12000,
+    "long_term_debt": 6500,
+    "shareholders_equity": 25000
+  }
+}

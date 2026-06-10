@@ -1,0 +1,21 @@
+{
+  "ticker": "NVDA",
+  "company_name": "NVIDIA Corporation",
+  "as_of_date": "2026-06-01",
+  "currency": "USD",
+  "revenue_cagr_3y": 0.62,
+  "revenue_cagr_5y": 0.41,
+  "eps_cagr_3y": 0.75,
+  "eps_cagr_5y": 0.48,
+  "fcf_cagr_3y": 0.68,
+  "fcf_cagr_5y": 0.45,
+  "forward_revenue_growth": 0.28,
+  "forward_eps_growth": 0.30,
+  "current_pe": 41.2,
+  "peg_ratio": 1.37,
+  "growth_quality_label": "exceptional but cycle-sensitive growth",
+  "growth_data_confidence": "medium_market_fixture",
+  "source_name": "Growth PEG Fixture",
+  "source_url": "fixture://growth-peg/NVDA/2026-06-01",
+  "confidence": "medium"
+}

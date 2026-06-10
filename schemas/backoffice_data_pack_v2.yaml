@@ -1,0 +1,67 @@
+schema_name: backoffice_data_pack_v2
+version: 2
+description: Source-backed company research packet used by all investor agents.
+
+required_sections:
+  - metadata
+  - company_profile
+  - financial_statements
+  - market_data
+  - valuation
+  - peers
+  - benchmarks
+  - risks
+  - sources
+  - gaps
+
+metadata:
+  required:
+    - ticker
+    - company_name
+    - market
+    - currency
+    - analysis_date
+    - fiscal_period
+
+company_profile:
+  fields:
+    - business_description
+    - segments
+    - geography
+    - customers
+    - competitors
+    - management
+
+financial_statements:
+  annual_periods_minimum: 5
+  quarterly_periods_minimum: 8
+  statements:
+    - income_statement
+    - balance_sheet
+    - cash_flow_statement
+
+metrics:
+  profitability:
+    - gross_margin
+    - operating_margin
+    - net_margin
+    - return_on_equity
+    - return_on_invested_capital
+  growth:
+    - revenue_growth
+    - earnings_growth
+    - free_cash_flow_growth
+  balance_sheet:
+    - net_cash_or_debt
+    - debt_to_equity
+    - interest_coverage
+  valuation:
+    - pe_ratio
+    - ev_to_ebit
+    - free_cash_flow_yield
+    - dividend_yield
+
+source_requirements:
+  every_material_field_requires_source: true
+  every_estimate_requires_note: true
+  confidence_schema: source_confidence_schema

@@ -1,0 +1,21 @@
+{
+  "ticker": "AAPL",
+  "company_name": "Apple Inc.",
+  "as_of_date": "2026-06-01",
+  "currency": "USD",
+  "revenue_cagr_3y": 0.03,
+  "revenue_cagr_5y": 0.07,
+  "eps_cagr_3y": 0.06,
+  "eps_cagr_5y": 0.11,
+  "fcf_cagr_3y": 0.04,
+  "fcf_cagr_5y": 0.09,
+  "forward_revenue_growth": 0.04,
+  "forward_eps_growth": 0.07,
+  "current_pe": 32.0,
+  "peg_ratio": 4.57,
+  "growth_quality_label": "mature cash-generative growth",
+  "growth_data_confidence": "medium_market_fixture",
+  "source_name": "Growth PEG Fixture",
+  "source_url": "fixture://growth-peg/AAPL/2026-06-01",
+  "confidence": "medium"
+}
