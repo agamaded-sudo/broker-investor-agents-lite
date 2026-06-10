@@ -10,6 +10,9 @@ from broker_agents.backoffice.portfolio_context import (
     merge_portfolio_context_into_pack,
 )
 from broker_agents.backoffice.source_verification import verify_sources
+from broker_agents.backoffice.source_verification_matrix import (
+    summarize_source_verification_matrix,
+)
 from broker_agents.calculators.decision_candidates import build_decision_candidate
 from broker_agents.calculators.promotion_eligibility import (
     evaluate_promotion_eligibility,
@@ -353,6 +356,11 @@ def generate_post_enrichment_gap_report(
             warnings.append(f"Could not parse enriched input for {ticker}: {enriched_input}")
         verification = verify_sources(pack) if pack else {}
         analysis_pack = merge_portfolio_context_into_pack(pack, portfolio_context)
+        verification_matrix = (
+            summarize_source_verification_matrix(analysis_pack).to_dict()
+            if analysis_pack
+            else {}
+        )
         signals = extract_company_signals(analysis_pack) if analysis_pack else {}
         candidates: dict[str, dict] = {}
         eligibility: dict[str, dict] = {}
@@ -375,6 +383,7 @@ def generate_post_enrichment_gap_report(
                 "summary_path": summary_path,
                 "pack": pack,
                 "verification": verification,
+                "verification_matrix": verification_matrix,
                 "business_model_type": signals.get("business_model_type", "generic"),
                 "candidates": candidates,
                 "eligibility": eligibility,
@@ -424,7 +433,24 @@ def generate_post_enrichment_gap_report(
     lines.extend(
         [
             "",
-            "## 4. Remaining Evidence Gaps by Investor",
+            "## 4. Source Verification Matrix After Enrichment",
+            "",
+            "| Ticker | Category | Status | Broker Action | Blocks Promotion? |",
+            "| --- | --- | --- | --- | --- |",
+        ]
+    )
+    for company in companies:
+        for category in company["verification_matrix"].get("categories", []):
+            lines.append(
+                f"| {company['ticker']} | {category['category']} | "
+                f"{category['status']} | {category['broker_action']} | "
+                f"{'Yes' if category['blocks_promotion'] else 'No'} |"
+            )
+
+    lines.extend(
+        [
+            "",
+            "## 5. Remaining Evidence Gaps by Investor",
             "",
             "| Ticker | Investor | Remaining Gap | Gap Type | Blocks Promotion? | Suggested Next Step |",
             "| --- | --- | --- | --- | --- | --- |",
@@ -446,7 +472,7 @@ def generate_post_enrichment_gap_report(
     lines.extend(
         [
             "",
-            "## 5. Promotion Blockers After Enrichment",
+            "## 6. Promotion Blockers After Enrichment",
             "",
             "| Ticker | Investor | Candidate Decision | Promotion Status | Main Blocker | Auto-Promotion |",
             "| --- | --- | --- | --- | --- | --- |",
@@ -468,7 +494,7 @@ def generate_post_enrichment_gap_report(
     lines.extend(
         [
             "",
-            "## 6. Fetcher Roadmap From Remaining Gaps",
+            "## 7. Fetcher Roadmap From Remaining Gaps",
             "",
             "| Priority | Fetcher / Workflow | Evidence Covered | Affected Investors | Why Next |",
             "| --- | --- | --- | --- | --- |",
@@ -482,7 +508,7 @@ def generate_post_enrichment_gap_report(
     lines.extend(
         [
             "",
-            "## 7. Human Review Queue Candidates",
+            "## 8. Human Review Queue Candidates",
             "",
             "| Priority | Ticker | Investor | Review Question | Why Human Review Is Needed |",
             "| --- | --- | --- | --- | --- |",
@@ -499,7 +525,7 @@ def generate_post_enrichment_gap_report(
     lines.extend(
         [
             "",
-            "## 8. Safety Check",
+            "## 9. Safety Check",
             "",
             "- Final decisions unchanged.",
             "- Auto-promotion disabled.",

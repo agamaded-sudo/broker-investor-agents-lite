@@ -24,6 +24,7 @@ def generate_broker_deal_package_report(
     warnings: list[str],
     executive_summary: BrokerDealExecutiveSummary,
     investor_response_letter_paths: dict[str, Path] | None = None,
+    source_verification_summary: dict | None = None,
 ) -> str:
     """Generate a broker-facing package of independent investor responses."""
     lines = [
@@ -81,19 +82,69 @@ def generate_broker_deal_package_report(
         "| --- | --- | --- | --- |",
         f"| {ticker.upper()} | {company_name} | {enriched_pack_path} | {source_verification_status} |",
         "",
-        "## 4. Backoffice Preparation Summary",
+        "## 4. Source Verification Matrix",
+        "",
+    ]
+    source_summary = source_verification_summary or {}
+    lines.extend(
+        [
+            f"- Overall Status: {source_summary.get('overall_status', source_verification_status)}",
+            (
+                "- Verified Categories: "
+                f"{source_summary.get('verified_categories_count', 'Not available')}"
+            ),
+            (
+                "- Partially Verified Categories: "
+                f"{source_summary.get('partial_categories_count', 'Not available')}"
+            ),
+            (
+                "- Missing or Placeholder-Heavy Categories: "
+                f"{source_summary.get('missing_or_placeholder_categories_count', 'Not available')}"
+            ),
+            (
+                "- Promotion-Blocking Categories: "
+                f"{_join(source_summary.get('promotion_blocking_categories', []))}"
+            ),
+            (
+                "- Broker Summary: "
+                f"{source_summary.get('concise_broker_summary', 'Category-level verification not available.')}"
+            ),
+            "",
+            "| Category | Status | Available Evidence | Missing Evidence | Broker Action | Blocks Promotion |",
+            "| --- | --- | --- | --- | --- | --- |",
+        ]
+    )
+    for category in source_summary.get("categories", []):
+        available = "; ".join(category.get("available_evidence", [])) or "None"
+        missing = "; ".join(category.get("missing_evidence", [])) or "None"
+        lines.append(
+            f"| {category.get('category', 'unknown')} | "
+            f"{category.get('status', 'missing')} | {available} | {missing} | "
+            f"{category.get('broker_action', 'Collect missing evidence.')} | "
+            f"{'Yes' if category.get('blocks_promotion') else 'No'} |"
+        )
+
+    lines.extend(
+        [
+        "",
+        "## 5. Backoffice Preparation Summary",
         "",
         f"- Enriched pack path: {enriched_pack_path}",
         f"- Applied enrichment sources: {_join(applied_enrichment_sources)}",
         f"- Skipped enrichment sources: {_join(skipped_enrichment_sources)}",
         f"- Source verification status: {source_verification_status}",
+        (
+            "- Category verification summary: "
+            f"{source_summary.get('concise_broker_summary', 'Not available')}"
+        ),
         f"- Warnings: {_join(warnings)}",
         "",
-        "## 5. Independent Investor Responses",
+        "## 6. Independent Investor Responses",
         "",
         "| Investor | Final Decision | Candidate Decision | Interest Level | Interest Type | Confidence | Main Concern |",
         "| --- | --- | --- | --- | --- | --- | --- |",
-    ]
+        ]
+    )
     for response in investor_responses:
         lines.append(
             f"| {response.investor} | {response.broker_facing_final_decision} | "
@@ -106,7 +157,7 @@ def generate_broker_deal_package_report(
     lines.extend(
         [
             "",
-            "## 6. Investor Response Letters",
+            "## 7. Investor Response Letters",
             "",
             "| Investor | Response Letter Path | Interest Level | Interest Type |",
             "| --- | --- | --- | --- |",
@@ -126,7 +177,7 @@ def generate_broker_deal_package_report(
                 "these letters as a vote, ranking, or consensus."
             ),
             "",
-            "## 7. Investor Response Details",
+            "## 8. Investor Response Details",
             "",
         ]
     )
@@ -185,7 +236,7 @@ def generate_broker_deal_package_report(
     ]
     lines.extend(
         [
-            "## 8. Broker Interpretation",
+            "## 9. Broker Interpretation",
             "",
             f"- Conditional interest: {_join(conditional)}.",
             f"- Watchlist or research interest: {_join(watchlist)}.",
@@ -198,7 +249,7 @@ def generate_broker_deal_package_report(
             ),
             "- These independent responses are not averaged, ranked, or combined.",
             "",
-            "## 9. Next Backoffice Actions",
+            "## 10. Next Backoffice Actions",
             "",
             "- Collect missing investor-specific evidence.",
             "- Validate source provenance and methodology.",
@@ -206,7 +257,7 @@ def generate_broker_deal_package_report(
             "- Rerun the five investor agents independently.",
             "- Prepare investor-specific follow-up memos.",
             "",
-            "## 10. Safety Check",
+            "## 11. Safety Check",
             "",
             "- No recommendation.",
             "- No ranking.",

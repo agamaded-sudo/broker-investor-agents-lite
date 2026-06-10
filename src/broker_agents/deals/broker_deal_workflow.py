@@ -20,6 +20,9 @@ from broker_agents.backoffice.portfolio_context import (
     merge_portfolio_context_into_pack,
 )
 from broker_agents.backoffice.source_verification import verify_sources
+from broker_agents.backoffice.source_verification_matrix import (
+    summarize_source_verification_matrix,
+)
 from broker_agents.calculators.decision_candidates import (
     CURRENT_DECISIONS,
     build_decision_candidate,
@@ -228,6 +231,7 @@ def run_broker_deal_workflow(
         for response, path in zip(responses, response_letter_paths, strict=True)
     }
     source_status = _source_status(enriched_pack)
+    source_matrix = summarize_source_verification_matrix(analysis_pack)
     warnings = list(enrichment.warnings)
     executive_summary = build_broker_deal_executive_summary(
         ticker=ticker_upper,
@@ -251,6 +255,7 @@ def run_broker_deal_workflow(
             warnings=warnings,
             executive_summary=executive_summary,
             investor_response_letter_paths=letters_by_investor,
+            source_verification_summary=source_matrix.to_dict(),
         ),
         encoding="utf-8",
     )
@@ -287,6 +292,7 @@ def run_broker_deal_workflow(
                 "workflow_result": result.to_dict(),
                 "investor_responses": [response.to_dict() for response in responses],
                 "executive_summary": executive_summary.to_dict(),
+                "source_verification_matrix": source_matrix.to_dict(),
                 "safety_flags": safety_flags,
             },
             indent=2,

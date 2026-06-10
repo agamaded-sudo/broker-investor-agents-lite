@@ -9,6 +9,9 @@ from broker_agents.backoffice.portfolio_context import (
     load_portfolio_context,
     merge_portfolio_context_into_pack,
 )
+from broker_agents.backoffice.source_verification_matrix import (
+    build_source_verification_matrix,
+)
 from broker_agents.calculators.decision_candidates import (
     CURRENT_DECISIONS,
     build_decision_candidate,
@@ -152,6 +155,14 @@ def _build_items_for_ticker(ticker: str, pack: dict) -> list[HumanReviewItem]:
         for investor in INVESTORS
     }
     ticker_upper = ticker.upper()
+    matrix = {
+        item.category: item for item in build_source_verification_matrix(pack)
+    }
+    source_actions = {
+        category: item.broker_action
+        for category, item in matrix.items()
+        if item.blocks_promotion
+    }
     return [
         _item(
             ticker_upper,
@@ -165,6 +176,10 @@ def _build_items_for_ticker(ticker: str, pack: dict) -> list[HumanReviewItem]:
                 "Normalized owner earnings validation.",
                 "Long-term owner earnings durability.",
                 "Margin of safety assumption validation.",
+                source_actions.get(
+                    "historical_valuation",
+                    "Validate owner earnings and valuation-history provenance.",
+                ),
             ],
             [
                 "maintenance vs growth capex split",
@@ -186,6 +201,10 @@ def _build_items_for_ticker(ticker: str, pack: dict) -> list[HumanReviewItem]:
                 "Compensation structure.",
                 "Buyback discipline source evidence.",
                 "Hidden-stupidity qualitative review.",
+                source_actions.get(
+                    "management_incentives",
+                    "Validate management incentives evidence.",
+                ),
             ],
             [
                 "management incentives",
@@ -209,6 +228,10 @@ def _build_items_for_ticker(ticker: str, pack: dict) -> list[HumanReviewItem]:
                 "Retention/churn evidence.",
                 "Partner/developer feedback.",
                 "Competitive field checks.",
+                source_actions.get(
+                    "scuttlebutt",
+                    "Collect Fisher-style scuttlebutt evidence.",
+                ),
             ],
             [
                 "customer scuttlebutt",
@@ -231,6 +254,10 @@ def _build_items_for_ticker(ticker: str, pack: dict) -> list[HumanReviewItem]:
                 "PEG methodology validation.",
                 "Category-specific KPI validation.",
                 "Cycle-adjusted growth for semiconductors where applicable.",
+                source_actions.get(
+                    "growth_peg",
+                    "Validate growth/PEG provider methodology.",
+                ),
             ],
             [
                 "growth methodology validation",
@@ -255,6 +282,10 @@ def _build_items_for_ticker(ticker: str, pack: dict) -> list[HumanReviewItem]:
                 "Correlation.",
                 "ETF/index holdings validation.",
                 "Proposed position size validation.",
+                source_actions.get(
+                    "index_overlap",
+                    "Validate index and ETF overlap evidence.",
+                ),
             ],
             [
                 "benchmark-relative returns",
