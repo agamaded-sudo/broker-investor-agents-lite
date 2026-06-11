@@ -37,8 +37,14 @@ from broker_agents.deals.analyze_stock_intake import (
     build_ticker_analyze_stock_intake,
     load_analyze_stock_intake,
 )
+from broker_agents.deals.analyze_stock_runner import execute_analyze_stock
+from broker_agents.deals.batch_analyze import (
+    BatchTickerResult,
+    completed_batch_result,
+    create_analyze_batch_bundle,
+    failed_batch_result,
+)
 from broker_agents.deals.deal_intake import build_deal_intake_status
-from broker_agents.deals.run_bundle import create_analyze_stock_run_bundle
 from broker_agents.fetchers.sec_financials_fetcher import (
     load_sec_fixture,
     map_fixture_to_financials,
@@ -1759,89 +1765,21 @@ def analyze_stock(
     except (OSError, ValueError, yaml.YAMLError, json.JSONDecodeError) as exc:
         raise typer.BadParameter(str(exc)) from exc
 
-    status = build_deal_intake_status(
-        ticker=intake.ticker,
-        examples_root=intake.examples_root,
-        outputs_root=intake.outputs_root,
-        fixtures_root=intake.fixtures_root,
-        portfolio_context_path=intake.portfolio_context,
-        market=intake.market,
-        company_name=intake.company_name,
-    )
-    normalized = status.normalized_ticker or "UNKNOWN"
-    intake_dir = intake.outputs_root / normalized
-    intake_report_path = intake_dir / "deal_intake_report.md"
-    intake_json_path = intake_dir / "deal_intake_report.json"
     try:
-        intake_dir.mkdir(parents=True, exist_ok=True)
-        intake_report_path.write_text(
-            generate_deal_intake_report(status),
-            encoding="utf-8",
-        )
-        intake_json_path.write_text(
-            json.dumps(status.to_dict(), indent=2),
-            encoding="utf-8",
-        )
-    except OSError as exc:
-        raise typer.BadParameter(
-            f"Could not write deal intake output: {exc}"
-        ) from exc
-    if not status.can_run_deal:
-        raise typer.BadParameter(
-            f"{normalized} cannot run the deal workflow: {status.intake_status}. "
-            f"Review {intake_report_path}."
-        )
-
-    try:
-        result = run_broker_deal_workflow(
-            ticker=normalized,
-            input_pack_path=status.manual_input_path,
-            outputs_root=intake.outputs_root,
-            fixtures_root=intake.fixtures_root,
-            portfolio_context_path=intake.portfolio_context,
-        )
-        package_json_path = (
-            result.deal_output_dir
-            / f"{normalized.lower()}_broker_deal_package.json"
-        )
-        package_payload = json.loads(
-            package_json_path.read_text(encoding="utf-8")
-        )
-        snapshot_filename = (
-            "analyze_stock_intake_snapshot.yaml"
-            if input_mode == "intake_file"
-            else "analyze_stock_ticker_snapshot.yaml"
-        )
-        intake_snapshot_path = result.deal_output_dir / snapshot_filename
-        intake_snapshot_path.write_text(
-            yaml.safe_dump(
-                intake.to_snapshot(
-                    input_mode=input_mode,
-                    intake_file=intake_file,
-                ),
-                sort_keys=False,
-            ),
-            encoding="utf-8",
-        )
-        run_bundle = create_analyze_stock_run_bundle(
+        execution = execute_analyze_stock(
             intake=intake,
             input_mode=input_mode,
             intake_file=intake_file,
-            intake_snapshot_path=intake_snapshot_path,
-            workflow_result=result,
-            package_payload=package_payload,
         )
     except (OSError, ValueError, yaml.YAMLError, json.JSONDecodeError) as exc:
         raise typer.BadParameter(
             f"Unified stock analysis failed: {exc}"
         ) from exc
 
-    letter_dir = next(
-        iter(result.investor_response_letter_paths.values())
-    ).parent
-    memo_dir = next(
-        iter(result.investor_follow_up_memo_paths.values())
-    ).parent
+    normalized = execution.intake_status.normalized_ticker or "UNKNOWN"
+    result = execution.workflow_result
+    package_payload = execution.package_payload
+    run_bundle = execution.run_bundle
     executive_summary = package_payload.get("executive_summary", {})
     work_order_plan = package_payload.get("backoffice_work_order_plan", {})
 
@@ -1871,10 +1809,16 @@ def analyze_stock(
         ("Ticker", normalized),
         ("Broker Deal Package", str(result.broker_deal_package_path)),
         ("Enriched Input", str(result.enriched_pack_path)),
-        ("Investor Response Letters", str(letter_dir)),
-        ("Investor Follow-Up Memos", str(memo_dir)),
+        (
+            "Investor Response Letters",
+            str(execution.investor_response_letters_dir),
+        ),
+        (
+            "Investor Follow-Up Memos",
+            str(execution.investor_follow_up_memos_dir),
+        ),
         ("Backoffice Work Orders", str(result.backoffice_work_orders_path)),
-        ("Intake Snapshot", str(intake_snapshot_path)),
+        ("Intake Snapshot", str(execution.intake_snapshot_path)),
         ("Source Verification Status", result.source_verification_status),
         (
             "Readiness Label",
@@ -1900,6 +1844,214 @@ def analyze_stock(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
+
+
+@app.command("analyze-batch")
+def analyze_batch(
+    tickers: Annotated[
+        str | None,
+        typer.Option(
+            "--tickers",
+            help="Comma-separated ticker symbols to analyze.",
+        ),
+    ] = None,
+    intake_files: Annotated[
+        str | None,
+        typer.Option(
+            "--intake-files",
+            help="Comma-separated YAML or JSON analyze-stock intake files.",
+        ),
+    ] = None,
+    batch_label: Annotated[
+        str | None,
+        typer.Option(
+            "--batch-label",
+            help="Optional label included in the batch run folder name.",
+        ),
+    ] = None,
+    examples_root: Annotated[
+        Path,
+        typer.Option(
+            "--examples-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            help="Directory containing manual input packs.",
+        ),
+    ] = Path("examples"),
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            file_okay=False,
+            dir_okay=True,
+            writable=True,
+            help="Root directory for ticker and batch outputs.",
+        ),
+    ] = Path("data/outputs"),
+    fixtures_root: Annotated[
+        Path,
+        typer.Option(
+            "--fixtures-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            help="Directory containing offline enrichment fixtures.",
+        ),
+    ] = Path("tests/fixtures"),
+    portfolio_context_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--portfolio-context",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Optional portfolio context for Bogle analysis.",
+        ),
+    ] = None,
+) -> None:
+    """Run the existing analyze-stock pipeline for a batch of inputs."""
+    if tickers is not None and intake_files is not None:
+        raise typer.BadParameter(
+            "Provide either --tickers or --intake-files, not both."
+        )
+    if tickers is None and intake_files is None:
+        raise typer.BadParameter(
+            "Provide one input mode: --tickers or --intake-files."
+        )
+
+    results: list[BatchTickerResult] = []
+    requested_tickers: list[str] = []
+    batch_outputs_root = outputs_root
+    if tickers is not None:
+        input_mode = "tickers"
+        ticker_values = list(
+            dict.fromkeys(
+                item.strip().upper()
+                for item in tickers.split(",")
+                if item.strip()
+            )
+        )
+        if not ticker_values:
+            raise typer.BadParameter("--tickers must include at least one ticker.")
+        requested_tickers = ticker_values
+        for ticker_value in ticker_values:
+            try:
+                intake = build_ticker_analyze_stock_intake(
+                    ticker=ticker_value,
+                    examples_root=examples_root,
+                    outputs_root=outputs_root,
+                    fixtures_root=fixtures_root,
+                    portfolio_context=portfolio_context_path,
+                )
+                execution = execute_analyze_stock(
+                    intake=intake,
+                    input_mode="ticker",
+                )
+                results.append(completed_batch_result(execution))
+            except (
+                OSError,
+                ValueError,
+                yaml.YAMLError,
+                json.JSONDecodeError,
+            ) as exc:
+                results.append(failed_batch_result(ticker_value, exc))
+    else:
+        input_mode = "intake_files"
+        intake_paths = [
+            Path(item.strip())
+            for item in (intake_files or "").split(",")
+            if item.strip()
+        ]
+        if not intake_paths:
+            raise typer.BadParameter(
+                "--intake-files must include at least one path."
+            )
+        configured_outputs_root: Path | None = None
+        for intake_path in intake_paths:
+            result_ticker = intake_path.stem.upper()
+            requested_added = False
+            try:
+                intake = load_analyze_stock_intake(intake_path)
+                result_ticker = intake.ticker
+                requested_tickers.append(result_ticker)
+                requested_added = True
+                if configured_outputs_root is None:
+                    configured_outputs_root = intake.outputs_root
+                    batch_outputs_root = intake.outputs_root
+                elif intake.outputs_root != configured_outputs_root:
+                    raise ValueError(
+                        "All intake files in a batch must use the same "
+                        "outputs_root."
+                    )
+                execution = execute_analyze_stock(
+                    intake=intake,
+                    input_mode="intake_file",
+                    intake_file=intake_path,
+                )
+                results.append(completed_batch_result(execution))
+            except (
+                OSError,
+                ValueError,
+                yaml.YAMLError,
+                json.JSONDecodeError,
+            ) as exc:
+                if not requested_added:
+                    requested_tickers.append(result_ticker)
+                results.append(failed_batch_result(result_ticker, exc))
+
+    bundle = create_analyze_batch_bundle(
+        outputs_root=batch_outputs_root,
+        input_mode=input_mode,
+        batch_label=batch_label,
+        requested_tickers=requested_tickers,
+        results=results,
+    )
+    table = Table(title="Batch Stock Analysis")
+    for column in (
+        "Ticker",
+        "Status",
+        "Run Folder",
+        "Broker Deal Package",
+        "Readiness Label",
+        "Source Verification",
+        "Promotion-Blocking Categories",
+    ):
+        table.add_column(column)
+    for result in results:
+        table.add_row(
+            result.ticker,
+            result.status,
+            result.run_folder or "Not generated",
+            result.broker_deal_package_path or "Not generated",
+            result.readiness_label or "Not available",
+            result.source_verification_status or "Not available",
+            ", ".join(result.promotion_blocking_categories) or "None",
+        )
+    console.print(table)
+    console.print(f"Batch Run ID: {bundle.batch_run_id}", soft_wrap=True)
+    console.print(f"Batch Folder: {bundle.batch_folder}", soft_wrap=True)
+    console.print(
+        f"Batch Manifest: {bundle.batch_manifest_path}",
+        soft_wrap=True,
+    )
+    console.print(
+        f"Batch Summary: {bundle.batch_summary_path}",
+        soft_wrap=True,
+    )
+    console.print(
+        (
+            f"Completed: {bundle.completed_count}; "
+            f"Failed: {bundle.failed_count}; "
+            f"Skipped: {bundle.skipped_count}"
+        ),
+        soft_wrap=True,
+    )
+    if bundle.completed_count == 0:
+        raise typer.Exit(code=1)
 
 
 @app.command("run-deals")

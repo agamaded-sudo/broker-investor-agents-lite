@@ -286,6 +286,28 @@ boundaries. Canonical outputs under `data/outputs/{TICKER}/deal_package/`
 remain unchanged. A `latest_run_manifest.json` copy is maintained under the
 ticker's `runs` directory for simple discovery.
 
+## Batch Analyze Many Tickers
+
+Run the existing unified stock analysis for several tickers without combining,
+ranking, or comparing their independent investor results:
+
+```powershell
+python -m broker_agents.cli analyze-batch --tickers MSFT,AAPL,NVDA,COST --examples-root examples --outputs-root data/outputs --fixtures-root tests/fixtures --portfolio-context examples/portfolio_context.yaml
+```
+
+Each ticker keeps its normal deal package and receives its own archival run
+folder. The batch itself is recorded under:
+
+```text
+data/outputs/batch_runs/{BATCH_RUN_ID}/
+```
+
+That folder contains `batch_summary.md` and `batch_manifest.json`.
+`data/outputs/batch_runs/latest_batch_manifest.json` is refreshed after every
+batch. The command records failures per ticker and continues processing the
+remaining inputs. It does not rank tickers, create consensus, or produce an
+allocation or trade signal.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from
