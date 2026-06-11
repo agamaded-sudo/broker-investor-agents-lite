@@ -33,6 +33,7 @@ from broker_agents.agents.buffett_agent import BuffettAgent
 from broker_agents.agents.fisher_agent import FisherAgent
 from broker_agents.agents.lynch_agent import LynchAgent
 from broker_agents.agents.munger_agent import MungerAgent
+from broker_agents.archive.signal_ledger import archive_completed_run
 from broker_agents.deals.analyze_stock_intake import (
     build_ticker_analyze_stock_intake,
     load_analyze_stock_intake,
@@ -1782,6 +1783,11 @@ def analyze_stock(
     run_bundle = execution.run_bundle
     executive_summary = package_payload.get("executive_summary", {})
     work_order_plan = package_payload.get("backoffice_work_order_plan", {})
+    archive_result = archive_completed_run(
+        outputs_root=intake.outputs_root,
+        run_manifest_path=run_bundle.run_manifest_path,
+        broker_deal_package_path=result.broker_deal_package_path,
+    )
 
     console.print(f"Input Mode: {input_mode}", soft_wrap=True)
     console.print(
@@ -1839,6 +1845,8 @@ def analyze_stock(
             )
             or "None",
         ),
+        ("Signal Archive Record", "archived"),
+        ("Signal Ledger", str(archive_result.jsonl_path)),
         ("Status", "completed"),
     ]
     for label, value in rows:
@@ -2010,6 +2018,24 @@ def analyze_batch(
         requested_tickers=requested_tickers,
         results=results,
     )
+    archived_count = 0
+    signal_ledger_path = batch_outputs_root / "signal_archive" / "signal_ledger.jsonl"
+    for result in results:
+        if (
+            result.status != "completed"
+            or result.run_manifest_path is None
+            or result.broker_deal_package_path is None
+        ):
+            continue
+        archive_result = archive_completed_run(
+            outputs_root=batch_outputs_root,
+            run_manifest_path=Path(result.run_manifest_path),
+            broker_deal_package_path=Path(result.broker_deal_package_path),
+            batch_run_id=bundle.batch_run_id,
+            batch_folder=bundle.batch_folder,
+        )
+        signal_ledger_path = archive_result.jsonl_path
+        archived_count += 1
     table = Table(title="Batch Stock Analysis")
     for column in (
         "Ticker",
@@ -2050,6 +2076,11 @@ def analyze_batch(
         ),
         soft_wrap=True,
     )
+    console.print(
+        f"Signal Archive Records: {archived_count}",
+        soft_wrap=True,
+    )
+    console.print(f"Signal Ledger: {signal_ledger_path}", soft_wrap=True)
     if bundle.completed_count == 0:
         raise typer.Exit(code=1)
 

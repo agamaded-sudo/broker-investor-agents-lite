@@ -308,6 +308,25 @@ batch. The command records failures per ticker and continues processing the
 remaining inputs. It does not rank tickers, create consensus, or produce an
 allocation or trade signal.
 
+## Signal Archive / Run Result Ledger
+
+Every completed `analyze-stock` run appends one structured audit record. An
+`analyze-batch` run appends one record per completed ticker and includes the
+batch run ID and folder. The archive is stored at:
+
+```text
+data/outputs/signal_archive/signal_ledger.jsonl
+data/outputs/signal_archive/signal_ledger.csv
+data/outputs/signal_archive/latest_signal_ledger_snapshot.json
+```
+
+Records preserve run paths, evidence readiness, investor final decisions and
+interest levels, promotion blockers, and explicit safety flags. This archive
+is an audit and research ledger for future evaluation. It is not a
+recommendation system, ranking engine, consensus mechanism, allocation
+instruction, or trade signal, and it contains no backtesting or forward-return
+logic.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from
