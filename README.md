@@ -265,6 +265,27 @@ traceability. The existing `--ticker` mode remains supported and unchanged.
 Providing both `--ticker` and `--intake-file` is rejected to avoid ambiguous
 configuration.
 
+### Final Run Output Bundle
+
+Every successful `analyze-stock` execution also creates an archival run folder:
+
+```text
+data/outputs/{TICKER}/runs/{RUN_ID}/
+```
+
+For example:
+
+```powershell
+python -m broker_agents.cli analyze-stock --intake-file examples/deal_intakes/cost_analyze_stock_intake.yaml
+```
+
+Each run folder contains `run_summary.md` and `run_manifest.json`. These files
+record the input mode, evidence readiness, canonical deal-package paths,
+investor and work-order counts, promotion-blocking categories, and safety
+boundaries. Canonical outputs under `data/outputs/{TICKER}/deal_package/`
+remain unchanged. A `latest_run_manifest.json` copy is maintained under the
+ticker's `runs` directory for simple discovery.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from

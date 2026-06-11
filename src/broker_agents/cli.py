@@ -38,6 +38,7 @@ from broker_agents.deals.analyze_stock_intake import (
     load_analyze_stock_intake,
 )
 from broker_agents.deals.deal_intake import build_deal_intake_status
+from broker_agents.deals.run_bundle import create_analyze_stock_run_bundle
 from broker_agents.fetchers.sec_financials_fetcher import (
     load_sec_fixture,
     map_fixture_to_financials,
@@ -1822,6 +1823,14 @@ def analyze_stock(
             ),
             encoding="utf-8",
         )
+        run_bundle = create_analyze_stock_run_bundle(
+            intake=intake,
+            input_mode=input_mode,
+            intake_file=intake_file,
+            intake_snapshot_path=intake_snapshot_path,
+            workflow_result=result,
+            package_payload=package_payload,
+        )
     except (OSError, ValueError, yaml.YAMLError, json.JSONDecodeError) as exc:
         raise typer.BadParameter(
             f"Unified stock analysis failed: {exc}"
@@ -1855,6 +1864,10 @@ def analyze_stock(
             str(intake_file) if intake_file is not None else "Not used",
         ),
         ("Run Label", intake.run_label or "Not provided"),
+        ("Run ID", run_bundle.run_id),
+        ("Run Folder", str(run_bundle.run_folder)),
+        ("Run Manifest", str(run_bundle.run_manifest_path)),
+        ("Run Summary", str(run_bundle.run_summary_path)),
         ("Ticker", normalized),
         ("Broker Deal Package", str(result.broker_deal_package_path)),
         ("Enriched Input", str(result.enriched_pack_path)),

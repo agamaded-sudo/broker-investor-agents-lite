@@ -1,5 +1,6 @@
 """End-to-end tests for the unified analyze-stock command."""
 
+import json
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -22,6 +23,15 @@ EXPECTED_DECISIONS = (
     "Follow / Watch",
     "Prefer Broad Index",
 )
+
+
+def _latest_run(outputs_root: Path) -> tuple[Path, dict]:
+    """Return the run folder and manifest referenced by the latest pointer."""
+    latest_path = outputs_root / "COST" / "runs" / "latest_run_manifest.json"
+    assert latest_path.exists()
+    manifest = json.loads(latest_path.read_text(encoding="utf-8"))
+    run_folder = outputs_root / "COST" / "runs" / manifest["run_id"]
+    return run_folder, manifest
 
 
 def test_analyze_stock_generates_complete_cost_output_bundle(
@@ -50,6 +60,10 @@ def test_analyze_stock_generates_complete_cost_output_bundle(
         "Unified Stock Analysis",
         "Input Mode",
         "ticker",
+        "Run ID",
+        "Run Folder",
+        "Run Manifest",
+        "Run Summary",
         "Ticker",
         "Broker Deal Package",
         "Enriched Input",
@@ -83,6 +97,44 @@ def test_analyze_stock_generates_complete_cost_output_bundle(
         / "backoffice_work_orders"
         / "cost_backoffice_work_orders.md"
     ).exists()
+    run_folder, manifest = _latest_run(outputs_root)
+    summary_path = run_folder / "run_summary.md"
+    manifest_path = run_folder / "run_manifest.json"
+    assert summary_path.exists()
+    assert manifest_path.exists()
+    assert manifest["ticker"] == "COST"
+    assert manifest["input_mode"] == "ticker"
+    assert manifest["status"] == "completed"
+    assert manifest["broker_deal_package_path"]
+    assert manifest["investor_response_letters_dir"]
+    assert manifest["investor_follow_up_memos_dir"]
+    assert manifest["backoffice_work_orders_path"]
+    assert manifest["source_verification_status"]
+    assert manifest["readiness_label"]
+    assert manifest["total_investor_responses"] == 5
+    assert manifest["total_work_orders"] > 0
+    summary = summary_path.read_text(encoding="utf-8")
+    for value in (
+        "COST",
+        "Source Verification Status",
+        "Readiness Label",
+        "Total Investor Responses",
+        "Total Work Orders",
+        "Promotion-Blocking Categories",
+        "Safety Note",
+    ):
+        assert value in summary
+    summary_lower = summary.lower()
+    for boundary in (
+        "not a recommendation",
+        "ranking",
+        "vote",
+        "consensus",
+        "allocation instruction",
+        "trade signal",
+        "auto-promotion disabled",
+    ):
+        assert boundary in summary_lower
 
     package = package_path.read_text(encoding="utf-8")
     for section in (
@@ -163,6 +215,22 @@ def test_analyze_stock_intake_file_mode_generates_traceable_bundle(
     assert snapshot["output_mode"] == "full_bundle"
     assert snapshot["run_label"] == "cost_demo"
     assert snapshot["intake_file"] == str(intake_path)
+    run_folder, manifest = _latest_run(outputs_root)
+    assert "cost_demo" in manifest["run_id"]
+    assert manifest["ticker"] == "COST"
+    assert manifest["input_mode"] == "intake_file"
+    assert manifest["intake_file"] == str(intake_path)
+    assert manifest["run_label"] == "cost_demo"
+    assert manifest["status"] == "completed"
+    assert (run_folder / "run_summary.md").exists()
+    assert (run_folder / "run_manifest.json").exists()
+    for summary_field in (
+        "Run ID",
+        "Run Folder",
+        "Run Manifest",
+        "Run Summary",
+    ):
+        assert summary_field in result.output
 
     package = package_path.read_text(encoding="utf-8")
     for section in (
@@ -250,6 +318,8 @@ def test_analyze_stock_is_documented_and_demo_runner_remains() -> None:
     assert (
         ROOT / "examples" / "deal_intakes" / "cost_analyze_stock_intake.yaml"
     ).exists()
+    assert "Final Run Output Bundle" in readme
+    assert "data/outputs/{TICKER}/runs/{RUN_ID}/" in readme
 
     demo_script = (ROOT / "scripts" / "run_first_demo.ps1").read_text(
         encoding="utf-8"
