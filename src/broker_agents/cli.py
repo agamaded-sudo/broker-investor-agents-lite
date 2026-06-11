@@ -1658,6 +1658,10 @@ def run_deal(
             f"[bold]Investor follow-up memos directory:[/bold] "
             f"{follow_up_memo_dir}"
         )
+    console.print(
+        f"[bold]Backoffice work orders:[/bold] "
+        f"{result.backoffice_work_orders_path}"
+    )
 
 
 @app.command("run-deals")

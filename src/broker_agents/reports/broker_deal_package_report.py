@@ -28,6 +28,8 @@ def generate_broker_deal_package_report(
     executive_summary: BrokerDealExecutiveSummary,
     investor_response_letter_paths: dict[str, Path] | None = None,
     investor_follow_up_memo_paths: dict[str, Path] | None = None,
+    backoffice_work_orders_path: Path | None = None,
+    backoffice_work_order_summary: dict | None = None,
     source_verification_summary: dict | None = None,
 ) -> str:
     """Generate a broker-facing package of independent investor responses."""
@@ -202,7 +204,38 @@ def generate_broker_deal_package_report(
                 "collection tasks. They do not change decisions or authorize action."
             ),
             "",
-            "## 9. Investor Response Details",
+            "## 9. Backoffice Work Orders",
+            "",
+        ]
+    )
+    work_order_summary = backoffice_work_order_summary or {}
+    work_order_path = backoffice_work_orders_path or Path("Not available")
+    lines.extend(
+        [
+            f"- Work Order File Path: {work_order_path}",
+            (
+                "- Total Work Orders: "
+                f"{work_order_summary.get('total_work_orders', 'Not available')}"
+            ),
+            (
+                "- High Priority Count: "
+                f"{work_order_summary.get('high_priority_count', 'Not available')}"
+            ),
+            (
+                "- Promotion-Blocking Count: "
+                f"{work_order_summary.get('promotion_blocking_count', 'Not available')}"
+            ),
+            (
+                "- Primary Categories Affected: "
+                f"{_join(work_order_summary.get('source_verification_categories_affected', []))}"
+            ),
+            "",
+            (
+                "The work-order file consolidates investor evidence needs into "
+                "non-execution Backoffice collection and verification tasks."
+            ),
+            "",
+            "## 10. Investor Response Details",
             "",
         ]
     )
@@ -261,7 +294,7 @@ def generate_broker_deal_package_report(
     ]
     lines.extend(
         [
-            "## 10. Broker Interpretation",
+            "## 11. Broker Interpretation",
             "",
             f"- Conditional interest: {_join(conditional)}.",
             f"- Watchlist or research interest: {_join(watchlist)}.",
@@ -274,7 +307,7 @@ def generate_broker_deal_package_report(
             ),
             "- These independent responses are not averaged, ranked, or combined.",
             "",
-            "## 11. Next Backoffice Actions",
+            "## 12. Next Backoffice Actions",
             "",
             "- Collect missing investor-specific evidence.",
             "- Validate source provenance and methodology.",
@@ -282,7 +315,7 @@ def generate_broker_deal_package_report(
             "- Rerun the five investor agents independently.",
             "- Prepare investor-specific follow-up memos.",
             "",
-            "## 12. Safety Check",
+            "## 13. Safety Check",
             "",
             "- No recommendation.",
             "- No ranking.",

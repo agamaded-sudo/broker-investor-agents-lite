@@ -36,6 +36,10 @@ from broker_agents.deals.deal_executive_summary import (
 )
 from broker_agents.reports.agents_summary_report import generate_agents_summary
 from broker_agents.reports.backoffice_report import generate_backoffice_report
+from broker_agents.reports.backoffice_work_order_report import (
+    build_backoffice_work_order_plan,
+    save_backoffice_work_order_report,
+)
 from broker_agents.reports.broker_deal_package_report import (
     generate_broker_deal_package_report,
 )
@@ -72,6 +76,7 @@ class BrokerDealWorkflowResult:
     investor_summary_path: Path
     investor_response_letter_paths: dict[str, Path]
     investor_follow_up_memo_paths: dict[str, Path]
+    backoffice_work_orders_path: Path
     broker_deal_package_path: Path
     applied_enrichment_sources: list[str]
     skipped_enrichment_sources: list[str]
@@ -87,6 +92,7 @@ class BrokerDealWorkflowResult:
             "deal_output_dir",
             "backoffice_report_path",
             "investor_summary_path",
+            "backoffice_work_orders_path",
             "broker_deal_package_path",
         ):
             data[key] = str(data[key])
@@ -257,6 +263,21 @@ def run_broker_deal_workflow(
         skipped_enrichment_sources=enrichment.skipped_sources,
         warnings=warnings,
     )
+    work_order_plan = build_backoffice_work_order_plan(
+        ticker=ticker_upper,
+        company_name=company_name,
+        enriched_pack_path=enriched_path,
+        source_verification_status=source_status,
+        readiness_label=executive_summary.backoffice_readiness_label,
+        investor_responses=responses,
+        source_verification_summary=source_matrix.to_dict(),
+    )
+    work_orders_path = save_backoffice_work_order_report(
+        work_order_plan,
+        deal_dir
+        / "backoffice_work_orders"
+        / f"{lower}_backoffice_work_orders.md",
+    )
     package_path = deal_dir / f"{lower}_broker_deal_package.md"
     package_path.write_text(
         generate_broker_deal_package_report(
@@ -271,6 +292,8 @@ def run_broker_deal_workflow(
             executive_summary=executive_summary,
             investor_response_letter_paths=letters_by_investor,
             investor_follow_up_memo_paths=memo_paths,
+            backoffice_work_orders_path=work_orders_path,
+            backoffice_work_order_summary=work_order_plan.to_dict(),
             source_verification_summary=source_matrix.to_dict(),
         ),
         encoding="utf-8",
@@ -296,6 +319,7 @@ def run_broker_deal_workflow(
         investor_summary_path=summary_path,
         investor_response_letter_paths=letters_by_investor,
         investor_follow_up_memo_paths=memo_paths,
+        backoffice_work_orders_path=work_orders_path,
         broker_deal_package_path=package_path,
         applied_enrichment_sources=enrichment.applied_sources,
         skipped_enrichment_sources=enrichment.skipped_sources,
@@ -310,6 +334,7 @@ def run_broker_deal_workflow(
                 "investor_responses": [response.to_dict() for response in responses],
                 "executive_summary": executive_summary.to_dict(),
                 "source_verification_matrix": source_matrix.to_dict(),
+                "backoffice_work_order_plan": work_order_plan.to_dict(),
                 "safety_flags": safety_flags,
             },
             indent=2,
