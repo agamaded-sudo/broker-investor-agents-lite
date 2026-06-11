@@ -1664,6 +1664,158 @@ def run_deal(
     )
 
 
+@app.command("analyze-stock")
+def analyze_stock(
+    ticker: Annotated[
+        str,
+        typer.Option(
+            "--ticker",
+            "-t",
+            help="Ticker symbol for the unified broker deal analysis.",
+        ),
+    ],
+    examples_root: Annotated[
+        Path,
+        typer.Option(
+            "--examples-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            help="Directory containing manual input packs.",
+        ),
+    ] = Path("examples"),
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            file_okay=False,
+            dir_okay=True,
+            writable=True,
+            help="Root directory for intake and broker deal outputs.",
+        ),
+    ] = Path("data/outputs"),
+    fixtures_root: Annotated[
+        Path,
+        typer.Option(
+            "--fixtures-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            help="Directory containing offline enrichment fixtures.",
+        ),
+    ] = Path("tests/fixtures"),
+    portfolio_context_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--portfolio-context",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Optional portfolio context for the independent Bogle analysis.",
+        ),
+    ] = None,
+) -> None:
+    """Run intake and the complete existing broker deal workflow for one ticker."""
+    status = build_deal_intake_status(
+        ticker=ticker,
+        examples_root=examples_root,
+        outputs_root=outputs_root,
+        fixtures_root=fixtures_root,
+        portfolio_context_path=portfolio_context_path,
+    )
+    normalized = status.normalized_ticker or "UNKNOWN"
+    intake_dir = outputs_root / normalized
+    intake_report_path = intake_dir / "deal_intake_report.md"
+    intake_json_path = intake_dir / "deal_intake_report.json"
+    try:
+        intake_dir.mkdir(parents=True, exist_ok=True)
+        intake_report_path.write_text(
+            generate_deal_intake_report(status),
+            encoding="utf-8",
+        )
+        intake_json_path.write_text(
+            json.dumps(status.to_dict(), indent=2),
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        raise typer.BadParameter(
+            f"Could not write deal intake output: {exc}"
+        ) from exc
+    if not status.can_run_deal:
+        raise typer.BadParameter(
+            f"{normalized} cannot run the deal workflow: {status.intake_status}. "
+            f"Review {intake_report_path}."
+        )
+
+    try:
+        result = run_broker_deal_workflow(
+            ticker=normalized,
+            input_pack_path=status.manual_input_path,
+            outputs_root=outputs_root,
+            fixtures_root=fixtures_root,
+            portfolio_context_path=portfolio_context_path,
+        )
+        package_json_path = (
+            result.deal_output_dir
+            / f"{normalized.lower()}_broker_deal_package.json"
+        )
+        package_payload = json.loads(
+            package_json_path.read_text(encoding="utf-8")
+        )
+    except (OSError, ValueError, yaml.YAMLError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Unified stock analysis failed: {exc}"
+        ) from exc
+
+    letter_dir = next(
+        iter(result.investor_response_letter_paths.values())
+    ).parent
+    memo_dir = next(
+        iter(result.investor_follow_up_memo_paths.values())
+    ).parent
+    executive_summary = package_payload.get("executive_summary", {})
+    work_order_plan = package_payload.get("backoffice_work_order_plan", {})
+
+    table = Table(title="Unified Stock Analysis")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = [
+        ("Ticker", normalized),
+        ("Broker Deal Package", str(result.broker_deal_package_path)),
+        ("Enriched Input", str(result.enriched_pack_path)),
+        ("Investor Response Letters", str(letter_dir)),
+        ("Investor Follow-Up Memos", str(memo_dir)),
+        ("Backoffice Work Orders", str(result.backoffice_work_orders_path)),
+        ("Source Verification Status", result.source_verification_status),
+        (
+            "Readiness Label",
+            str(executive_summary.get("backoffice_readiness_label", "Unknown")),
+        ),
+        (
+            "Total Investor Responses",
+            str(len(package_payload.get("investor_responses", []))),
+        ),
+        (
+            "Total Work Orders",
+            str(work_order_plan.get("total_work_orders", "Unknown")),
+        ),
+        (
+            "Promotion-Blocking Categories",
+            ", ".join(
+                work_order_plan.get("promotion_blocking_categories", [])
+            )
+            or "None",
+        ),
+        ("Status", "completed"),
+    ]
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+
+
 @app.command("run-deals")
 def run_deals(
     tickers: Annotated[

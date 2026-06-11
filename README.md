@@ -235,6 +235,21 @@ retail and membership test case, exercising customer loyalty, recurring
 membership economics, inventory turnover, thin margins, store expansion, and
 valuation discipline.
 
+### Unified One-Command Run
+
+Run deal intake and the complete existing broker deal workflow for one ticker:
+
+```powershell
+python -m broker_agents.cli analyze-stock --ticker COST --examples-root examples --outputs-root data/outputs --fixtures-root tests/fixtures --portfolio-context examples/portfolio_context.yaml
+```
+
+This command refreshes the deal intake and generates the broker deal package,
+investor response letters, source verification matrix, investor follow-up
+memos, and Backoffice work orders. It prints the main output paths, evidence
+readiness, work-order count, promotion-blocking categories, and completion
+status. It does not change investor decisions or create a recommendation,
+allocation, or trade instruction.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from
