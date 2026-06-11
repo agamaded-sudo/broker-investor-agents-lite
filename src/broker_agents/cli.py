@@ -33,6 +33,10 @@ from broker_agents.agents.buffett_agent import BuffettAgent
 from broker_agents.agents.fisher_agent import FisherAgent
 from broker_agents.agents.lynch_agent import LynchAgent
 from broker_agents.agents.munger_agent import MungerAgent
+from broker_agents.deals.analyze_stock_intake import (
+    build_ticker_analyze_stock_intake,
+    load_analyze_stock_intake,
+)
 from broker_agents.deals.deal_intake import build_deal_intake_status
 from broker_agents.fetchers.sec_financials_fetcher import (
     load_sec_fixture,
@@ -1667,13 +1671,24 @@ def run_deal(
 @app.command("analyze-stock")
 def analyze_stock(
     ticker: Annotated[
-        str,
+        str | None,
         typer.Option(
             "--ticker",
             "-t",
             help="Ticker symbol for the unified broker deal analysis.",
         ),
-    ],
+    ] = None,
+    intake_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--intake-file",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Structured YAML or JSON analyze-stock intake configuration.",
+        ),
+    ] = None,
     examples_root: Annotated[
         Path,
         typer.Option(
@@ -1719,15 +1734,41 @@ def analyze_stock(
     ] = None,
 ) -> None:
     """Run intake and the complete existing broker deal workflow for one ticker."""
+    if ticker is not None and intake_file is not None:
+        raise typer.BadParameter(
+            "Provide either --ticker or --intake-file, not both."
+        )
+    if ticker is None and intake_file is None:
+        raise typer.BadParameter(
+            "Provide one input mode: --ticker or --intake-file."
+        )
+    try:
+        if intake_file is not None:
+            intake = load_analyze_stock_intake(intake_file)
+            input_mode = "intake_file"
+        else:
+            intake = build_ticker_analyze_stock_intake(
+                ticker=ticker or "",
+                examples_root=examples_root,
+                outputs_root=outputs_root,
+                fixtures_root=fixtures_root,
+                portfolio_context=portfolio_context_path,
+            )
+            input_mode = "ticker"
+    except (OSError, ValueError, yaml.YAMLError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
     status = build_deal_intake_status(
-        ticker=ticker,
-        examples_root=examples_root,
-        outputs_root=outputs_root,
-        fixtures_root=fixtures_root,
-        portfolio_context_path=portfolio_context_path,
+        ticker=intake.ticker,
+        examples_root=intake.examples_root,
+        outputs_root=intake.outputs_root,
+        fixtures_root=intake.fixtures_root,
+        portfolio_context_path=intake.portfolio_context,
+        market=intake.market,
+        company_name=intake.company_name,
     )
     normalized = status.normalized_ticker or "UNKNOWN"
-    intake_dir = outputs_root / normalized
+    intake_dir = intake.outputs_root / normalized
     intake_report_path = intake_dir / "deal_intake_report.md"
     intake_json_path = intake_dir / "deal_intake_report.json"
     try:
@@ -1754,9 +1795,9 @@ def analyze_stock(
         result = run_broker_deal_workflow(
             ticker=normalized,
             input_pack_path=status.manual_input_path,
-            outputs_root=outputs_root,
-            fixtures_root=fixtures_root,
-            portfolio_context_path=portfolio_context_path,
+            outputs_root=intake.outputs_root,
+            fixtures_root=intake.fixtures_root,
+            portfolio_context_path=intake.portfolio_context,
         )
         package_json_path = (
             result.deal_output_dir
@@ -1764,6 +1805,22 @@ def analyze_stock(
         )
         package_payload = json.loads(
             package_json_path.read_text(encoding="utf-8")
+        )
+        snapshot_filename = (
+            "analyze_stock_intake_snapshot.yaml"
+            if input_mode == "intake_file"
+            else "analyze_stock_ticker_snapshot.yaml"
+        )
+        intake_snapshot_path = result.deal_output_dir / snapshot_filename
+        intake_snapshot_path.write_text(
+            yaml.safe_dump(
+                intake.to_snapshot(
+                    input_mode=input_mode,
+                    intake_file=intake_file,
+                ),
+                sort_keys=False,
+            ),
+            encoding="utf-8",
         )
     except (OSError, ValueError, yaml.YAMLError, json.JSONDecodeError) as exc:
         raise typer.BadParameter(
@@ -1779,16 +1836,32 @@ def analyze_stock(
     executive_summary = package_payload.get("executive_summary", {})
     work_order_plan = package_payload.get("backoffice_work_order_plan", {})
 
+    console.print(f"Input Mode: {input_mode}", soft_wrap=True)
+    console.print(
+        f"Intake File: {intake_file if intake_file is not None else 'Not used'}",
+        soft_wrap=True,
+    )
+    console.print(
+        f"Run Label: {intake.run_label or 'Not provided'}",
+        soft_wrap=True,
+    )
     table = Table(title="Unified Stock Analysis")
     table.add_column("Field")
     table.add_column("Value")
     rows = [
+        ("Input Mode", input_mode),
+        (
+            "Intake File",
+            str(intake_file) if intake_file is not None else "Not used",
+        ),
+        ("Run Label", intake.run_label or "Not provided"),
         ("Ticker", normalized),
         ("Broker Deal Package", str(result.broker_deal_package_path)),
         ("Enriched Input", str(result.enriched_pack_path)),
         ("Investor Response Letters", str(letter_dir)),
         ("Investor Follow-Up Memos", str(memo_dir)),
         ("Backoffice Work Orders", str(result.backoffice_work_orders_path)),
+        ("Intake Snapshot", str(intake_snapshot_path)),
         ("Source Verification Status", result.source_verification_status),
         (
             "Readiness Label",

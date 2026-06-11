@@ -250,6 +250,21 @@ readiness, work-order count, promotion-blocking categories, and completion
 status. It does not change investor decisions or create a recommendation,
 allocation, or trade instruction.
 
+### Structured Analyze-Stock Intake
+
+The same unified workflow can run from a structured YAML or JSON intake file:
+
+```powershell
+python -m broker_agents.cli analyze-stock --intake-file examples/deal_intakes/cost_analyze_stock_intake.yaml
+```
+
+The intake file records the ticker, optional company context, operating mode,
+paths, investor set, and run label. The command writes a compact
+`analyze_stock_intake_snapshot.yaml` into the deal package directory for
+traceability. The existing `--ticker` mode remains supported and unchanged.
+Providing both `--ticker` and `--intake-file` is rejected to avoid ambiguous
+configuration.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from
