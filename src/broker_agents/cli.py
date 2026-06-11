@@ -34,6 +34,7 @@ from broker_agents.agents.fisher_agent import FisherAgent
 from broker_agents.agents.lynch_agent import LynchAgent
 from broker_agents.agents.munger_agent import MungerAgent
 from broker_agents.archive.signal_ledger import archive_completed_run
+from broker_agents.backtesting.signal_backtester import run_signal_backtest
 from broker_agents.deals.analyze_stock_intake import (
     build_ticker_analyze_stock_intake,
     load_analyze_stock_intake,
@@ -1850,6 +1851,76 @@ def analyze_stock(
         ("Status", "completed"),
     ]
     for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+
+
+@app.command("backtest-signals")
+def backtest_signals(
+    ledger_path: Annotated[
+        Path,
+        typer.Option(
+            "--ledger",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Signal ledger CSV or JSONL to evaluate.",
+        ),
+    ],
+    price_fixtures_path: Annotated[
+        Path,
+        typer.Option(
+            "--price-fixtures",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            help="Directory containing deterministic ticker price fixtures.",
+        ),
+    ],
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            file_okay=False,
+            dir_okay=True,
+            writable=True,
+            help="Root directory for research backtest outputs.",
+        ),
+    ] = Path("data/outputs"),
+    lookback_years: Annotated[
+        int,
+        typer.Option(
+            "--lookback-years",
+            help="Archive lookback in years; accepted values are 2, 5, or 10.",
+        ),
+    ] = 5,
+) -> None:
+    """Evaluate archived signal fields using offline price fixtures."""
+    try:
+        result = run_signal_backtest(
+            ledger_path=ledger_path,
+            price_fixtures_path=price_fixtures_path,
+            outputs_root=outputs_root,
+            lookback_years=lookback_years,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(f"Signal backtest failed: {exc}") from exc
+
+    table = Table(title="Archived Signal Backtest")
+    table.add_column("Field")
+    table.add_column("Value")
+    for label, value in (
+        ("Backtest Run ID", result.backtest_run_id),
+        ("Backtest Folder", str(result.backtest_folder)),
+        ("Backtest Summary", str(result.summary_path)),
+        ("Backtest Results", str(result.results_path)),
+        ("Backtest Manifest", str(result.manifest_path)),
+        ("Evaluated Records", str(result.evaluated_records)),
+        ("Skipped Records", str(result.skipped_records)),
+        ("Status", "completed"),
+    ):
         table.add_row(label, value)
     console.print(table)
 

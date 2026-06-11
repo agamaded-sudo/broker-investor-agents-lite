@@ -1,0 +1,370 @@
+"""Research-only backtesting skeleton for archived signal records."""
+
+import csv
+from dataclasses import dataclass
+from datetime import datetime, timezone
+import json
+from pathlib import Path
+import re
+from statistics import median
+
+from broker_agents.backtesting.price_history import (
+    fixture_path_for_ticker,
+    forward_return,
+    load_price_history,
+    max_drawdown,
+)
+
+FORWARD_WINDOWS = (3, 6, 12)
+INTEREST_FIELDS = (
+    "buffett_interest_level",
+    "munger_interest_level",
+    "fisher_interest_level",
+    "lynch_interest_level",
+    "bogle_interest_level",
+)
+RESULT_FIELDS = (
+    "ticker",
+    "run_id",
+    "archive_record_id",
+    "generated_at",
+    "readiness_label",
+    "source_verification_status",
+    "promotion_blocking_categories",
+    "total_work_orders",
+    *INTEREST_FIELDS,
+    "forward_return_3m",
+    "forward_return_6m",
+    "forward_return_12m",
+    "benchmark_return_3m",
+    "benchmark_return_6m",
+    "benchmark_return_12m",
+    "relative_return_3m",
+    "relative_return_6m",
+    "relative_return_12m",
+    "max_drawdown_12m",
+    "data_status",
+)
+SAFE_LABEL = re.compile(r"[^a-z0-9_-]+")
+
+
+@dataclass(frozen=True)
+class BacktestRunResult:
+    """Generated artifacts for one research backtest run."""
+
+    backtest_run_id: str
+    backtest_folder: Path
+    summary_path: Path
+    results_path: Path
+    manifest_path: Path
+    latest_manifest_path: Path
+    evaluated_records: int
+    skipped_records: int
+
+
+def _load_ledger(path: Path) -> list[dict]:
+    """Load signal archive records from CSV or JSONL."""
+    path = Path(path)
+    if not path.is_file():
+        raise FileNotFoundError(f"Signal ledger not found: {path}")
+    if path.suffix.lower() == ".jsonl":
+        return [
+            json.loads(line)
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+    with path.open(encoding="utf-8", newline="") as handle:
+        return list(csv.DictReader(handle))
+
+
+def _parse_generated_at(value: str) -> datetime:
+    """Parse the archive timestamp and normalize it to UTC."""
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _safe_id_label(value: str | None) -> str | None:
+    """Normalize an optional run label for a folder name."""
+    if not value:
+        return None
+    normalized = SAFE_LABEL.sub("_", value.strip().lower()).strip("_")
+    return normalized or None
+
+
+def _allocate_run_id(
+    backtests_root: Path,
+    timestamp: datetime,
+    run_label: str | None,
+) -> str:
+    """Allocate a timestamped collision-safe backtest ID."""
+    base = timestamp.strftime("%Y%m%d_%H%M%S")
+    safe_label = _safe_id_label(run_label)
+    if safe_label:
+        base = f"{base}_{safe_label}"
+    run_id = base
+    suffix = 2
+    while (backtests_root / run_id).exists():
+        run_id = f"{base}_{suffix:02d}"
+        suffix += 1
+    return run_id
+
+
+def _number(value: float | None) -> str:
+    """Format an optional decimal for CSV output."""
+    return "" if value is None else f"{value:.6f}"
+
+
+def _relative(stock_return: float | None, benchmark_return: float | None) -> float | None:
+    """Return stock minus benchmark performance when both exist."""
+    if stock_return is None or benchmark_return is None:
+        return None
+    return stock_return - benchmark_return
+
+
+def _evaluate_record(
+    record: dict,
+    price_fixtures_path: Path,
+    benchmark_points: list | None,
+) -> dict:
+    """Evaluate one archived record against offline price fixtures."""
+    result = {field: record.get(field, "") for field in RESULT_FIELDS}
+    generated_at = _parse_generated_at(str(record["generated_at"]))
+    start_date = generated_at.date()
+    ticker = str(record["ticker"]).upper()
+    ticker_path = fixture_path_for_ticker(price_fixtures_path, ticker)
+    if not ticker_path.exists():
+        result["data_status"] = "missing_price_data"
+        return result
+
+    points = load_price_history(ticker_path)
+    stock_returns = {
+        months: forward_return(points, start_date, months)
+        for months in FORWARD_WINDOWS
+    }
+    benchmark_returns = {
+        months: (
+            forward_return(benchmark_points, start_date, months)
+            if benchmark_points
+            else None
+        )
+        for months in FORWARD_WINDOWS
+    }
+    for months in FORWARD_WINDOWS:
+        result[f"forward_return_{months}m"] = _number(stock_returns[months])
+        result[f"benchmark_return_{months}m"] = _number(
+            benchmark_returns[months]
+        )
+        result[f"relative_return_{months}m"] = _number(
+            _relative(stock_returns[months], benchmark_returns[months])
+        )
+    result["max_drawdown_12m"] = _number(
+        max_drawdown(points, start_date, 12)
+    )
+    if stock_returns[12] is None:
+        result["data_status"] = "insufficient_forward_history"
+    elif benchmark_points is None:
+        result["data_status"] = "complete_without_benchmark"
+    else:
+        result["data_status"] = "complete_synthetic_fixture"
+    return result
+
+
+def _median_return(rows: list[dict], field: str) -> str:
+    """Return a display median for non-empty decimal fields."""
+    values = [float(row[field]) for row in rows if row.get(field) not in {"", None}]
+    return f"{median(values):.4f}" if values else "Missing"
+
+
+def _group_summary(
+    rows: list[dict],
+    field: str,
+    heading: str,
+) -> list[str]:
+    """Render count and median-return summaries for one signal category."""
+    groups: dict[str, list[dict]] = {}
+    for row in rows:
+        label = str(row.get(field) or "Missing")
+        groups.setdefault(label, []).append(row)
+    lines = [
+        f"### {heading}",
+        "",
+        "| Category | Records | Median 3M Return | Median 6M Return | Median 12M Return |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for label in sorted(groups):
+        group = groups[label]
+        lines.append(
+            f"| {label} | {len(group)} | "
+            f"{_median_return(group, 'forward_return_3m')} | "
+            f"{_median_return(group, 'forward_return_6m')} | "
+            f"{_median_return(group, 'forward_return_12m')} |"
+        )
+    lines.append("")
+    return lines
+
+
+def _render_summary(manifest: dict, rows: list[dict]) -> str:
+    """Render a transparent research-only backtest summary."""
+    lines = [
+        "# Archived Signal Backtest Summary",
+        "",
+        "## Run Context",
+        "",
+        f"- Backtest Run ID: {manifest['backtest_run_id']}",
+        f"- Ledger Path: {manifest['ledger_path']}",
+        f"- Price Fixtures: {manifest['price_fixtures_path']}",
+        f"- Lookback Years: {manifest['lookback_years']}",
+        f"- Evaluated Records: {manifest['evaluated_records']}",
+        f"- Skipped Records: {manifest['skipped_records']}",
+        f"- Tickers Evaluated: {', '.join(manifest['tickers']) or 'None'}",
+        "- Forward Windows: 3 months, 6 months, 12 months",
+        f"- Benchmark: {manifest['benchmark']}",
+        "- Price Data: deterministic synthetic fixtures, not live market data",
+        "",
+        "## Grouped Research Summaries",
+        "",
+    ]
+    lines.extend(
+        _group_summary(
+            rows,
+            "readiness_label",
+            "Readiness Label (`readiness_label`)",
+        )
+    )
+    lines.extend(
+        _group_summary(
+            rows,
+            "source_verification_status",
+            "Source Verification Status (`source_verification_status`)",
+        )
+    )
+    blocker_rows = []
+    for row in rows:
+        copy = dict(row)
+        copy["blocking_category_presence"] = (
+            "Blocking categories present"
+            if row.get("promotion_blocking_categories")
+            else "No blocking categories recorded"
+        )
+        blocker_rows.append(copy)
+    lines.extend(
+        _group_summary(
+            blocker_rows,
+            "blocking_category_presence",
+            "Promotion-Blocking Category Presence",
+        )
+    )
+    lines.extend(
+        [
+            "## Limitations",
+            "",
+            "- Price histories are synthetic fixtures created for offline framework testing.",
+            "- Archived records may repeat a ticker across distinct runs.",
+            "- The sample is too small for statistical inference.",
+            "- Missing benchmark or ticker data remains explicitly missing.",
+            "- Results evaluate associations only and do not define an investment strategy.",
+            "",
+            "## Safety Note",
+            "",
+            (
+                "This backtest is not a recommendation, ranking, vote, average "
+                "score, consensus, allocation instruction, rebalancing instruction, "
+                "or trade signal. It is a research-only audit of archived fields."
+            ),
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def run_signal_backtest(
+    *,
+    ledger_path: Path,
+    price_fixtures_path: Path,
+    outputs_root: Path,
+    lookback_years: int = 5,
+    run_label: str | None = None,
+    generated_at: datetime | None = None,
+) -> BacktestRunResult:
+    """Evaluate archived signals against deterministic fixture price paths."""
+    if lookback_years not in {2, 5, 10}:
+        raise ValueError("lookback_years must be one of: 2, 5, 10.")
+    timestamp = generated_at or datetime.now(timezone.utc)
+    cutoff = timestamp.replace(year=timestamp.year - lookback_years)
+    records = [
+        record
+        for record in _load_ledger(ledger_path)
+        if record.get("status") == "completed"
+        and _parse_generated_at(str(record["generated_at"])) >= cutoff
+    ]
+    benchmark_path = fixture_path_for_ticker(price_fixtures_path, "SPY")
+    benchmark_points = (
+        load_price_history(benchmark_path)
+        if benchmark_path.exists()
+        else None
+    )
+    rows = [
+        _evaluate_record(record, price_fixtures_path, benchmark_points)
+        for record in records
+    ]
+    evaluated_records = sum(
+        row["data_status"] != "missing_price_data" for row in rows
+    )
+    skipped_records = len(rows) - evaluated_records
+
+    backtests_root = Path(outputs_root) / "backtests"
+    backtests_root.mkdir(parents=True, exist_ok=True)
+    backtest_run_id = _allocate_run_id(
+        backtests_root,
+        timestamp,
+        run_label,
+    )
+    backtest_folder = backtests_root / backtest_run_id
+    backtest_folder.mkdir(parents=True, exist_ok=False)
+    results_path = backtest_folder / "backtest_results.csv"
+    with results_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=RESULT_FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    manifest = {
+        "backtest_run_id": backtest_run_id,
+        "ledger_path": str(ledger_path),
+        "price_fixtures_path": str(price_fixtures_path),
+        "outputs_root": str(outputs_root),
+        "lookback_years": lookback_years,
+        "evaluated_records": evaluated_records,
+        "skipped_records": skipped_records,
+        "tickers": sorted({str(row["ticker"]) for row in rows}),
+        "forward_windows": ["3m", "6m", "12m"],
+        "benchmark": (
+            "SPY synthetic fixture"
+            if benchmark_points
+            else "Missing"
+        ),
+        "results_path": str(results_path),
+        "summary_path": str(backtest_folder / "backtest_summary.md"),
+        "status": "completed",
+    }
+    manifest_text = json.dumps(manifest, indent=2)
+    manifest_path = backtest_folder / "backtest_manifest.json"
+    manifest_path.write_text(manifest_text, encoding="utf-8")
+    summary_path = backtest_folder / "backtest_summary.md"
+    summary_path.write_text(
+        _render_summary(manifest, rows),
+        encoding="utf-8",
+    )
+    latest_manifest_path = backtests_root / "latest_backtest_manifest.json"
+    latest_manifest_path.write_text(manifest_text, encoding="utf-8")
+    return BacktestRunResult(
+        backtest_run_id=backtest_run_id,
+        backtest_folder=backtest_folder,
+        summary_path=summary_path,
+        results_path=results_path,
+        manifest_path=manifest_path,
+        latest_manifest_path=latest_manifest_path,
+        evaluated_records=evaluated_records,
+        skipped_records=skipped_records,
+    )

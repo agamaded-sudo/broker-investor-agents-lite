@@ -327,6 +327,25 @@ recommendation system, ranking engine, consensus mechanism, allocation
 instruction, or trade signal, and it contains no backtesting or forward-return
 logic.
 
+## Backtesting Framework Skeleton
+
+Evaluate archived readiness, source-quality, blocker, and investor-interest
+fields against deterministic offline price fixtures:
+
+```powershell
+python -m broker_agents.cli backtest-signals --ledger data/outputs/signal_archive/signal_ledger.csv --price-fixtures tests/fixtures/price_history --outputs-root data/outputs --lookback-years 5
+```
+
+Each run creates `backtest_summary.md`, `backtest_results.csv`, and
+`backtest_manifest.json` under `data/outputs/backtests/{BACKTEST_RUN_ID}/`.
+Default lookback is 5 years; supported values are 2, 5, and 10 years.
+Current price histories are clearly labeled synthetic fixtures for offline
+framework testing.
+
+This is a research-only evaluation skeleton. It measures associations in
+archived fields and does not produce recommendations, rankings, consensus,
+portfolio allocation, rebalancing instructions, or trade signals.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from
