@@ -4,7 +4,7 @@ from pathlib import Path
 
 from broker_agents.backtesting.price_history import (
     fixture_path_for_ticker,
-    load_price_history,
+    load_local_csv_price_history,
 )
 from broker_agents.data_providers.price_provider import PriceHistoryResult
 
@@ -32,10 +32,21 @@ class CsvPriceProvider:
                 status="missing_price_data",
                 warnings=[f"Local CSV price file not found: {path}"],
             )
+        try:
+            rows, price_column_used = load_local_csv_price_history(path)
+        except (KeyError, TypeError, ValueError) as exc:
+            return PriceHistoryResult(
+                ticker=normalized,
+                provider_name=self.provider_name,
+                data_type=self.data_type,
+                status="invalid_price_data",
+                warnings=[str(exc)],
+            )
         return PriceHistoryResult(
             ticker=normalized,
-            rows=load_price_history(path),
+            rows=rows,
             provider_name=self.provider_name,
             data_type=self.data_type,
             status="available",
+            price_column_used=price_column_used,
         )

@@ -42,6 +42,55 @@ def load_price_history(path: Path) -> list[PricePoint]:
     return sorted(points, key=lambda point: point.date)
 
 
+def load_local_csv_price_history(path: Path) -> tuple[list[PricePoint], str]:
+    """Load local CSV prices, preferring adjusted close when available."""
+    path = Path(path)
+    if not path.is_file():
+        raise FileNotFoundError(f"Local CSV price history not found: {path}")
+    with path.open(encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        fieldnames = reader.fieldnames or []
+        normalized_fields = {
+            _normalize_column_name(name): name
+            for name in fieldnames
+            if name is not None
+        }
+        date_column = normalized_fields.get("date")
+        adjusted_column = (
+            normalized_fields.get("adjusted_close")
+            or normalized_fields.get("adj_close")
+        )
+        close_column = normalized_fields.get("close")
+        price_column = adjusted_column or close_column
+        if date_column is None:
+            raise ValueError(f"Local CSV is missing a date column: {path}")
+        if price_column is None:
+            raise ValueError(
+                "Local CSV is missing close or adjusted close data: "
+                f"{path}"
+            )
+        price_column_used = (
+            "adjusted_close" if adjusted_column is not None else "close"
+        )
+        points = [
+            PricePoint(
+                date=date.fromisoformat(str(row[date_column]).strip()),
+                close=float(row[price_column]),
+            )
+            for row in reader
+        ]
+    if not points:
+        raise ValueError(f"Local CSV price history is empty: {path}")
+    return sorted(points, key=lambda point: point.date), price_column_used
+
+
+def _normalize_column_name(value: str) -> str:
+    """Normalize common local CSV header variants."""
+    return "_".join(
+        str(value).strip().lower().replace("-", " ").split()
+    )
+
+
 def fixture_path_for_ticker(fixtures_root: Path, ticker: str) -> Path:
     """Return the conventional fixture path for a ticker."""
     return Path(fixtures_root) / f"{ticker.strip().lower()}.csv"

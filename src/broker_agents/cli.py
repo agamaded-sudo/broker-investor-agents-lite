@@ -35,6 +35,9 @@ from broker_agents.agents.lynch_agent import LynchAgent
 from broker_agents.agents.munger_agent import MungerAgent
 from broker_agents.archive.signal_ledger import archive_completed_run
 from broker_agents.backtesting.signal_backtester import run_signal_backtest
+from broker_agents.data_providers.price_csv_validation import (
+    validate_price_csvs,
+)
 from broker_agents.deals.analyze_stock_intake import (
     build_ticker_analyze_stock_intake,
     load_analyze_stock_intake,
@@ -1970,6 +1973,94 @@ def backtest_signals(
     ):
         table.add_row(label, value)
     console.print(table)
+
+
+@app.command("validate-price-csv")
+def validate_price_csv(
+    price_fixtures_path: Annotated[
+        Path,
+        typer.Option(
+            "--price-fixtures",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            help="Directory containing local ticker price CSV files.",
+        ),
+    ],
+    tickers: Annotated[
+        str,
+        typer.Option(
+            "--tickers",
+            help="Comma-separated ticker symbols to validate.",
+        ),
+    ],
+    price_provider: Annotated[
+        str,
+        typer.Option(
+            "--price-provider",
+            help="Local price provider to validate; normally csv.",
+        ),
+    ] = "csv",
+) -> None:
+    """Validate local price CSV files without running a backtest."""
+    ticker_list = [
+        ticker.strip().upper()
+        for ticker in tickers.split(",")
+        if ticker.strip()
+    ]
+    if not ticker_list:
+        raise typer.BadParameter("At least one ticker is required.")
+    try:
+        results = validate_price_csvs(
+            ticker_list,
+            price_fixtures_path,
+            provider_name=price_provider,
+        )
+    except (OSError, ValueError) as exc:
+        raise typer.BadParameter(
+            f"Price CSV validation failed: {exc}"
+        ) from exc
+
+    table = Table(title="Local Price CSV Validation")
+    for column in (
+        "Ticker",
+        "File Found",
+        "Rows",
+        "Min Date",
+        "Max Date",
+        "Price Column Used",
+        "Status",
+    ):
+        table.add_column(column)
+    for result in results:
+        table.add_row(
+            result.ticker,
+            str(result.file_found).lower(),
+            str(result.rows_count),
+            result.min_date or "Missing",
+            result.max_date or "Missing",
+            result.price_column_used or "Missing",
+            result.status,
+        )
+    console.print(table)
+    for result in results:
+        console.print(
+            " | ".join(
+                (
+                    f"ticker={result.ticker}",
+                    f"file_found={str(result.file_found).lower()}",
+                    f"rows={result.rows_count}",
+                    f"min_date={result.min_date or 'missing'}",
+                    f"max_date={result.max_date or 'missing'}",
+                    (
+                        "price_column_used="
+                        f"{result.price_column_used or 'missing'}"
+                    ),
+                    f"status={result.status}",
+                )
+            )
+        )
 
 
 @app.command("analyze-batch")

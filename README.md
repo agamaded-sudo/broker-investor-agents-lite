@@ -403,6 +403,30 @@ The live provider is not implemented yet. No API keys, external dependencies,
 or network calls are required. Hosted integration can be added later after a
 provider is selected.
 
+### Real Market Data CSV Trial
+
+The first real-data trial path uses user-supplied local CSV files under
+`data/inputs/market_prices/`. Adjusted close is preferred when present; the CSV
+provider falls back to close. Common headers such as `Date`, `Close`,
+`Adj Close`, and `Adjusted Close` are accepted.
+
+Validate a local folder before running a backtest:
+
+```powershell
+python -m broker_agents.cli validate-price-csv --price-provider csv --price-fixtures data/inputs/market_prices --tickers MSFT,AAPL,NVDA,COST,SPY
+```
+
+Run the research backtest with locally supplied prices:
+
+```powershell
+python -m broker_agents.cli backtest-signals --ledger data/outputs/signal_archive/signal_ledger.csv --price-provider csv --price-fixtures data/inputs/market_prices --outputs-root data/outputs --lookback-years 5 --dedupe-mode latest_per_ticker_per_day
+```
+
+See [Market Data Provider Selection](docs/market_data_provider_selection.md)
+for the future-provider checklist. This task does not add live API calls; CSV
+data is supplied by the user. No recommendation, ranking, allocation
+instruction, or trade signal is produced.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from

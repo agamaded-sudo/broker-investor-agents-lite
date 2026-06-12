@@ -38,4 +38,5 @@ class FixturePriceProvider:
             provider_name=self.provider_name,
             data_type=self.data_type,
             status="available",
+            price_column_used="close",
         )

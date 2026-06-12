@@ -49,6 +49,7 @@ RESULT_FIELDS = (
     "promotion_blocking_count",
     "total_work_orders",
     *INTEREST_FIELDS,
+    "price_column_used",
     "price_start_date",
     "price_end_date_3m",
     "price_end_date_6m",
@@ -249,6 +250,7 @@ def _evaluate_record(
         return result
 
     points = price_result.rows
+    result["price_column_used"] = price_result.price_column_used or ""
     stock_observations = {
         months: forward_return_observation(points, start_date, months)
         for months in FORWARD_WINDOWS
@@ -594,6 +596,15 @@ def run_signal_backtest(
         _evaluate_record(record, provider, benchmark_result)
         for record in records
     ]
+    price_column_used_by_ticker = {
+        str(row["ticker"]): str(row.get("price_column_used") or "")
+        for row in rows
+        if row.get("price_column_used")
+    }
+    if benchmark_result.price_column_used:
+        price_column_used_by_ticker["SPY"] = (
+            benchmark_result.price_column_used
+        )
     evaluated_records = sum(
         str(row["data_status"]).startswith("complete") for row in rows
     )
@@ -709,6 +720,7 @@ def run_signal_backtest(
         "group_small_sample_warning": small_sample_warning,
         "minimum_group_size": minimum_group_size,
         "price_data_type": provider.data_type,
+        "price_column_used_by_ticker": price_column_used_by_ticker,
         "quality_warnings": quality_warnings,
         "tickers": sorted({str(row["ticker"]) for row in rows}),
         "forward_windows": ["3m", "6m", "12m"],

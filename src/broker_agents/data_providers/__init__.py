@@ -12,6 +12,10 @@ from broker_agents.data_providers.price_provider import (
     PriceHistoryResult,
     create_price_provider,
 )
+from broker_agents.data_providers.price_csv_validation import (
+    PriceCsvValidationResult,
+    validate_price_csvs,
+)
 
 __all__ = [
     "CsvPriceProvider",
@@ -19,5 +23,7 @@ __all__ = [
     "LiveStubPriceProvider",
     "PriceHistoryProvider",
     "PriceHistoryResult",
+    "PriceCsvValidationResult",
     "create_price_provider",
+    "validate_price_csvs",
 ]

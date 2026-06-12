@@ -165,6 +165,8 @@ def test_backtest_signals_creates_research_outputs(tmp_path: Path) -> None:
     assert manifest["small_sample_warning"] is True
     assert manifest["minimum_group_size"] == 5
     assert manifest["price_data_type"] == "synthetic_fixture"
+    assert manifest["price_column_used_by_ticker"]["COST"] == "close"
+    assert manifest["price_column_used_by_ticker"]["SPY"] == "close"
     assert manifest["price_provider"] == "fixture"
     assert manifest["price_provider_name"] == "fixture"
     assert manifest["price_data_root"] == str(PRICE_FIXTURES)
@@ -193,6 +195,7 @@ def test_backtest_signals_creates_research_outputs(tmp_path: Path) -> None:
         "price_end_date_6m",
         "price_end_date_12m",
         "promotion_blocking_count",
+        "price_column_used",
         "forward_return_3m",
         "forward_return_6m",
         "forward_return_12m",
@@ -214,6 +217,7 @@ def test_backtest_signals_creates_research_outputs(tmp_path: Path) -> None:
     assert cost["price_end_date_6m"] == "2026-12-11"
     assert cost["price_end_date_12m"] == "2027-06-11"
     assert cost["promotion_blocking_count"] == "3"
+    assert cost["price_column_used"] == "close"
     assert cost["data_status"] == "complete_synthetic_fixture"
     assert missing["data_status"] == "missing_price_data"
     assert missing["forward_return_12m"] == ""
@@ -342,6 +346,7 @@ def test_backtest_signals_supports_csv_provider(tmp_path: Path) -> None:
     assert manifest["price_provider"] == "csv"
     assert manifest["price_provider_name"] == "csv"
     assert manifest["price_data_type"] == "local_csv"
+    assert manifest["price_column_used_by_ticker"]["COST"] == "close"
     assert manifest["live_data_enabled"] is False
     assert manifest["provider_status"] == "available"
     assert manifest["synthetic_data_warning"] is False
@@ -537,6 +542,9 @@ def test_backtesting_is_documented_and_demo_runner_remains() -> None:
     assert "Data Provider Adapter" in readme
     assert "--price-provider fixture" in readme
     assert "--price-provider csv" in readme
+    assert "Real Market Data CSV Trial" in readme
+    assert "validate-price-csv" in readme
+    assert "data/inputs/market_prices" in readme
 
     demo_script = (ROOT / "scripts" / "run_first_demo.ps1").read_text(
         encoding="utf-8"

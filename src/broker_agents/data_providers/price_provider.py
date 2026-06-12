@@ -16,6 +16,7 @@ class PriceHistoryResult:
     provider_name: str = ""
     data_type: str = ""
     status: str = "missing_price_data"
+    price_column_used: str | None = None
     warnings: list[str] = field(default_factory=list)
 
 
