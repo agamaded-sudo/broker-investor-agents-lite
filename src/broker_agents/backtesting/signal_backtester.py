@@ -43,6 +43,7 @@ RESULT_FIELDS = (
     "archive_record_id",
     "generated_at",
     "signal_date",
+    "trial_signal_source",
     "readiness_label",
     "source_verification_status",
     "promotion_blocking_categories",
@@ -378,6 +379,14 @@ def _render_summary(manifest: dict, rows: list[dict], metrics: dict) -> str:
         "",
         f"- Backtest Run ID: {manifest['backtest_run_id']}",
         f"- Ledger Path: {manifest['ledger_path']}",
+        (
+            "- Historical Trial Ledger: "
+            f"{str(manifest['historical_trial_ledger']).lower()}"
+        ),
+        (
+            "- Trial Signal Source: "
+            f"{manifest.get('trial_signal_source') or 'Not applicable'}"
+        ),
         f"- Lookback Years: {manifest['lookback_years']}",
         f"- Dedupe Mode: {manifest['dedupe_mode']}",
         (
@@ -552,6 +561,17 @@ def _render_summary(manifest: dict, rows: list[dict], metrics: dict) -> str:
                 "Results are research-only associations and must not be "
                 "interpreted as investment advice or a trading strategy."
             ),
+            *(
+                [
+                    (
+                        "Historical trial ledgers are for research and pipeline "
+                        "validation only and must not be interpreted as real "
+                        "historical investment advice."
+                    )
+                ]
+                if manifest["historical_trial_ledger"]
+                else []
+            ),
             "",
         ]
     )
@@ -580,8 +600,17 @@ def run_signal_backtest(
         raise ValueError(f"dedupe_mode must be one of: {allowed}.")
     timestamp = generated_at or datetime.now(timezone.utc)
     cutoff = timestamp.replace(year=timestamp.year - lookback_years)
+    loaded_records = _load_ledger(ledger_path)
+    trial_sources = sorted(
+        {
+            str(record.get("trial_signal_source") or "").strip()
+            for record in loaded_records
+            if str(record.get("trial_signal_source") or "").strip()
+        }
+    )
+    historical_trial_ledger = bool(trial_sources)
     eligible_records = []
-    for record in _load_ledger(ledger_path):
+    for record in loaded_records:
         if record.get("status") != "completed":
             continue
         generated_at_value = _parse_generated_at(record.get("generated_at"))
@@ -696,6 +725,8 @@ def run_signal_backtest(
     manifest = {
         "backtest_run_id": backtest_run_id,
         "ledger_path": str(ledger_path),
+        "historical_trial_ledger": historical_trial_ledger,
+        "trial_signal_source": ";".join(trial_sources) or None,
         "price_fixtures_path": str(price_fixtures_path),
         "price_provider": price_provider,
         "price_provider_name": provider.provider_name,

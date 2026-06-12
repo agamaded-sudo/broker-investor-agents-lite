@@ -427,6 +427,32 @@ for the future-provider checklist. This task does not add live API calls; CSV
 data is supplied by the user. No recommendation, ranking, allocation
 instruction, or trade signal is produced.
 
+### Historical CSV Backtest Trial
+
+Historical trial ledgers let locally supplied market-price files exercise full
+3-month, 6-month, and 12-month forward windows before live data integration.
+
+Validate the local market-price folder:
+
+```powershell
+python -m broker_agents.cli validate-price-csv --price-provider csv --price-fixtures data/inputs/market_prices --tickers MSFT,AAPL,NVDA,COST,SPY
+```
+
+Run the included historical trial ledger against user-supplied prices:
+
+```powershell
+python -m broker_agents.cli backtest-signals --ledger data/inputs/trial_ledgers/sample_historical_signal_ledger.csv --price-provider csv --price-fixtures data/inputs/market_prices --outputs-root data/outputs --lookback-years 5 --dedupe-mode latest_per_ticker_per_day
+```
+
+Real CSV files must cover each signal date and its forward windows. For
+example, a signal dated `2021-06-30` needs price observations through at least
+`2022-06-30` for a 12-month calculation.
+
+`sample_historical_signal_ledger.csv` contains synthetic, reconstructed inputs
+for pipeline validation only. It is not a real historical recommendation set.
+No recommendation, ranking, allocation instruction, or trade signal is
+produced.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from
