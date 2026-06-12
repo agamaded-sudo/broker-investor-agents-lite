@@ -493,6 +493,33 @@ This mode must not be interpreted as investment advice or a trading strategy.
 It produces no recommendation, ranking, allocation instruction, or trade
 signal.
 
+### Historical Data Snapshot Contract
+
+An `as_of_date` alone is not enough for true historical testing. Each
+historical run now includes a snapshot contract that records which sections
+support the intended date, which remain readiness-only, and where future-data
+leakage may exist.
+
+```powershell
+python -m broker_agents.cli analyze-stock --ticker COST --examples-root examples --outputs-root data/outputs --fixtures-root tests/fixtures --portfolio-context examples/portfolio_context.yaml --as-of-date 2023-06-30
+```
+
+The run manifest stores `historical_snapshot_contract`, including provider
+capabilities, supported and unsupported sections, leakage-risk sections, and
+warnings. Current enforcement remains `readiness_only`; full point-in-time
+safety requires future historical snapshots for financials, valuations,
+estimates, qualitative evidence, index holdings, and other inputs.
+
+Validate the declared capability contract without running investor agents:
+
+```powershell
+python -m broker_agents.cli validate-historical-snapshot --as-of-date 2023-06-30 --price-provider csv --price-fixtures tests/fixtures/historical_price_history
+```
+
+This contract identifies readiness and leakage risk. It does not generate
+historical signals and does not produce recommendations, rankings, allocation
+instructions, or trade signals.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from

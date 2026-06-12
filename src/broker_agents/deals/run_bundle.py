@@ -9,6 +9,9 @@ import re
 from broker_agents.deals.analyze_stock_intake import AnalyzeStockIntake
 from broker_agents.deals.broker_deal_workflow import BrokerDealWorkflowResult
 from broker_agents.historical.as_of_context import build_as_of_context
+from broker_agents.historical.snapshot_contract import (
+    build_historical_snapshot_contract,
+)
 
 SAFE_RUN_LABEL = re.compile(r"[^a-z0-9_-]+")
 
@@ -66,6 +69,14 @@ def _allocate_run_id(
 def _run_summary(manifest: dict) -> str:
     """Render the human-readable run summary."""
     blockers = manifest["promotion_blocking_categories"]
+    snapshot = manifest["historical_snapshot_contract"]
+    capability_lines = [
+        (
+            f"- {item['section']}: {item['provider_name']} / "
+            f"{item['enforcement_level']} / leakage {item['leakage_risk']}"
+        )
+        for item in snapshot["provider_capabilities"]
+    ]
     return "\n".join(
         [
             f"# Analyze-Stock Run Summary - {manifest['ticker']}",
@@ -129,6 +140,42 @@ def _run_summary(manifest: dict) -> str:
             f"- Intake Snapshot: {manifest['intake_snapshot_path']}",
             *(
                 [
+                    "",
+                    "## Historical Data Snapshot Contract",
+                    "",
+                    f"- As-Of Date: {snapshot['as_of_date']}",
+                    f"- Snapshot Status: {snapshot['snapshot_status']}",
+                    (
+                        "- Point-in-Time Enforcement: "
+                        f"{snapshot['point_in_time_enforcement']}"
+                    ),
+                    (
+                        "- Supported Sections: "
+                        f"{', '.join(snapshot['supported_sections']) or 'None'}"
+                    ),
+                    (
+                        "- Unsupported Sections: "
+                        f"{', '.join(snapshot['unsupported_sections']) or 'None'}"
+                    ),
+                    (
+                        "- Leakage Risk Sections: "
+                        f"{', '.join(snapshot['leakage_risk_sections']) or 'None'}"
+                    ),
+                    "",
+                    "### Provider Capability Summary",
+                    "",
+                    *capability_lines,
+                    "",
+                    "### Warnings",
+                    "",
+                    *[f"- {warning}" for warning in snapshot["warnings"]],
+                    "",
+                    (
+                        "This historical snapshot contract is not a "
+                        "recommendation, ranking, vote, average score, consensus, "
+                        "allocation instruction, rebalancing instruction, or "
+                        "trade signal."
+                    ),
                     "",
                     "## Historical Analysis Warning",
                     "",
@@ -196,6 +243,13 @@ def create_analyze_stock_run_bundle(
     executive_summary = package_payload.get("executive_summary", {})
     work_order_plan = package_payload.get("backoffice_work_order_plan", {})
     as_of_context = build_as_of_context(intake.as_of_date)
+    snapshot_contract = build_historical_snapshot_contract(
+        intake.as_of_date,
+        price_provider="fixture",
+        input_mode=input_mode,
+        fixtures_root=intake.fixtures_root,
+        price_data_root=intake.fixtures_root,
+    )
     manifest = {
         "run_id": run_id,
         "ticker": intake.ticker,
@@ -206,6 +260,7 @@ def create_analyze_stock_run_bundle(
         "intake_file": str(intake_file) if intake_file else None,
         "run_label": intake.run_label,
         **as_of_context.to_dict(),
+        "historical_snapshot_contract": snapshot_contract.to_dict(),
         "generated_at": generated_at_text,
         "broker_deal_package_path": str(
             workflow_result.broker_deal_package_path

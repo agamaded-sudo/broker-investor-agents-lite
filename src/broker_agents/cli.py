@@ -44,6 +44,9 @@ from broker_agents.deals.analyze_stock_intake import (
     with_as_of_date,
 )
 from broker_agents.historical.as_of_context import build_as_of_context
+from broker_agents.historical.snapshot_contract import (
+    build_historical_snapshot_contract,
+)
 from broker_agents.deals.analyze_stock_runner import execute_analyze_stock
 from broker_agents.deals.batch_analyze import (
     BatchTickerResult,
@@ -1885,6 +1888,101 @@ def analyze_stock(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
+
+
+@app.command("validate-historical-snapshot")
+def validate_historical_snapshot(
+    as_of_date: Annotated[
+        str,
+        typer.Option(
+            "--as-of-date",
+            help="Historical snapshot date in YYYY-MM-DD format.",
+        ),
+    ],
+    price_provider: Annotated[
+        str,
+        typer.Option(
+            "--price-provider",
+            help="Price provider capability to evaluate.",
+        ),
+    ] = "fixture",
+    price_fixtures_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--price-fixtures",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            help="Optional local price-data root used by the contract.",
+        ),
+    ] = None,
+) -> None:
+    """Validate point-in-time readiness without running investor agents."""
+    try:
+        contract = build_historical_snapshot_contract(
+            as_of_date,
+            price_provider=price_provider,
+            input_mode="validation",
+            fixtures_root=price_fixtures_path,
+            price_data_root=price_fixtures_path,
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(
+            f"Historical snapshot validation failed: {exc}"
+        ) from exc
+
+    table = Table(title="Historical Data Snapshot Contract")
+    for column in (
+        "Section",
+        "Provider",
+        "Supports As-Of Date",
+        "Enforcement Level",
+        "Leakage Risk",
+        "Status",
+    ):
+        table.add_column(column)
+    for capability in contract.provider_capabilities:
+        status = (
+            "supported"
+            if capability.supports_as_of_date
+            else capability.enforcement_level
+        )
+        table.add_row(
+            capability.section,
+            capability.provider_name,
+            str(capability.supports_as_of_date).lower(),
+            capability.enforcement_level,
+            capability.leakage_risk,
+            status,
+        )
+    console.print(table)
+    for capability in contract.provider_capabilities:
+        console.print(
+            " | ".join(
+                (
+                    f"section={capability.section}",
+                    f"provider={capability.provider_name}",
+                    (
+                        "supports_as_of_date="
+                        f"{str(capability.supports_as_of_date).lower()}"
+                    ),
+                    f"enforcement_level={capability.enforcement_level}",
+                    f"leakage_risk={capability.leakage_risk}",
+                )
+            )
+        )
+    console.print(f"As-Of Date: {contract.as_of_date}")
+    console.print(f"Snapshot Status: {contract.snapshot_status}")
+    console.print(
+        f"Point-in-Time Enforcement: {contract.point_in_time_enforcement}"
+    )
+    console.print(
+        "Leakage Risk Sections: "
+        f"{', '.join(contract.leakage_risk_sections) or 'None'}"
+    )
+    for warning in contract.warnings:
+        console.print(f"Warning: {warning}")
 
 
 @app.command("backtest-signals")

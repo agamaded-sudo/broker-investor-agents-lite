@@ -22,6 +22,8 @@ LEDGER_FIELDS = (
     "as_of_date",
     "historical_mode",
     "point_in_time_enforcement",
+    "snapshot_status",
+    "leakage_risk_sections_count",
     "status",
     "broker_deal_package_path",
     "enriched_input_path",
@@ -96,6 +98,7 @@ def build_signal_record(
     package_payload = _load_json(Path(broker_package_json_path))
     responses = _investor_response_map(package_payload)
     ticker = str(manifest["ticker"]).upper()
+    snapshot_contract = manifest.get("historical_snapshot_contract", {})
     record = {
         "archive_record_id": f"{ticker}-{manifest['run_id']}",
         "ticker": ticker,
@@ -114,6 +117,10 @@ def build_signal_record(
         "point_in_time_enforcement": manifest.get(
             "point_in_time_enforcement",
             "readiness_only",
+        ),
+        "snapshot_status": snapshot_contract.get("snapshot_status"),
+        "leakage_risk_sections_count": len(
+            snapshot_contract.get("leakage_risk_sections", [])
         ),
         "status": manifest.get("status", "completed"),
         "broker_deal_package_path": manifest.get(
