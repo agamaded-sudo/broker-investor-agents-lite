@@ -4,6 +4,11 @@ from broker_agents.historical.as_of_context import (
     AsOfContext,
     build_as_of_context,
 )
+from broker_agents.historical.financials_as_of_contract import (
+    FinancialsAsOfContract,
+    FinancialsProviderCapability,
+    build_financials_as_of_contract,
+)
 from broker_agents.historical.price_windows import (
     PriceHistoryFilterResult,
     PriceWindowPolicy,
@@ -19,11 +24,14 @@ from broker_agents.historical.snapshot_contract import (
 
 __all__ = [
     "AsOfContext",
+    "FinancialsAsOfContract",
+    "FinancialsProviderCapability",
     "HistoricalDataSnapshotContract",
     "HistoricalProviderCapability",
     "PriceHistoryFilterResult",
     "PriceWindowPolicy",
     "build_analysis_price_window",
+    "build_financials_as_of_contract",
     "build_as_of_context",
     "build_historical_snapshot_contract",
     "build_outcome_price_window",

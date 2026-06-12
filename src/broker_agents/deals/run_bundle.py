@@ -9,6 +9,9 @@ import re
 from broker_agents.deals.analyze_stock_intake import AnalyzeStockIntake
 from broker_agents.deals.broker_deal_workflow import BrokerDealWorkflowResult
 from broker_agents.historical.as_of_context import build_as_of_context
+from broker_agents.historical.financials_as_of_contract import (
+    build_financials_as_of_contract,
+)
 from broker_agents.historical.price_windows import (
     build_analysis_price_window,
 )
@@ -73,6 +76,7 @@ def _run_summary(manifest: dict) -> str:
     """Render the human-readable run summary."""
     blockers = manifest["promotion_blocking_categories"]
     snapshot = manifest["historical_snapshot_contract"]
+    financials_contract = manifest.get("official_financials_as_of_contract") or {}
     price_window = manifest.get("historical_price_window") or {}
     capability_lines = [
         (
@@ -181,6 +185,41 @@ def _run_summary(manifest: dict) -> str:
                         "trade signal."
                     ),
                     "",
+                    "## Official Financials As-Of Contract",
+                    "",
+                    f"- Provider: {financials_contract['provider_name']}",
+                    (
+                        "- Supports As-Of Date: "
+                        f"{'Yes' if financials_contract['supports_as_of_date'] else 'No'}"
+                    ),
+                    (
+                        "- Enforcement Level: "
+                        f"{financials_contract['enforcement_level']}"
+                    ),
+                    f"- Leakage Risk: {financials_contract['leakage_risk']}",
+                    (
+                        "- Required Date Fields: "
+                        f"{', '.join(financials_contract['required_date_fields'])}"
+                    ),
+                    (
+                        "- Missing Date Fields: "
+                        f"{', '.join(financials_contract['missing_date_fields']) or 'None'}"
+                    ),
+                    f"- Status: {financials_contract['status']}",
+                    "",
+                    *[
+                        f"- Warning: {warning}"
+                        for warning in financials_contract["warnings"]
+                    ],
+                    "",
+                    "Official financials are not yet guaranteed point-in-time safe.",
+                    (
+                        "This official financials as-of contract is not a "
+                        "recommendation, ranking, vote, average score, consensus, "
+                        "allocation instruction, rebalancing instruction, or "
+                        "trade signal."
+                    ),
+                    "",
                     "## Historical Price Window",
                     "",
                     f"- As-Of Date: {manifest['as_of_date']}",
@@ -279,6 +318,12 @@ def create_analyze_stock_run_bundle(
         input_mode=input_mode,
         fixtures_root=intake.fixtures_root,
         price_data_root=intake.fixtures_root,
+        ticker=intake.ticker,
+    )
+    financials_contract = build_financials_as_of_contract(
+        intake.as_of_date,
+        fixtures_root=intake.fixtures_root,
+        ticker=intake.ticker,
     )
     analysis_window = (
         build_analysis_price_window(intake.as_of_date)
@@ -307,6 +352,9 @@ def create_analyze_stock_run_bundle(
         "run_label": intake.run_label,
         **as_of_context.to_dict(),
         "historical_snapshot_contract": snapshot_contract.to_dict(),
+        "official_financials_as_of_contract": (
+            financials_contract.to_dict() if intake.as_of_date else None
+        ),
         "historical_price_window": historical_price_window,
         "market_price_window_enforcement": (
             analysis_window.enforcement_status if analysis_window else None

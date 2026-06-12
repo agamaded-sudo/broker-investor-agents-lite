@@ -541,6 +541,30 @@ This historical price window enforcement is not a recommendation, ranking,
 vote, average score, consensus, allocation instruction, rebalancing
 instruction, or trade signal.
 
+### Official Financials As-Of Contract
+
+Historical price windows can be filtered directly because price files are
+date-indexed. Official financial statements require a stricter availability
+contract: a fiscal period end date alone does not establish when the filing was
+available. Point-in-time analysis also needs a `filing_date` or
+`accepted_date`, plus statement and period metadata.
+
+Current SEC and manual financial fixtures are readiness-only. They may contain
+facts filed after the requested `as_of_date`, so historical runs list available
+and missing date fields and retain a high leakage-risk warning.
+
+```powershell
+python -m broker_agents.cli analyze-stock --ticker COST --examples-root examples --outputs-root data/outputs --fixtures-root tests/fixtures --portfolio-context examples/portfolio_context.yaml --as-of-date 2023-06-30
+python -m broker_agents.cli validate-financials-as-of --as-of-date 2023-06-30 --fixtures-root tests/fixtures
+```
+
+A future provider may use point-in-time SEC filing snapshots or user-supplied
+`financials_as_of` datasets. This task adds no live data or SEC requests and
+does not guarantee full historical correctness. It identifies missing date
+fields and leakage risk only. This official financials as-of contract is not a
+recommendation, ranking, vote, average score, consensus, allocation
+instruction, rebalancing instruction, or trade signal.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from

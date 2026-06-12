@@ -45,6 +45,9 @@ from broker_agents.deals.analyze_stock_intake import (
     with_as_of_date,
 )
 from broker_agents.historical.as_of_context import build_as_of_context
+from broker_agents.historical.financials_as_of_contract import (
+    build_financials_as_of_contract,
+)
 from broker_agents.historical.price_windows import (
     build_analysis_price_window,
 )
@@ -1990,12 +1993,112 @@ def validate_historical_snapshot(
         "Price Window Note: prices after as_of_date are excluded from "
         "analysis windows."
     )
+    financials_contract = build_financials_as_of_contract(
+        as_of_date,
+        fixtures_root=price_fixtures_path,
+    )
+    console.print("Official Financials As-Of Readiness:")
+    console.print(
+        "Official Financials Note: Point-in-time financial statement "
+        "enforcement requires filing-date or accepted-date filtering."
+    )
+    console.print(
+        "Official Financials Status: "
+        f"{financials_contract.status}"
+    )
+    console.print(
+        "Official financials are not yet guaranteed point-in-time safe."
+    )
+    console.print(
+        "Official Financials Missing Date Fields: "
+        f"{', '.join(financials_contract.missing_date_fields)}"
+    )
+    for warning in financials_contract.warnings:
+        console.print(f"Official Financials Warning: {warning}")
     console.print(
         "Leakage Risk Sections: "
         f"{', '.join(contract.leakage_risk_sections) or 'None'}"
     )
     for warning in contract.warnings:
         console.print(f"Warning: {warning}")
+
+
+@app.command("validate-financials-as-of")
+def validate_financials_as_of(
+    as_of_date: Annotated[
+        str,
+        typer.Option(
+            "--as-of-date",
+            help="Historical financials cutoff in YYYY-MM-DD format.",
+        ),
+    ],
+    fixtures_root: Annotated[
+        Path,
+        typer.Option(
+            "--fixtures-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            help="Directory containing offline official-financial fixtures.",
+        ),
+    ] = Path("tests/fixtures"),
+    ticker: Annotated[
+        str | None,
+        typer.Option(
+            "--ticker",
+            help="Optional ticker whose SEC fixture metadata is inspected.",
+        ),
+    ] = None,
+) -> None:
+    """Validate official-financials point-in-time readiness offline."""
+    try:
+        contract = build_financials_as_of_contract(
+            as_of_date,
+            fixtures_root=fixtures_root,
+            ticker=ticker,
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(
+            f"Financials as-of validation failed: {exc}"
+        ) from exc
+
+    table = Table(title="Official Financials As-Of Contract")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Provider", contract.provider_name),
+        ("As-Of Date", str(contract.as_of_date)),
+        (
+            "Supports As-Of Date",
+            str(contract.supports_as_of_date).lower(),
+        ),
+        ("Enforcement Level", contract.enforcement_level),
+        ("Leakage Risk", contract.leakage_risk),
+        ("Required Date Fields", ", ".join(contract.required_date_fields)),
+        (
+            "Available Date Fields",
+            ", ".join(contract.available_date_fields) or "None",
+        ),
+        (
+            "Missing Date Fields",
+            ", ".join(contract.missing_date_fields) or "None",
+        ),
+        ("Status", contract.status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(f"provider={contract.provider_name}")
+    console.print(f"as_of_date={contract.as_of_date}")
+    console.print(
+        f"supports_as_of_date={str(contract.supports_as_of_date).lower()}"
+    )
+    console.print(f"enforcement_level={contract.enforcement_level}")
+    console.print(f"leakage_risk={contract.leakage_risk}")
+    console.print(f"status={contract.status}")
+    for warning in contract.warnings:
+        console.print(f"warning={warning}")
 
 
 @app.command("validate-price-window")

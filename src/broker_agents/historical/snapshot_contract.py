@@ -4,6 +4,10 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from broker_agents.historical.as_of_context import build_as_of_context
+from broker_agents.historical.financials_as_of_contract import (
+    FinancialsAsOfContract,
+    build_financials_as_of_contract,
+)
 
 SECTIONS = (
     "official_financials",
@@ -108,16 +112,20 @@ def _price_capability(price_provider: str) -> HistoricalProviderCapability:
 
 def _default_capabilities(
     price_provider: str,
+    financials_contract: FinancialsAsOfContract,
 ) -> list[HistoricalProviderCapability]:
     """Build deterministic capabilities for every required section."""
     capabilities = [
         HistoricalProviderCapability(
-            "sec_fixture",
+            financials_contract.provider_name,
             "official_financials",
-            False,
-            "readiness_only",
-            "high",
-            "Official-financial fixtures are not guaranteed point-in-time filings.",
+            financials_contract.supports_as_of_date,
+            financials_contract.enforcement_level,
+            financials_contract.leakage_risk,
+            (
+                "Point-in-time financial statement enforcement requires "
+                "filing-date or accepted-date filtering."
+            ),
         ),
         _price_capability(price_provider),
         HistoricalProviderCapability(
@@ -196,10 +204,18 @@ def build_historical_snapshot_contract(
     input_mode: str = "ticker",
     fixtures_root: Path | None = None,
     price_data_root: Path | None = None,
+    ticker: str | None = None,
+    financials_provider: str = "sec_fixture",
 ) -> HistoricalDataSnapshotContract:
     """Build the point-in-time readiness and leakage contract."""
     context = build_as_of_context(as_of_date)
-    capabilities = _default_capabilities(price_provider)
+    financials_contract = build_financials_as_of_contract(
+        as_of_date,
+        fixtures_root=fixtures_root,
+        ticker=ticker,
+        provider_name=financials_provider,
+    )
+    capabilities = _default_capabilities(price_provider, financials_contract)
     if not context.historical_mode:
         return HistoricalDataSnapshotContract(
             as_of_date=None,
