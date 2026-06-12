@@ -11,11 +11,18 @@ from statistics import median
 from broker_agents.backtesting.price_history import (
     fixture_path_for_ticker,
     forward_return,
+    forward_return_observation,
     load_price_history,
     max_drawdown,
 )
 
 FORWARD_WINDOWS = (3, 6, 12)
+DEDUPE_MODES = {
+    "none",
+    "latest_per_ticker_per_day",
+    "first_per_ticker_per_day",
+    "latest_per_ticker",
+}
 INTEREST_FIELDS = (
     "buffett_interest_level",
     "munger_interest_level",
@@ -28,11 +35,17 @@ RESULT_FIELDS = (
     "run_id",
     "archive_record_id",
     "generated_at",
+    "signal_date",
     "readiness_label",
     "source_verification_status",
     "promotion_blocking_categories",
+    "promotion_blocking_count",
     "total_work_orders",
     *INTEREST_FIELDS,
+    "price_start_date",
+    "price_end_date_3m",
+    "price_end_date_6m",
+    "price_end_date_12m",
     "forward_return_3m",
     "forward_return_6m",
     "forward_return_12m",
@@ -77,12 +90,92 @@ def _load_ledger(path: Path) -> list[dict]:
         return list(csv.DictReader(handle))
 
 
-def _parse_generated_at(value: str) -> datetime:
+def _parse_generated_at(value: str | None) -> datetime | None:
     """Parse the archive timestamp and normalize it to UTC."""
-    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if not value or not str(value).strip():
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
     return parsed.astimezone(timezone.utc)
+
+
+def _signal_date(record: dict) -> str:
+    """Derive the UTC signal date from an archived timestamp."""
+    generated_at = _parse_generated_at(record.get("generated_at"))
+    return generated_at.date().isoformat() if generated_at else ""
+
+
+def _blocking_categories(value: object) -> list[str]:
+    """Normalize list or semicolon-delimited blocker categories."""
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    return [
+        item.strip()
+        for item in str(value or "").split(";")
+        if item.strip()
+    ]
+
+
+def _blocker_group(count: int) -> str:
+    """Map a blocker count to a non-ordinal research bucket."""
+    if count == 0:
+        return "no_blockers"
+    if count <= 2:
+        return "one_or_two_blockers"
+    return "three_or_more_blockers"
+
+
+def _record_word(count: int) -> str:
+    """Return a grammatically correct record count label."""
+    return f"{count} record" if count == 1 else f"{count} records"
+
+
+def _dedupe_records(records: list[dict], mode: str) -> list[dict]:
+    """Apply one deterministic archive dedupe policy."""
+    if mode not in DEDUPE_MODES:
+        allowed = ", ".join(sorted(DEDUPE_MODES))
+        raise ValueError(f"dedupe_mode must be one of: {allowed}.")
+    if mode == "none":
+        return list(records)
+
+    selected: dict[tuple[str, ...], tuple[int, dict]] = {}
+    for index, record in enumerate(records):
+        ticker = str(record.get("ticker") or "").upper()
+        generated_at = _parse_generated_at(record.get("generated_at"))
+        if mode == "latest_per_ticker":
+            key = (ticker,)
+        else:
+            signal_date = (
+                generated_at.date().isoformat()
+                if generated_at
+                else f"missing-{index}"
+            )
+            key = (ticker, signal_date)
+        existing = selected.get(key)
+        if existing is None:
+            selected[key] = (index, record)
+            continue
+        existing_index, existing_record = existing
+        existing_time = _parse_generated_at(existing_record.get("generated_at"))
+        if mode == "first_per_ticker_per_day":
+            replace = (
+                generated_at is not None
+                and (existing_time is None or generated_at < existing_time)
+            )
+        else:
+            replace = (
+                generated_at is not None
+                and (existing_time is None or generated_at > existing_time)
+            )
+        if replace:
+            selected[key] = (index, record)
+        else:
+            selected[key] = (existing_index, existing_record)
+    return [item[1] for item in sorted(selected.values(), key=lambda item: item[0])]
 
 
 def _safe_id_label(value: str | None) -> str | None:
@@ -130,7 +223,14 @@ def _evaluate_record(
 ) -> dict:
     """Evaluate one archived record against offline price fixtures."""
     result = {field: record.get(field, "") for field in RESULT_FIELDS}
-    generated_at = _parse_generated_at(str(record["generated_at"]))
+    result["signal_date"] = _signal_date(record)
+    blockers = _blocking_categories(record.get("promotion_blocking_categories"))
+    result["promotion_blocking_categories"] = ";".join(blockers)
+    result["promotion_blocking_count"] = len(blockers)
+    generated_at = _parse_generated_at(record.get("generated_at"))
+    if generated_at is None:
+        result["data_status"] = "missing_signal_date"
+        return result
     start_date = generated_at.date()
     ticker = str(record["ticker"]).upper()
     ticker_path = fixture_path_for_ticker(price_fixtures_path, ticker)
@@ -139,10 +239,18 @@ def _evaluate_record(
         return result
 
     points = load_price_history(ticker_path)
-    stock_returns = {
-        months: forward_return(points, start_date, months)
+    stock_observations = {
+        months: forward_return_observation(points, start_date, months)
         for months in FORWARD_WINDOWS
     }
+    stock_returns = {
+        months: observation.value
+        for months, observation in stock_observations.items()
+    }
+    first_start = stock_observations[3].start
+    result["price_start_date"] = (
+        first_start.date.isoformat() if first_start else ""
+    )
     benchmark_returns = {
         months: (
             forward_return(benchmark_points, start_date, months)
@@ -152,6 +260,10 @@ def _evaluate_record(
         for months in FORWARD_WINDOWS
     }
     for months in FORWARD_WINDOWS:
+        end = stock_observations[months].end
+        result[f"price_end_date_{months}m"] = (
+            end.date.isoformat() if end else ""
+        )
         result[f"forward_return_{months}m"] = _number(stock_returns[months])
         result[f"benchmark_return_{months}m"] = _number(
             benchmark_returns[months]
@@ -181,6 +293,7 @@ def _group_summary(
     rows: list[dict],
     field: str,
     heading: str,
+    minimum_group_size: int,
 ) -> list[str]:
     """Render count and median-return summaries for one signal category."""
     groups: dict[str, list[dict]] = {}
@@ -190,8 +303,11 @@ def _group_summary(
     lines = [
         f"### {heading}",
         "",
-        "| Category | Records | Median 3M Return | Median 6M Return | Median 12M Return |",
-        "|---|---:|---:|---:|---:|",
+        (
+            "| Category | Records | Median 3M Return | Median 6M Return | "
+            "Median 12M Return | Sample Warning |"
+        ),
+        "|---|---:|---:|---:|---:|---|",
     ]
     for label in sorted(groups):
         group = groups[label]
@@ -199,7 +315,8 @@ def _group_summary(
             f"| {label} | {len(group)} | "
             f"{_median_return(group, 'forward_return_3m')} | "
             f"{_median_return(group, 'forward_return_6m')} | "
-            f"{_median_return(group, 'forward_return_12m')} |"
+            f"{_median_return(group, 'forward_return_12m')} | "
+            f"{f'Small sample: category has fewer than {minimum_group_size} records.' if len(group) < minimum_group_size else ''} |"
         )
     lines.append("")
     return lines
@@ -216,12 +333,35 @@ def _render_summary(manifest: dict, rows: list[dict]) -> str:
         f"- Ledger Path: {manifest['ledger_path']}",
         f"- Price Fixtures: {manifest['price_fixtures_path']}",
         f"- Lookback Years: {manifest['lookback_years']}",
+        f"- Dedupe Mode: {manifest['dedupe_mode']}",
+        (
+            "- Records Before Dedupe: "
+            f"{manifest['total_records_before_dedupe']}"
+        ),
+        (
+            "- Records After Dedupe: "
+            f"{manifest['evaluated_records_after_dedupe']}"
+        ),
+        (
+            "- Duplicate Records Removed: "
+            f"{manifest['duplicate_records_removed']}"
+        ),
         f"- Evaluated Records: {manifest['evaluated_records']}",
         f"- Skipped Records: {manifest['skipped_records']}",
         f"- Tickers Evaluated: {', '.join(manifest['tickers']) or 'None'}",
         "- Forward Windows: 3 months, 6 months, 12 months",
         f"- Benchmark: {manifest['benchmark']}",
-        "- Price Data: deterministic synthetic fixtures, not live market data",
+        f"- Price Data Type: {manifest['price_data_type']}",
+        "- Synthetic fixture warning: price data is not live or historical market data.",
+        f"- Minimum Group Size: {manifest['minimum_group_size']}",
+        f"- Small Sample Warning: {str(manifest['small_sample_warning']).lower()}",
+        "",
+        "## Quality Warnings",
+        "",
+        *[
+            f"- {warning}"
+            for warning in manifest["quality_warnings"]
+        ],
         "",
         "## Grouped Research Summaries",
         "",
@@ -231,6 +371,7 @@ def _render_summary(manifest: dict, rows: list[dict]) -> str:
             rows,
             "readiness_label",
             "Readiness Label (`readiness_label`)",
+            manifest["minimum_group_size"],
         )
     )
     lines.extend(
@@ -238,24 +379,32 @@ def _render_summary(manifest: dict, rows: list[dict]) -> str:
             rows,
             "source_verification_status",
             "Source Verification Status (`source_verification_status`)",
+            manifest["minimum_group_size"],
         )
     )
     blocker_rows = []
     for row in rows:
         copy = dict(row)
-        copy["blocking_category_presence"] = (
-            "Blocking categories present"
-            if row.get("promotion_blocking_categories")
-            else "No blocking categories recorded"
-        )
+        blocker_count = int(row.get("promotion_blocking_count") or 0)
+        copy["blocking_category_group"] = _blocker_group(blocker_count)
         blocker_rows.append(copy)
     lines.extend(
         _group_summary(
             blocker_rows,
-            "blocking_category_presence",
-            "Promotion-Blocking Category Presence",
+            "blocking_category_group",
+            "Promotion-Blocking Count",
+            manifest["minimum_group_size"],
         )
     )
+    for interest_field in INTEREST_FIELDS:
+        lines.extend(
+            _group_summary(
+                rows,
+                interest_field,
+                f"Investor Interest Level (`{interest_field}`)",
+                manifest["minimum_group_size"],
+            )
+        )
     lines.extend(
         [
             "## Limitations",
@@ -273,6 +422,10 @@ def _render_summary(manifest: dict, rows: list[dict]) -> str:
                 "score, consensus, allocation instruction, rebalancing instruction, "
                 "or trade signal. It is a research-only audit of archived fields."
             ),
+            (
+                "Results are research-only associations and must not be "
+                "interpreted as investment advice or a trading strategy."
+            ),
             "",
         ]
     )
@@ -285,20 +438,31 @@ def run_signal_backtest(
     price_fixtures_path: Path,
     outputs_root: Path,
     lookback_years: int = 5,
+    dedupe_mode: str = "latest_per_ticker_per_day",
+    minimum_group_size: int = 5,
     run_label: str | None = None,
     generated_at: datetime | None = None,
 ) -> BacktestRunResult:
     """Evaluate archived signals against deterministic fixture price paths."""
     if lookback_years not in {2, 5, 10}:
         raise ValueError("lookback_years must be one of: 2, 5, 10.")
+    if minimum_group_size < 1:
+        raise ValueError("minimum_group_size must be at least 1.")
+    if dedupe_mode not in DEDUPE_MODES:
+        allowed = ", ".join(sorted(DEDUPE_MODES))
+        raise ValueError(f"dedupe_mode must be one of: {allowed}.")
     timestamp = generated_at or datetime.now(timezone.utc)
     cutoff = timestamp.replace(year=timestamp.year - lookback_years)
-    records = [
-        record
-        for record in _load_ledger(ledger_path)
-        if record.get("status") == "completed"
-        and _parse_generated_at(str(record["generated_at"])) >= cutoff
-    ]
+    eligible_records = []
+    for record in _load_ledger(ledger_path):
+        if record.get("status") != "completed":
+            continue
+        generated_at_value = _parse_generated_at(record.get("generated_at"))
+        if generated_at_value is None or generated_at_value >= cutoff:
+            eligible_records.append(record)
+    total_records_before_dedupe = len(eligible_records)
+    records = _dedupe_records(eligible_records, dedupe_mode)
+    duplicate_records_removed = total_records_before_dedupe - len(records)
     benchmark_path = fixture_path_for_ticker(price_fixtures_path, "SPY")
     benchmark_points = (
         load_price_history(benchmark_path)
@@ -310,9 +474,52 @@ def run_signal_backtest(
         for record in records
     ]
     evaluated_records = sum(
-        row["data_status"] != "missing_price_data" for row in rows
+        str(row["data_status"]).startswith("complete") for row in rows
     )
     skipped_records = len(rows) - evaluated_records
+    group_fields = (
+        "readiness_label",
+        "source_verification_status",
+        *INTEREST_FIELDS,
+    )
+    small_groups = []
+    for field in group_fields:
+        counts: dict[str, int] = {}
+        for row in rows:
+            label = str(row.get(field) or "Missing")
+            counts[label] = counts.get(label, 0) + 1
+        small_groups.extend(
+            f"{field}: {label} ({_record_word(count)})"
+            for label, count in counts.items()
+            if count < minimum_group_size
+        )
+    blocker_counts: dict[str, int] = {}
+    for row in rows:
+        label = _blocker_group(
+            int(row.get("promotion_blocking_count") or 0)
+        )
+        blocker_counts[label] = blocker_counts.get(label, 0) + 1
+    small_groups.extend(
+        f"promotion_blocking_count: {label} ({_record_word(count)})"
+        for label, count in blocker_counts.items()
+        if count < minimum_group_size
+    )
+    small_sample_warning = (
+        len(rows) < minimum_group_size or bool(small_groups)
+    )
+    quality_warnings = [
+        "Synthetic fixture price data is for framework testing only."
+    ]
+    if duplicate_records_removed:
+        quality_warnings.append(
+            f"Dedupe removed {duplicate_records_removed} repeated archive records."
+        )
+    if small_sample_warning:
+        quality_warnings.append(
+            "Small sample: one or more grouped categories have fewer than "
+            f"{minimum_group_size} records."
+        )
+        quality_warnings.extend(small_groups)
 
     backtests_root = Path(outputs_root) / "backtests"
     backtests_root.mkdir(parents=True, exist_ok=True)
@@ -335,8 +542,16 @@ def run_signal_backtest(
         "price_fixtures_path": str(price_fixtures_path),
         "outputs_root": str(outputs_root),
         "lookback_years": lookback_years,
+        "dedupe_mode": dedupe_mode,
+        "total_records_before_dedupe": total_records_before_dedupe,
+        "evaluated_records_after_dedupe": len(records),
+        "duplicate_records_removed": duplicate_records_removed,
         "evaluated_records": evaluated_records,
         "skipped_records": skipped_records,
+        "small_sample_warning": small_sample_warning,
+        "minimum_group_size": minimum_group_size,
+        "price_data_type": "synthetic_fixture",
+        "quality_warnings": quality_warnings,
         "tickers": sorted({str(row["ticker"]) for row in rows}),
         "forward_windows": ["3m", "6m", "12m"],
         "benchmark": (

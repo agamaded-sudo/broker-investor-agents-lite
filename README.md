@@ -346,6 +346,23 @@ This is a research-only evaluation skeleton. It measures associations in
 archived fields and does not produce recommendations, rankings, consensus,
 portfolio allocation, rebalancing instructions, or trade signals.
 
+### Backtest Quality Controls
+
+Default dedupe mode is `latest_per_ticker_per_day`. It retains the latest
+archived record for each ticker and signal date before calculating fixture
+returns:
+
+```powershell
+python -m broker_agents.cli backtest-signals --ledger data/outputs/signal_archive/signal_ledger.csv --price-fixtures tests/fixtures/price_history --outputs-root data/outputs --lookback-years 5 --dedupe-mode latest_per_ticker_per_day
+```
+
+Other supported modes are `none`, `first_per_ticker_per_day`, and
+`latest_per_ticker`. Outputs disclose records before and after dedupe, actual
+fixture price-anchor dates, blocker counts, minimum group sizes, and
+small-sample warnings. Synthetic fixture data is for framework testing only.
+Results remain research-only associations, not recommendations or trade
+signals.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from

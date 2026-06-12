@@ -1896,6 +1896,23 @@ def backtest_signals(
             help="Archive lookback in years; accepted values are 2, 5, or 10.",
         ),
     ] = 5,
+    dedupe_mode: Annotated[
+        str,
+        typer.Option(
+            "--dedupe-mode",
+            help=(
+                "Record dedupe policy: none, latest_per_ticker_per_day, "
+                "first_per_ticker_per_day, or latest_per_ticker."
+            ),
+        ),
+    ] = "latest_per_ticker_per_day",
+    minimum_group_size: Annotated[
+        int,
+        typer.Option(
+            "--minimum-group-size",
+            help="Minimum category size before a small-sample warning.",
+        ),
+    ] = 5,
 ) -> None:
     """Evaluate archived signal fields using offline price fixtures."""
     try:
@@ -1904,6 +1921,8 @@ def backtest_signals(
             price_fixtures_path=price_fixtures_path,
             outputs_root=outputs_root,
             lookback_years=lookback_years,
+            dedupe_mode=dedupe_mode,
+            minimum_group_size=minimum_group_size,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         raise typer.BadParameter(f"Signal backtest failed: {exc}") from exc
@@ -1917,6 +1936,7 @@ def backtest_signals(
         ("Backtest Summary", str(result.summary_path)),
         ("Backtest Results", str(result.results_path)),
         ("Backtest Manifest", str(result.manifest_path)),
+        ("Dedupe Mode", dedupe_mode),
         ("Evaluated Records", str(result.evaluated_records)),
         ("Skipped Records", str(result.skipped_records)),
         ("Status", "completed"),

@@ -14,6 +14,15 @@ class PricePoint:
     close: float
 
 
+@dataclass(frozen=True)
+class ForwardReturnObservation:
+    """Observed fixture anchors and return for one forward window."""
+
+    start: PricePoint | None
+    end: PricePoint | None
+    value: float | None
+
+
 def load_price_history(path: Path) -> list[PricePoint]:
     """Load and validate a simple date/close fixture CSV."""
     path = Path(path)
@@ -65,11 +74,24 @@ def forward_return(
     months: int,
 ) -> float | None:
     """Calculate a simple fixture return from the first available dates."""
+    return forward_return_observation(points, start_date, months).value
+
+
+def forward_return_observation(
+    points: list[PricePoint],
+    start_date: date,
+    months: int,
+) -> ForwardReturnObservation:
+    """Return the actual fixture anchors and simple forward return."""
     start = first_point_on_or_after(points, start_date)
     end = first_point_on_or_after(points, add_months(start_date, months))
     if start is None or end is None or start.close == 0:
-        return None
-    return (end.close - start.close) / start.close
+        return ForwardReturnObservation(start=start, end=end, value=None)
+    return ForwardReturnObservation(
+        start=start,
+        end=end,
+        value=(end.close - start.close) / start.close,
+    )
 
 
 def max_drawdown(
