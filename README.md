@@ -565,6 +565,39 @@ fields and leakage risk only. This official financials as-of contract is not a
 recommendation, ranking, vote, average score, consensus, allocation
 instruction, rebalancing instruction, or trade signal.
 
+### Historical Financials CSV Input
+
+User-supplied point-in-time financial statement snapshots use the folder
+convention `data/inputs/historical_financials/` and filenames such as
+`cost_financials_as_of.csv`. The required columns are `ticker`,
+`fiscal_period_end_date`, `filing_date`, `accepted_date`, `statement_type`,
+`period_type`, `metric`, `value`, and `source_url_or_accession_number`.
+Optional metadata includes currency, units, filing form, fiscal year/quarter,
+data-as-of date, ingestion date, and source name.
+
+Period end date alone is not enough. For an analysis cutoff, a row is allowed
+only when `filing_date <= as_of_date` or `accepted_date <= as_of_date`. Rows
+with neither availability date are excluded as not point-in-time safe.
+
+Validate local files without running investor analysis:
+
+```powershell
+python -m broker_agents.cli validate-financials-csv --financials-root tests/fixtures/historical_financials --tickers MSFT,AAPL,NVDA,COST --as-of-date 2023-06-30
+```
+
+Validate the aggregate snapshot capability with the local provider:
+
+```powershell
+python -m broker_agents.cli validate-historical-snapshot --as-of-date 2023-06-30 --price-provider csv --price-fixtures tests/fixtures/historical_price_history --financials-provider historical_csv --financials-root tests/fixtures/historical_financials
+```
+
+The local CSV provider is partially as-of capable when required availability
+fields are present, but provenance remains user-managed. This task performs no
+live SEC/API fetching and does not generate historical investor signals. This
+historical financials CSV input format is not a recommendation, ranking, vote,
+average score, consensus, allocation instruction, rebalancing instruction, or
+trade signal.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from

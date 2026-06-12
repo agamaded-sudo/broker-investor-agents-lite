@@ -122,10 +122,7 @@ def _default_capabilities(
             financials_contract.supports_as_of_date,
             financials_contract.enforcement_level,
             financials_contract.leakage_risk,
-            (
-                "Point-in-time financial statement enforcement requires "
-                "filing-date or accepted-date filtering."
-            ),
+            financials_contract.notes[0],
         ),
         _price_capability(price_provider),
         HistoricalProviderCapability(
@@ -206,6 +203,7 @@ def build_historical_snapshot_contract(
     price_data_root: Path | None = None,
     ticker: str | None = None,
     financials_provider: str = "sec_fixture",
+    financials_root: Path | None = None,
 ) -> HistoricalDataSnapshotContract:
     """Build the point-in-time readiness and leakage contract."""
     context = build_as_of_context(as_of_date)
@@ -214,6 +212,7 @@ def build_historical_snapshot_contract(
         fixtures_root=fixtures_root,
         ticker=ticker,
         provider_name=financials_provider,
+        financials_root=financials_root,
     )
     capabilities = _default_capabilities(price_provider, financials_contract)
     if not context.historical_mode:

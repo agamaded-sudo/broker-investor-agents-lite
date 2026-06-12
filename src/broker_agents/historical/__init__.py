@@ -9,6 +9,14 @@ from broker_agents.historical.financials_as_of_contract import (
     FinancialsProviderCapability,
     build_financials_as_of_contract,
 )
+from broker_agents.historical.historical_financials import (
+    HistoricalFinancialRow,
+    HistoricalFinancialsFilterResult,
+    HistoricalFinancialsValidationResult,
+    filter_financials_as_of,
+    load_historical_financials_csv,
+    validate_historical_financials_csv,
+)
 from broker_agents.historical.price_windows import (
     PriceHistoryFilterResult,
     PriceWindowPolicy,
@@ -27,6 +35,9 @@ __all__ = [
     "FinancialsAsOfContract",
     "FinancialsProviderCapability",
     "HistoricalDataSnapshotContract",
+    "HistoricalFinancialRow",
+    "HistoricalFinancialsFilterResult",
+    "HistoricalFinancialsValidationResult",
     "HistoricalProviderCapability",
     "PriceHistoryFilterResult",
     "PriceWindowPolicy",
@@ -35,5 +46,8 @@ __all__ = [
     "build_as_of_context",
     "build_historical_snapshot_contract",
     "build_outcome_price_window",
+    "filter_financials_as_of",
     "filter_price_history_by_date",
+    "load_historical_financials_csv",
+    "validate_historical_financials_csv",
 ]

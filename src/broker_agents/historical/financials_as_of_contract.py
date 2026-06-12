@@ -1,10 +1,14 @@
 """Point-in-time readiness contract for official financial statements."""
 
+import csv
 from dataclasses import asdict, dataclass, field
 import json
 from pathlib import Path
 
 from broker_agents.historical.as_of_context import build_as_of_context
+from broker_agents.historical.historical_financials import (
+    validate_historical_financials_csv,
+)
 
 REQUIRED_DATE_FIELDS = (
     "fiscal_period_end_date",
@@ -80,6 +84,40 @@ def _load_fixture_fields(
     return set(payload), []
 
 
+def _load_historical_csv_fields(
+    financials_root: Path | None,
+    ticker: str | None,
+) -> tuple[set[str], list[str]]:
+    """Inspect one or more local historical-financials CSV schemas."""
+    if financials_root is None:
+        return set(), ["Historical financials CSV root was not provided."]
+    root = Path(financials_root)
+    paths = (
+        [root / f"{ticker.lower()}_financials_as_of.csv"]
+        if ticker
+        else sorted(root.glob("*_financials_as_of.csv"))
+    )
+    if not paths:
+        return set(), [f"No historical financials CSV files found in: {root}"]
+    warnings = []
+    available_fields: set[str] | None = None
+    for path in paths:
+        validation = validate_historical_financials_csv(path)
+        if not validation.required_columns_present:
+            warnings.extend(validation.warnings)
+            continue
+        with path.open(encoding="utf-8-sig", newline="") as handle:
+            fields = set(csv.DictReader(handle).fieldnames or ())
+        available_fields = (
+            fields
+            if available_fields is None
+            else available_fields & fields
+        )
+    if available_fields is None:
+        return set(), warnings or ["No valid historical financials CSV files found."]
+    return available_fields, warnings
+
+
 def _available_contract_fields(raw_fields: set[str]) -> list[str]:
     """Map fixture aliases onto the future point-in-time contract fields."""
     available = []
@@ -92,9 +130,9 @@ def _available_contract_fields(raw_fields: set[str]) -> list[str]:
     ):
         if field_name in raw_fields:
             available.append(field_name)
-    if {"source_url", "accession_number"} & raw_fields:
+    if {"source_url", "accession_number", "source_url_or_accession_number"} & raw_fields:
         available.append("source_url_or_accession_number")
-    if {"data_as_of_date", "ingestion_date"} & raw_fields:
+    if {"data_as_of_date", "ingestion_date", "data_as_of_date_or_ingestion_date"} & raw_fields:
         available.append("data_as_of_date_or_ingestion_date")
     return available
 
@@ -105,10 +143,28 @@ def build_financials_as_of_contract(
     fixtures_root: Path | None = None,
     ticker: str | None = None,
     provider_name: str = "sec_fixture",
+    financials_root: Path | None = None,
 ) -> FinancialsAsOfContract:
     """Build a deterministic point-in-time readiness contract."""
     context = build_as_of_context(as_of_date)
-    raw_fields, inspection_warnings = _load_fixture_fields(fixtures_root, ticker)
+    normalized_provider = str(provider_name or "sec_fixture").strip().lower()
+    is_historical_csv = normalized_provider in {
+        "historical_csv",
+        "historical_financials_csv",
+    }
+    canonical_provider = (
+        "historical_financials_csv" if is_historical_csv else provider_name
+    )
+    if is_historical_csv:
+        raw_fields, inspection_warnings = _load_historical_csv_fields(
+            financials_root,
+            ticker,
+        )
+    else:
+        raw_fields, inspection_warnings = _load_fixture_fields(
+            fixtures_root,
+            ticker,
+        )
     available = _available_contract_fields(raw_fields)
     missing = [field for field in REQUIRED_DATE_FIELDS if field not in available]
     supports_period_end = "fiscal_period_end_date" in available
@@ -120,7 +176,7 @@ def build_financials_as_of_contract(
     enforcement_level = "partial" if supports_filtering else "readiness_only"
     leakage_risk = "medium" if supports_filtering else "high"
     capability = FinancialsProviderCapability(
-        provider_name=provider_name,
+        provider_name=canonical_provider,
         supports_filing_date=supports_filing,
         supports_period_end_date=supports_period_end,
         supports_accepted_date=supports_accepted,
@@ -128,15 +184,22 @@ def build_financials_as_of_contract(
         enforcement_level=enforcement_level,
         leakage_risk=leakage_risk,
         notes=(
-            "Point-in-time financial statement enforcement requires "
-            "filing-date or accepted-date filtering."
+            (
+                "User-supplied CSV can filter by filing_date or accepted_date, "
+                "but provenance remains user-managed."
+            )
+            if is_historical_csv
+            else (
+                "Point-in-time financial statement enforcement requires "
+                "filing-date or accepted-date filtering."
+            )
         ),
     )
     if not context.historical_mode:
         return FinancialsAsOfContract(
             as_of_date=None,
             historical_mode=False,
-            provider_name=provider_name,
+            provider_name=canonical_provider,
             section="official_financials",
             supports_as_of_date=supports_filtering,
             enforcement_level=enforcement_level,
@@ -160,7 +223,7 @@ def build_financials_as_of_contract(
     return FinancialsAsOfContract(
         as_of_date=context.as_of_date.isoformat(),
         historical_mode=True,
-        provider_name=provider_name,
+        provider_name=canonical_provider,
         section="official_financials",
         supports_as_of_date=supports_filtering,
         enforcement_level=enforcement_level,
@@ -171,6 +234,10 @@ def build_financials_as_of_contract(
         allowed_filing_cutoff=context.as_of_date.isoformat(),
         warnings=warnings,
         notes=[capability.notes],
-        status=("partial" if supports_filtering else "readiness_only"),
+        status=(
+            "supported_if_required_date_fields_present"
+            if is_historical_csv and supports_filtering
+            else ("partial" if supports_filtering else "readiness_only")
+        ),
         provider_capability=capability,
     )

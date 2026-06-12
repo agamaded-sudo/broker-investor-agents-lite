@@ -48,6 +48,12 @@ from broker_agents.historical.as_of_context import build_as_of_context
 from broker_agents.historical.financials_as_of_contract import (
     build_financials_as_of_contract,
 )
+from broker_agents.historical.historical_financials import (
+    filter_financials_as_of,
+    historical_financials_path,
+    load_historical_financials_csv,
+    validate_historical_financials_csv,
+)
 from broker_agents.historical.price_windows import (
     build_analysis_price_window,
 )
@@ -1924,6 +1930,24 @@ def validate_historical_snapshot(
             help="Optional local price-data root used by the contract.",
         ),
     ] = None,
+    financials_provider: Annotated[
+        str,
+        typer.Option(
+            "--financials-provider",
+            help="Financials capability: sec_fixture or historical_csv.",
+        ),
+    ] = "sec_fixture",
+    financials_root: Annotated[
+        Path | None,
+        typer.Option(
+            "--financials-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            help="Optional root containing historical financials CSV files.",
+        ),
+    ] = None,
 ) -> None:
     """Validate point-in-time readiness without running investor agents."""
     try:
@@ -1933,6 +1957,8 @@ def validate_historical_snapshot(
             input_mode="validation",
             fixtures_root=price_fixtures_path,
             price_data_root=price_fixtures_path,
+            financials_provider=financials_provider,
+            financials_root=financials_root,
         )
     except ValueError as exc:
         raise typer.BadParameter(
@@ -1996,22 +2022,24 @@ def validate_historical_snapshot(
     financials_contract = build_financials_as_of_contract(
         as_of_date,
         fixtures_root=price_fixtures_path,
+        provider_name=financials_provider,
+        financials_root=financials_root,
     )
     console.print("Official Financials As-Of Readiness:")
     console.print(
-        "Official Financials Note: Point-in-time financial statement "
-        "enforcement requires filing-date or accepted-date filtering."
+        f"Official Financials Note: {financials_contract.notes[0]}"
     )
     console.print(
         "Official Financials Status: "
         f"{financials_contract.status}"
     )
-    console.print(
-        "Official financials are not yet guaranteed point-in-time safe."
-    )
+    if not financials_contract.supports_as_of_date:
+        console.print(
+            "Official financials are not yet guaranteed point-in-time safe."
+        )
     console.print(
         "Official Financials Missing Date Fields: "
-        f"{', '.join(financials_contract.missing_date_fields)}"
+        f"{', '.join(financials_contract.missing_date_fields) or 'None'}"
     )
     for warning in financials_contract.warnings:
         console.print(f"Official Financials Warning: {warning}")
@@ -2021,6 +2049,119 @@ def validate_historical_snapshot(
     )
     for warning in contract.warnings:
         console.print(f"Warning: {warning}")
+
+
+@app.command("validate-financials-csv")
+def validate_financials_csv(
+    financials_root: Annotated[
+        Path,
+        typer.Option(
+            "--financials-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            help="Directory containing local historical financials CSV files.",
+        ),
+    ],
+    tickers: Annotated[
+        str,
+        typer.Option("--tickers", help="Comma-separated tickers to validate."),
+    ],
+    as_of_date: Annotated[
+        str,
+        typer.Option("--as-of-date", help="Historical cutoff in YYYY-MM-DD."),
+    ],
+) -> None:
+    """Validate and cutoff-filter local historical financials CSV files."""
+    table = Table(title="Historical Financials CSV Validation")
+    for column in (
+        "Ticker",
+        "File Found",
+        "Rows",
+        "Required Columns",
+        "Before",
+        "After",
+        "Future Excluded",
+        "Missing Availability",
+        "Max Filing Date",
+        "Max Accepted Date",
+        "Status",
+    ):
+        table.add_column(column)
+    automation_lines = []
+    parsed_tickers = [
+        item.strip().upper() for item in tickers.split(",") if item.strip()
+    ]
+    for ticker in parsed_tickers:
+        path = historical_financials_path(financials_root, ticker)
+        validation = validate_historical_financials_csv(path)
+        filtered = None
+        if validation.required_columns_present and validation.rows_count:
+            try:
+                filtered = filter_financials_as_of(
+                    load_historical_financials_csv(path),
+                    as_of_date,
+                )
+            except ValueError as exc:
+                raise typer.BadParameter(
+                    f"Historical financials validation failed: {exc}"
+                ) from exc
+        before = filtered.rows_before_filter if filtered else validation.rows_count
+        after = filtered.rows_after_filter if filtered else 0
+        future = filtered.future_rows_excluded_count if filtered else 0
+        missing_availability = (
+            filtered.rows_missing_availability_date_count
+            if filtered
+            else validation.rows_missing_availability_date_count
+        )
+        status = filtered.status if filtered else validation.status
+        max_filing = filtered.max_filing_date_after_filter if filtered else None
+        max_accepted = (
+            filtered.max_accepted_date_after_filter if filtered else None
+        )
+        table.add_row(
+            ticker,
+            str(validation.file_found).lower(),
+            str(validation.rows_count),
+            str(validation.required_columns_present).lower(),
+            str(before),
+            str(after),
+            str(future),
+            str(missing_availability),
+            max_filing or "None",
+            max_accepted or "None",
+            status,
+        )
+        automation_lines.append(
+            " | ".join(
+                (
+                    f"ticker={ticker}",
+                    f"file_found={str(validation.file_found).lower()}",
+                    f"rows={validation.rows_count}",
+                    (
+                        "required_columns_present="
+                        f"{str(validation.required_columns_present).lower()}"
+                    ),
+                    f"rows_before_filter={before}",
+                    f"rows_after_filter={after}",
+                    f"future_rows_excluded_count={future}",
+                    (
+                        "rows_missing_availability_date_count="
+                        f"{missing_availability}"
+                    ),
+                    f"max_filing_date_after_filter={max_filing or 'None'}",
+                    (
+                        "max_accepted_date_after_filter="
+                        f"{max_accepted or 'None'}"
+                    ),
+                    f"status={status}",
+                )
+            )
+        )
+    console.print(table)
+    for line in automation_lines:
+        console.print(line)
 
 
 @app.command("validate-financials-as-of")

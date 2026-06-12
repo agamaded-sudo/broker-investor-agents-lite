@@ -1,0 +1,6 @@
+ticker,fiscal_period_end_date,filing_date,accepted_date,statement_type,period_type,metric,value,source_url_or_accession_number,currency,units,form_type,fiscal_year,fiscal_quarter,data_as_of_date,ingestion_date,source_name
+NVDA,2021-06-30,2021-08-01,,income_statement,annual,revenue,26914,fixture://historical-financials/NVDA/2021,USD,millions,10-K,2021,,2021-08-01,2026-06-12,Synthetic Historical Financials Fixture
+NVDA,2022-06-30,,2022-08-01T12:00:00Z,income_statement,annual,net_income,9752,fixture://historical-financials/NVDA/2022,USD,millions,10-K,2022,,2022-08-01,2026-06-12,Synthetic Historical Financials Fixture
+NVDA,2023-03-31,2023-05-01,2023-05-01T12:00:00Z,cash_flow,quarterly,operating_cash_flow,5641,fixture://historical-financials/NVDA/2023Q1,USD,millions,10-Q,2023,Q1,2023-05-01,2026-06-12,Synthetic Historical Financials Fixture
+NVDA,2023-06-30,2023-08-01,2023-08-01T12:00:00Z,income_statement,quarterly,revenue,60922,fixture://historical-financials/NVDA/2023Q2,USD,millions,10-Q,2023,Q2,2023-08-01,2026-06-12,Synthetic Historical Financials Fixture
+NVDA,2024-06-30,,,income_statement,annual,revenue,130497,fixture://historical-financials/NVDA/2024,USD,millions,10-K,2024,,2024-06-30,2026-06-12,Synthetic Historical Financials Fixture
