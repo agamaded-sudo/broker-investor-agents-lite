@@ -41,7 +41,9 @@ from broker_agents.data_providers.price_csv_validation import (
 from broker_agents.deals.analyze_stock_intake import (
     build_ticker_analyze_stock_intake,
     load_analyze_stock_intake,
+    with_as_of_date,
 )
+from broker_agents.historical.as_of_context import build_as_of_context
 from broker_agents.deals.analyze_stock_runner import execute_analyze_stock
 from broker_agents.deals.batch_analyze import (
     BatchTickerResult,
@@ -1744,6 +1746,13 @@ def analyze_stock(
             help="Optional portfolio context for the independent Bogle analysis.",
         ),
     ] = None,
+    as_of_date: Annotated[
+        str | None,
+        typer.Option(
+            "--as-of-date",
+            help="Historical-readiness date in YYYY-MM-DD format.",
+        ),
+    ] = None,
 ) -> None:
     """Run intake and the complete existing broker deal workflow for one ticker."""
     if ticker is not None and intake_file is not None:
@@ -1757,6 +1766,8 @@ def analyze_stock(
     try:
         if intake_file is not None:
             intake = load_analyze_stock_intake(intake_file)
+            if as_of_date is not None:
+                intake = with_as_of_date(intake, as_of_date)
             input_mode = "intake_file"
         else:
             intake = build_ticker_analyze_stock_intake(
@@ -1765,6 +1776,7 @@ def analyze_stock(
                 outputs_root=outputs_root,
                 fixtures_root=fixtures_root,
                 portfolio_context=portfolio_context_path,
+                as_of_date=as_of_date,
             )
             input_mode = "ticker"
     except (OSError, ValueError, yaml.YAMLError, json.JSONDecodeError) as exc:
@@ -1792,6 +1804,7 @@ def analyze_stock(
         run_manifest_path=run_bundle.run_manifest_path,
         broker_deal_package_path=result.broker_deal_package_path,
     )
+    historical_context = build_as_of_context(intake.as_of_date)
 
     console.print(f"Input Mode: {input_mode}", soft_wrap=True)
     console.print(
@@ -1812,6 +1825,22 @@ def analyze_stock(
             str(intake_file) if intake_file is not None else "Not used",
         ),
         ("Run Label", intake.run_label or "Not provided"),
+        (
+            "As-Of Date",
+            (
+                historical_context.as_of_date.isoformat()
+                if historical_context.as_of_date
+                else "Not provided"
+            ),
+        ),
+        (
+            "Historical Mode",
+            "enabled" if historical_context.historical_mode else "disabled",
+        ),
+        (
+            "Point-in-Time Enforcement",
+            historical_context.point_in_time_enforcement,
+        ),
         ("Run ID", run_bundle.run_id),
         ("Run Folder", str(run_bundle.run_folder)),
         ("Run Manifest", str(run_bundle.run_manifest_path)),
@@ -2165,6 +2194,13 @@ def analyze_batch(
             help="Optional portfolio context for Bogle analysis.",
         ),
     ] = None,
+    as_of_date: Annotated[
+        str | None,
+        typer.Option(
+            "--as-of-date",
+            help="Historical-readiness date applied to each batch run.",
+        ),
+    ] = None,
 ) -> None:
     """Run the existing analyze-stock pipeline for a batch of inputs."""
     if tickers is not None and intake_files is not None:
@@ -2199,6 +2235,7 @@ def analyze_batch(
                     outputs_root=outputs_root,
                     fixtures_root=fixtures_root,
                     portfolio_context=portfolio_context_path,
+                    as_of_date=as_of_date,
                 )
                 execution = execute_analyze_stock(
                     intake=intake,
@@ -2229,6 +2266,8 @@ def analyze_batch(
             requested_added = False
             try:
                 intake = load_analyze_stock_intake(intake_path)
+                if as_of_date is not None:
+                    intake = with_as_of_date(intake, as_of_date)
                 result_ticker = intake.ticker
                 requested_tickers.append(result_ticker)
                 requested_added = True
@@ -2262,6 +2301,7 @@ def analyze_batch(
         batch_label=batch_label,
         requested_tickers=requested_tickers,
         results=results,
+        as_of_date=as_of_date,
     )
     archived_count = 0
     signal_ledger_path = batch_outputs_root / "signal_archive" / "signal_ledger.jsonl"
@@ -2326,6 +2366,17 @@ def analyze_batch(
         soft_wrap=True,
     )
     console.print(f"Signal Ledger: {signal_ledger_path}", soft_wrap=True)
+    context = build_as_of_context(as_of_date)
+    console.print(
+        "As-Of Date: "
+        f"{context.as_of_date.isoformat() if context.as_of_date else 'Not provided'}",
+        soft_wrap=True,
+    )
+    console.print(
+        "Historical Mode: "
+        f"{'enabled' if context.historical_mode else 'disabled'}",
+        soft_wrap=True,
+    )
     if bundle.completed_count == 0:
         raise typer.Exit(code=1)
 

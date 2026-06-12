@@ -9,6 +9,7 @@ import re
 from broker_agents.deals.analyze_stock_runner import (
     AnalyzeStockExecutionResult,
 )
+from broker_agents.historical.as_of_context import build_as_of_context
 
 SAFE_BATCH_LABEL = re.compile(r"[^a-z0-9_-]+")
 
@@ -124,6 +125,15 @@ def _render_batch_summary(manifest: dict) -> str:
         f"- Generated At: {manifest['generated_at']}",
         f"- Input Mode: {manifest['input_mode']}",
         f"- Batch Label: {manifest.get('batch_label') or 'Not provided'}",
+        f"- As-Of Date: {manifest.get('as_of_date') or 'Not provided'}",
+        (
+            "- Historical Mode: "
+            f"{'enabled' if manifest['historical_mode'] else 'disabled'}"
+        ),
+        (
+            "- Point-in-Time Enforcement: "
+            f"{manifest['point_in_time_enforcement']}"
+        ),
         f"- Total Tickers Requested: {len(manifest['requested_tickers'])}",
         f"- Completed Count: {manifest['completed_count']}",
         f"- Failed Count: {manifest['failed_count']}",
@@ -182,6 +192,7 @@ def create_analyze_batch_bundle(
     batch_label: str | None,
     requested_tickers: list[str],
     results: list[BatchTickerResult],
+    as_of_date: str | None = None,
     generated_at: datetime | None = None,
 ) -> AnalyzeBatchBundle:
     """Create a batch folder, summary, manifest, and latest pointer."""
@@ -206,10 +217,12 @@ def create_analyze_batch_bundle(
     skipped_tickers = [
         result.ticker for result in results if result.status == "skipped"
     ]
+    as_of_context = build_as_of_context(as_of_date)
     manifest = {
         "batch_run_id": batch_run_id,
         "input_mode": input_mode,
         "batch_label": batch_label,
+        **as_of_context.to_dict(),
         "generated_at": generated_at_text,
         "requested_tickers": requested_tickers,
         "completed_tickers": completed_tickers,

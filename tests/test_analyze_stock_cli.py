@@ -104,6 +104,9 @@ def test_analyze_stock_generates_complete_cost_output_bundle(
     assert manifest_path.exists()
     assert manifest["ticker"] == "COST"
     assert manifest["input_mode"] == "ticker"
+    assert manifest["as_of_date"] is None
+    assert manifest["historical_mode"] is False
+    assert manifest["point_in_time_enforcement"] == "readiness_only"
     assert manifest["status"] == "completed"
     assert manifest["broker_deal_package_path"]
     assert manifest["investor_response_letters_dir"]
@@ -304,6 +307,7 @@ def test_analyze_stock_intake_parser_supports_json_and_defaults(
     assert intake.outputs_root == Path("data/outputs")
     assert intake.fixtures_root == Path("tests/fixtures")
     assert intake.portfolio_context == Path("examples/portfolio_context.yaml")
+    assert intake.as_of_date is None
 
 
 def test_analyze_stock_is_documented_and_demo_runner_remains() -> None:

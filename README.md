@@ -471,6 +471,28 @@ behavior. It does not build or simulate a portfolio, define entry or exit
 rules, or represent live trading. It produces no recommendation, ranking, or
 trade signal.
 
+### As-Of-Date Historical Analysis Readiness
+
+`analyze-stock` accepts an optional historical-readiness date:
+
+```powershell
+python -m broker_agents.cli analyze-stock --ticker COST --examples-root examples --outputs-root data/outputs --fixtures-root tests/fixtures --portfolio-context examples/portfolio_context.yaml --as-of-date 2023-06-30
+```
+
+The date is recorded in the intake snapshot, run manifest, run summary, and
+signal archive. A structured example is available at
+`examples/deal_intakes/cost_historical_as_of_intake.yaml`.
+
+`as_of_date` records the intended historical analysis date and makes the run's
+historical mode explicit. This is readiness only: full point-in-time
+enforcement requires future historical snapshots for every input and provider.
+Current fixture and manual data may include information dated after the
+requested cutoff, so each historical run carries a visible leakage warning.
+
+This mode must not be interpreted as investment advice or a trading strategy.
+It produces no recommendation, ranking, allocation instruction, or trade
+signal.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from

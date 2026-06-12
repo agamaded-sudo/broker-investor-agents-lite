@@ -1,10 +1,12 @@
 """Structured YAML/JSON intake configuration for analyze-stock."""
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 import json
 from pathlib import Path
 
 import yaml
+
+from broker_agents.historical.as_of_context import build_as_of_context
 
 DEFAULT_INVESTORS = ["Buffett", "Munger", "Fisher", "Lynch", "Bogle"]
 
@@ -25,6 +27,7 @@ class AnalyzeStockIntake:
     evidence_mode: str = "fixtures"
     output_mode: str = "full_bundle"
     run_label: str | None = None
+    as_of_date: str | None = None
     examples_root: Path = Path("examples")
     outputs_root: Path = Path("data/outputs")
     fixtures_root: Path = Path("tests/fixtures")
@@ -48,6 +51,7 @@ class AnalyzeStockIntake:
             "output_mode": self.output_mode,
             "investor_set": list(self.investor_set),
             "run_label": self.run_label,
+            "as_of_date": self.as_of_date,
             "input_mode": input_mode,
             "intake_file": str(intake_file) if intake_file else None,
         }
@@ -103,6 +107,7 @@ def load_analyze_stock_intake(path: Path) -> AnalyzeStockIntake:
         "portfolio_context",
         "examples/portfolio_context.yaml",
     )
+    as_of_context = build_as_of_context(data.get("as_of_date"))
     return AnalyzeStockIntake(
         ticker=ticker,
         company_name=(
@@ -122,6 +127,11 @@ def load_analyze_stock_intake(path: Path) -> AnalyzeStockIntake:
         run_label=(
             str(data["run_label"]).strip() if data.get("run_label") else None
         ),
+        as_of_date=(
+            as_of_context.as_of_date.isoformat()
+            if as_of_context.as_of_date
+            else None
+        ),
         examples_root=Path(data.get("examples_root") or "examples"),
         outputs_root=Path(data.get("outputs_root") or "data/outputs"),
         fixtures_root=Path(data.get("fixtures_root") or "tests/fixtures"),
@@ -137,17 +147,38 @@ def build_ticker_analyze_stock_intake(
     outputs_root: Path,
     fixtures_root: Path,
     portfolio_context: Path | None,
+    as_of_date: str | None = None,
 ) -> AnalyzeStockIntake:
     """Create the equivalent structured intake for legacy ticker mode."""
     normalized = str(ticker or "").strip().upper()
     if not normalized:
         raise ValueError("Analyze-stock requires a non-empty ticker.")
+    as_of_context = build_as_of_context(as_of_date)
     return AnalyzeStockIntake(
         ticker=normalized,
+        as_of_date=(
+            as_of_context.as_of_date.isoformat()
+            if as_of_context.as_of_date
+            else None
+        ),
         examples_root=Path(examples_root),
         outputs_root=Path(outputs_root),
         fixtures_root=Path(fixtures_root),
         portfolio_context=(
             Path(portfolio_context) if portfolio_context is not None else None
+        ),
+    )
+
+
+def with_as_of_date(
+    intake: AnalyzeStockIntake,
+    as_of_date: str | None,
+) -> AnalyzeStockIntake:
+    """Return an intake with a validated CLI as-of-date override."""
+    context = build_as_of_context(as_of_date)
+    return replace(
+        intake,
+        as_of_date=(
+            context.as_of_date.isoformat() if context.as_of_date else None
         ),
     )

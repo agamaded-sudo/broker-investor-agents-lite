@@ -1,0 +1,20 @@
+ticker: COST
+company_name: Costco Wholesale Corporation
+market: US
+exchange: NASDAQ
+sector: Consumer Staples / Retail
+purpose: broker_review
+investor_set:
+  - Buffett
+  - Munger
+  - Fisher
+  - Lynch
+  - Bogle
+evidence_mode: fixtures
+output_mode: full_bundle
+run_label: cost_historical_readiness
+as_of_date: "2023-06-30"
+examples_root: examples
+outputs_root: data/outputs
+fixtures_root: tests/fixtures
+portfolio_context: examples/portfolio_context.yaml

@@ -45,6 +45,8 @@ RESULT_FIELDS = (
     "run_id",
     "archive_record_id",
     "generated_at",
+    "as_of_date",
+    "historical_mode",
     "signal_date",
     "trial_signal_source",
     "readiness_label",

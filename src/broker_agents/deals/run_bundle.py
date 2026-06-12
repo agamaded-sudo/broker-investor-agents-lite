@@ -8,6 +8,7 @@ import re
 
 from broker_agents.deals.analyze_stock_intake import AnalyzeStockIntake
 from broker_agents.deals.broker_deal_workflow import BrokerDealWorkflowResult
+from broker_agents.historical.as_of_context import build_as_of_context
 
 SAFE_RUN_LABEL = re.compile(r"[^a-z0-9_-]+")
 
@@ -78,6 +79,15 @@ def _run_summary(manifest: dict) -> str:
             f"- Input Mode: {manifest['input_mode']}",
             f"- Intake File: {manifest.get('intake_file') or 'Not used'}",
             f"- Run Label: {manifest.get('run_label') or 'Not provided'}",
+            f"- As-Of Date: {manifest.get('as_of_date') or 'Not provided'}",
+            (
+                "- Historical Mode: "
+                f"{'enabled' if manifest['historical_mode'] else 'disabled'}"
+            ),
+            (
+                "- Point-in-Time Enforcement: "
+                f"{manifest['point_in_time_enforcement']}"
+            ),
             "",
             "## Evidence And Readiness",
             "",
@@ -117,6 +127,21 @@ def _run_summary(manifest: dict) -> str:
                 f"{manifest['backoffice_work_orders_path']}"
             ),
             f"- Intake Snapshot: {manifest['intake_snapshot_path']}",
+            *(
+                [
+                    "",
+                    "## Historical Analysis Warning",
+                    "",
+                    manifest["data_cutoff_note"],
+                    manifest["leakage_warning"],
+                    (
+                        "Results must not be interpreted as a true historical "
+                        "recommendation or trading signal."
+                    ),
+                ]
+                if manifest["historical_mode"]
+                else []
+            ),
             "",
             "## Safety Note",
             "",
@@ -125,6 +150,18 @@ def _run_summary(manifest: dict) -> str:
                 "score, consensus, allocation instruction, rebalancing instruction, "
                 "or trade signal. Final investor decisions remain independent. "
                 "Auto-promotion disabled."
+            ),
+            *(
+                [
+                    (
+                        "This historical analysis readiness mode is not a "
+                        "recommendation, ranking, vote, average score, consensus, "
+                        "allocation instruction, rebalancing instruction, or "
+                        "trade signal."
+                    )
+                ]
+                if manifest["historical_mode"]
+                else []
             ),
             "",
         ]
@@ -158,6 +195,7 @@ def create_analyze_stock_run_bundle(
     ).parent
     executive_summary = package_payload.get("executive_summary", {})
     work_order_plan = package_payload.get("backoffice_work_order_plan", {})
+    as_of_context = build_as_of_context(intake.as_of_date)
     manifest = {
         "run_id": run_id,
         "ticker": intake.ticker,
@@ -167,6 +205,7 @@ def create_analyze_stock_run_bundle(
         "input_mode": input_mode,
         "intake_file": str(intake_file) if intake_file else None,
         "run_label": intake.run_label,
+        **as_of_context.to_dict(),
         "generated_at": generated_at_text,
         "broker_deal_package_path": str(
             workflow_result.broker_deal_package_path

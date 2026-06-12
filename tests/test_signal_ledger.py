@@ -84,6 +84,9 @@ def test_analyze_stock_appends_cost_signal_record(tmp_path: Path) -> None:
     assert record["total_investor_responses"] == 5
     assert record["total_work_orders"] > 0
     assert record["batch_run_id"] is None
+    assert record["as_of_date"] is None
+    assert record["historical_mode"] is False
+    assert record["point_in_time_enforcement"] == "readiness_only"
     for field, expected in EXPECTED_COST_DECISIONS.items():
         assert record[field] == expected
     for investor in ("buffett", "munger", "fisher", "lynch", "bogle"):

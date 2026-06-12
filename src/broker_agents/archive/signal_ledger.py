@@ -19,6 +19,9 @@ LEDGER_FIELDS = (
     "batch_run_id",
     "batch_folder",
     "generated_at",
+    "as_of_date",
+    "historical_mode",
+    "point_in_time_enforcement",
     "status",
     "broker_deal_package_path",
     "enriched_input_path",
@@ -106,6 +109,12 @@ def build_signal_record(
         "batch_run_id": batch_run_id,
         "batch_folder": str(batch_folder) if batch_folder else None,
         "generated_at": manifest.get("generated_at"),
+        "as_of_date": manifest.get("as_of_date"),
+        "historical_mode": manifest.get("historical_mode", False),
+        "point_in_time_enforcement": manifest.get(
+            "point_in_time_enforcement",
+            "readiness_only",
+        ),
         "status": manifest.get("status", "completed"),
         "broker_deal_package_path": manifest.get(
             "broker_deal_package_path"
@@ -173,6 +182,25 @@ def _record_count(jsonl_path: Path) -> int:
     )
 
 
+def _ensure_csv_schema(csv_path: Path) -> None:
+    """Upgrade an existing ledger CSV header while preserving prior rows."""
+    if not csv_path.exists() or csv_path.stat().st_size == 0:
+        return
+    with csv_path.open(encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        existing_fields = tuple(reader.fieldnames or ())
+        rows = list(reader)
+    if existing_fields == LEDGER_FIELDS:
+        return
+    with csv_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=LEDGER_FIELDS)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(
+                {field: row.get(field) for field in LEDGER_FIELDS}
+            )
+
+
 def append_signal_record(
     *,
     outputs_root: Path,
@@ -187,6 +215,7 @@ def append_signal_record(
 
     with jsonl_path.open("a", encoding="utf-8", newline="\n") as handle:
         handle.write(json.dumps(record, separators=(",", ":")) + "\n")
+    _ensure_csv_schema(csv_path)
     write_header = not csv_path.exists() or csv_path.stat().st_size == 0
     with csv_path.open("a", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=LEDGER_FIELDS)
