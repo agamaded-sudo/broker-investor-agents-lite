@@ -38,12 +38,16 @@ from broker_agents.backtesting.signal_backtester import run_signal_backtest
 from broker_agents.data_providers.price_csv_validation import (
     validate_price_csvs,
 )
+from broker_agents.data_providers.price_provider import create_price_provider
 from broker_agents.deals.analyze_stock_intake import (
     build_ticker_analyze_stock_intake,
     load_analyze_stock_intake,
     with_as_of_date,
 )
 from broker_agents.historical.as_of_context import build_as_of_context
+from broker_agents.historical.price_windows import (
+    build_analysis_price_window,
+)
 from broker_agents.historical.snapshot_contract import (
     build_historical_snapshot_contract,
 )
@@ -1977,12 +1981,91 @@ def validate_historical_snapshot(
     console.print(
         f"Point-in-Time Enforcement: {contract.point_in_time_enforcement}"
     )
+    analysis_window = build_analysis_price_window(as_of_date)
+    console.print(
+        f"Analysis Price Window End Date: {analysis_window.end_date}"
+    )
+    console.print("Market Price Window Enforcement: analysis_window_enforced")
+    console.print(
+        "Price Window Note: prices after as_of_date are excluded from "
+        "analysis windows."
+    )
     console.print(
         "Leakage Risk Sections: "
         f"{', '.join(contract.leakage_risk_sections) or 'None'}"
     )
     for warning in contract.warnings:
         console.print(f"Warning: {warning}")
+
+
+@app.command("validate-price-window")
+def validate_price_window(
+    ticker: Annotated[
+        str,
+        typer.Option("--ticker", help="Ticker whose local price window is checked."),
+    ],
+    as_of_date: Annotated[
+        str,
+        typer.Option("--as-of-date", help="Analysis cutoff in YYYY-MM-DD format."),
+    ],
+    price_provider: Annotated[
+        str,
+        typer.Option("--price-provider", help="Offline price provider to validate."),
+    ] = "csv",
+    price_fixtures_path: Annotated[
+        Path,
+        typer.Option(
+            "--price-fixtures",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            help="Directory containing local ticker price CSV files.",
+        ),
+    ] = Path("tests/fixtures/historical_price_history"),
+) -> None:
+    """Validate that an analysis window excludes post-cutoff prices."""
+    try:
+        window = build_analysis_price_window(as_of_date)
+        provider = create_price_provider(price_provider, price_fixtures_path)
+        result = provider.get_price_history(
+            ticker,
+            end_date=window.end_date,
+            window_type=window.window_type,
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(f"Price window validation failed: {exc}") from exc
+
+    max_date = max((point.date for point in result.rows), default=None)
+    table = Table(title="Historical Analysis Price Window")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Ticker", result.ticker),
+        ("Provider", result.provider_name),
+        ("As-Of Date", as_of_date),
+        ("Rows Before Filter", str(result.rows_before_filter)),
+        ("Rows After Filter", str(result.rows_after_filter)),
+        (
+            "Future Rows Excluded Count",
+            str(result.future_rows_excluded_count),
+        ),
+        ("Max Date After Filter", str(max_date) if max_date else "None"),
+        ("Status", result.status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(f"ticker={result.ticker}")
+    console.print(f"provider={result.provider_name}")
+    console.print(f"as_of_date={as_of_date}")
+    console.print(f"rows_before_filter={result.rows_before_filter}")
+    console.print(f"rows_after_filter={result.rows_after_filter}")
+    console.print(
+        f"future_rows_excluded_count={result.future_rows_excluded_count}"
+    )
+    console.print(f"max_date_after_filter={max_date or 'None'}")
+    console.print(f"status={result.status}")
 
 
 @app.command("backtest-signals")

@@ -9,6 +9,9 @@ import re
 from broker_agents.deals.analyze_stock_intake import AnalyzeStockIntake
 from broker_agents.deals.broker_deal_workflow import BrokerDealWorkflowResult
 from broker_agents.historical.as_of_context import build_as_of_context
+from broker_agents.historical.price_windows import (
+    build_analysis_price_window,
+)
 from broker_agents.historical.snapshot_contract import (
     build_historical_snapshot_contract,
 )
@@ -70,6 +73,7 @@ def _run_summary(manifest: dict) -> str:
     """Render the human-readable run summary."""
     blockers = manifest["promotion_blocking_categories"]
     snapshot = manifest["historical_snapshot_contract"]
+    price_window = manifest.get("historical_price_window") or {}
     capability_lines = [
         (
             f"- {item['section']}: {item['provider_name']} / "
@@ -177,6 +181,32 @@ def _run_summary(manifest: dict) -> str:
                         "trade signal."
                     ),
                     "",
+                    "## Historical Price Window",
+                    "",
+                    f"- As-Of Date: {manifest['as_of_date']}",
+                    (
+                        "- Analysis Price Window End Date: "
+                        f"{price_window['analysis_window']['end_date']}"
+                    ),
+                    "- Future Prices Allowed in Analysis: No",
+                    "- Outcome Prices Used for Backtest Only: Yes",
+                    (
+                        "- Enforcement Status: "
+                        f"{manifest['market_price_window_enforcement']}"
+                    ),
+                    (
+                        "- Leakage Policy Note: "
+                        f"{price_window['analysis_window']['leakage_policy_note']}"
+                    ),
+                    "",
+                    "Analysis inputs must not use prices after the as_of_date.",
+                    (
+                        "This historical price window enforcement is not a "
+                        "recommendation, ranking, vote, average score, consensus, "
+                        "allocation instruction, rebalancing instruction, or "
+                        "trade signal."
+                    ),
+                    "",
                     "## Historical Analysis Warning",
                     "",
                     manifest["data_cutoff_note"],
@@ -250,6 +280,22 @@ def create_analyze_stock_run_bundle(
         fixtures_root=intake.fixtures_root,
         price_data_root=intake.fixtures_root,
     )
+    analysis_window = (
+        build_analysis_price_window(intake.as_of_date)
+        if intake.as_of_date
+        else None
+    )
+    historical_price_window = (
+        {
+            "analysis_window": analysis_window.to_dict(),
+            "outcome_window_note": (
+                "Outcome windows are only used by backtest evaluation, not by "
+                "analysis inputs."
+            ),
+        }
+        if analysis_window
+        else None
+    )
     manifest = {
         "run_id": run_id,
         "ticker": intake.ticker,
@@ -261,6 +307,10 @@ def create_analyze_stock_run_bundle(
         "run_label": intake.run_label,
         **as_of_context.to_dict(),
         "historical_snapshot_contract": snapshot_contract.to_dict(),
+        "historical_price_window": historical_price_window,
+        "market_price_window_enforcement": (
+            analysis_window.enforcement_status if analysis_window else None
+        ),
         "generated_at": generated_at_text,
         "broker_deal_package_path": str(
             workflow_result.broker_deal_package_path

@@ -1,6 +1,7 @@
 """Common price history provider interface and provider factory."""
 
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Protocol
 
@@ -18,6 +19,12 @@ class PriceHistoryResult:
     status: str = "missing_price_data"
     price_column_used: str | None = None
     warnings: list[str] = field(default_factory=list)
+    window_type: str | None = None
+    window_start_date: str | None = None
+    window_end_date: str | None = None
+    rows_before_filter: int = 0
+    rows_after_filter: int = 0
+    future_rows_excluded_count: int = 0
 
 
 class PriceHistoryProvider(Protocol):
@@ -29,7 +36,14 @@ class PriceHistoryProvider(Protocol):
     live_data_enabled: bool
     provider_status: str
 
-    def get_price_history(self, ticker: str) -> PriceHistoryResult:
+    def get_price_history(
+        self,
+        ticker: str,
+        *,
+        start_date: str | date | None = None,
+        end_date: str | date | None = None,
+        window_type: str | None = None,
+    ) -> PriceHistoryResult:
         """Return controlled price history data for a ticker."""
 
 

@@ -520,6 +520,27 @@ This contract identifies readiness and leakage risk. It does not generate
 historical signals and does not produce recommendations, rankings, allocation
 instructions, or trade signals.
 
+### Historical Price Window Enforcement
+
+Historical analysis price inputs must not use observations after `as_of_date`.
+The CSV provider can enforce this cutoff and reports the rows present before
+and after filtering, including the number of future observations excluded.
+Backtest outcome calculations remain separate: they may use future prices only
+to measure 3-month, 6-month, and 12-month results.
+
+```powershell
+python -m broker_agents.cli analyze-stock --ticker COST --examples-root examples --outputs-root data/outputs --fixtures-root tests/fixtures --portfolio-context examples/portfolio_context.yaml --as-of-date 2023-06-30
+python -m broker_agents.cli validate-historical-snapshot --as-of-date 2023-06-30 --price-provider csv --price-fixtures tests/fixtures/historical_price_history
+python -m broker_agents.cli validate-price-window --ticker COST --price-provider csv --price-fixtures tests/fixtures/historical_price_history --as-of-date 2023-06-30
+```
+
+This cutoff prevents future-price leakage in historical analysis contexts. It
+does not yet guarantee full point-in-time safety for financial statements,
+manual inputs, valuations, or qualitative evidence. No live data API is used.
+This historical price window enforcement is not a recommendation, ranking,
+vote, average score, consensus, allocation instruction, rebalancing
+instruction, or trade signal.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from

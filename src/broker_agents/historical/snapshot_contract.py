@@ -82,8 +82,9 @@ def _price_capability(price_provider: str) -> HistoricalProviderCapability:
             enforcement_level="partial",
             leakage_risk="medium",
             notes=(
-                "Historical CSV prices can be filtered by date, but provenance "
-                "and completeness remain user-supplied."
+                "Historical CSV prices support analysis_window_enforced: "
+                "prices after as_of_date are excluded from analysis windows, "
+                "but provenance and completeness remain user-supplied."
             ),
         )
     if normalized == "live_stub":
