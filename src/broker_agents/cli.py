@@ -1889,6 +1889,13 @@ def backtest_signals(
             help="Root directory for research backtest outputs.",
         ),
     ] = Path("data/outputs"),
+    price_provider: Annotated[
+        str,
+        typer.Option(
+            "--price-provider",
+            help="Price provider: fixture, csv, or live_stub.",
+        ),
+    ] = "fixture",
     lookback_years: Annotated[
         int,
         typer.Option(
@@ -1920,6 +1927,7 @@ def backtest_signals(
             ledger_path=ledger_path,
             price_fixtures_path=price_fixtures_path,
             outputs_root=outputs_root,
+            price_provider=price_provider,
             lookback_years=lookback_years,
             dedupe_mode=dedupe_mode,
             minimum_group_size=minimum_group_size,
@@ -1937,6 +1945,7 @@ def backtest_signals(
         ("Backtest Results", str(result.results_path)),
         ("Metrics Summary", str(result.metrics_summary_path)),
         ("Backtest Manifest", str(result.manifest_path)),
+        ("Price Provider", price_provider),
         ("Dedupe Mode", dedupe_mode),
         ("Sample Size", str(result.metrics["sample_size"])),
         (

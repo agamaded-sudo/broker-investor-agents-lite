@@ -378,6 +378,31 @@ cover readiness, source verification, promotion blockers, and each investor's
 interest level. Synthetic fixture data is not real market data. These metrics
 are research-only and produce no recommendation, ranking, or trading signal.
 
+### Data Provider Adapter
+
+The backtester reads prices through a common provider interface:
+
+- `fixture`: deterministic synthetic fixture data for tests.
+- `csv`: local user-provided CSV files named `msft.csv`, `aapl.csv`, and so on.
+- `live_stub`: a placeholder that performs no network calls and reports that
+  live data is not configured.
+
+Fixture provider example:
+
+```powershell
+python -m broker_agents.cli backtest-signals --ledger data/outputs/signal_archive/signal_ledger.csv --price-provider fixture --price-fixtures tests/fixtures/price_history --outputs-root data/outputs --lookback-years 5 --dedupe-mode latest_per_ticker_per_day
+```
+
+Local CSV provider example:
+
+```powershell
+python -m broker_agents.cli backtest-signals --ledger data/outputs/signal_archive/signal_ledger.csv --price-provider csv --price-fixtures tests/fixtures/price_history --outputs-root data/outputs --lookback-years 5 --dedupe-mode latest_per_ticker_per_day
+```
+
+The live provider is not implemented yet. No API keys, external dependencies,
+or network calls are required. Hosted integration can be added later after a
+provider is selected.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from

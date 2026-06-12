@@ -13,11 +13,14 @@ from broker_agents.backtesting.backtest_metrics import (
     render_backtest_metrics_summary,
 )
 from broker_agents.backtesting.price_history import (
-    fixture_path_for_ticker,
     forward_return,
     forward_return_observation,
-    load_price_history,
     max_drawdown,
+)
+from broker_agents.data_providers.price_provider import (
+    PriceHistoryProvider,
+    PriceHistoryResult,
+    create_price_provider,
 )
 
 FORWARD_WINDOWS = (3, 6, 12)
@@ -225,8 +228,8 @@ def _relative(stock_return: float | None, benchmark_return: float | None) -> flo
 
 def _evaluate_record(
     record: dict,
-    price_fixtures_path: Path,
-    benchmark_points: list | None,
+    provider: PriceHistoryProvider,
+    benchmark_result: PriceHistoryResult,
 ) -> dict:
     """Evaluate one archived record against offline price fixtures."""
     result = {field: record.get(field, "") for field in RESULT_FIELDS}
@@ -240,12 +243,12 @@ def _evaluate_record(
         return result
     start_date = generated_at.date()
     ticker = str(record["ticker"]).upper()
-    ticker_path = fixture_path_for_ticker(price_fixtures_path, ticker)
-    if not ticker_path.exists():
-        result["data_status"] = "missing_price_data"
+    price_result = provider.get_price_history(ticker)
+    if price_result.status != "available":
+        result["data_status"] = price_result.status
         return result
 
-    points = load_price_history(ticker_path)
+    points = price_result.rows
     stock_observations = {
         months: forward_return_observation(points, start_date, months)
         for months in FORWARD_WINDOWS
@@ -260,8 +263,8 @@ def _evaluate_record(
     )
     benchmark_returns = {
         months: (
-            forward_return(benchmark_points, start_date, months)
-            if benchmark_points
+            forward_return(benchmark_result.rows, start_date, months)
+            if benchmark_result.status == "available"
             else None
         )
         for months in FORWARD_WINDOWS
@@ -283,10 +286,10 @@ def _evaluate_record(
     )
     if stock_returns[12] is None:
         result["data_status"] = "insufficient_forward_history"
-    elif benchmark_points is None:
+    elif benchmark_result.status != "available":
         result["data_status"] = "complete_without_benchmark"
     else:
-        result["data_status"] = "complete_synthetic_fixture"
+        result["data_status"] = f"complete_{price_result.data_type}"
     return result
 
 
@@ -373,7 +376,6 @@ def _render_summary(manifest: dict, rows: list[dict], metrics: dict) -> str:
         "",
         f"- Backtest Run ID: {manifest['backtest_run_id']}",
         f"- Ledger Path: {manifest['ledger_path']}",
-        f"- Price Fixtures: {manifest['price_fixtures_path']}",
         f"- Lookback Years: {manifest['lookback_years']}",
         f"- Dedupe Mode: {manifest['dedupe_mode']}",
         (
@@ -394,9 +396,31 @@ def _render_summary(manifest: dict, rows: list[dict], metrics: dict) -> str:
         "- Forward Windows: 3 months, 6 months, 12 months",
         f"- Benchmark: {manifest['benchmark']}",
         f"- Price Data Type: {manifest['price_data_type']}",
-        "- Synthetic fixture warning: price data is not live or historical market data.",
         f"- Minimum Group Size: {manifest['minimum_group_size']}",
         f"- Small Sample Warning: {str(manifest['small_sample_warning']).lower()}",
+        "",
+        "## Price Data Provider",
+        "",
+        f"- Provider: {manifest['price_provider']}",
+        f"- Provider Name: {manifest['price_provider_name']}",
+        f"- Data Type: {manifest['price_data_type']}",
+        (
+            "- Synthetic fixture warning: price data is not live or "
+            "historical market data."
+            if manifest["price_data_type"] == "synthetic_fixture"
+            else "- Synthetic fixture warning: not applicable."
+        ),
+        f"- Data Root: {manifest['price_data_root'] or 'Not used'}",
+        f"- Live Data Enabled: {str(manifest['live_data_enabled']).lower()}",
+        f"- Provider Status: {manifest['provider_status']}",
+        (
+            "- Live Provider Status: "
+            f"{manifest.get('live_provider_status') or 'not_selected'}"
+        ),
+        (
+            "- Live data is not enabled in this build. The live provider is "
+            "a stub for future integration only."
+        ),
         "",
         "## Quality Warnings",
         "",
@@ -499,7 +523,17 @@ def _render_summary(manifest: dict, rows: list[dict], metrics: dict) -> str:
         [
             "## Limitations",
             "",
-            "- Price histories are synthetic fixtures created for offline framework testing.",
+            (
+                "- Price histories are synthetic fixtures created for offline "
+                "framework testing."
+                if manifest["price_data_type"] == "synthetic_fixture"
+                else (
+                    "- Price histories use local CSV data supplied to the "
+                    "provider."
+                    if manifest["price_data_type"] == "local_csv"
+                    else "- Live price histories are unavailable in this build."
+                )
+            ),
             "- Archived records may repeat a ticker across distinct runs.",
             "- The sample is too small for statistical inference.",
             "- Missing benchmark or ticker data remains explicitly missing.",
@@ -527,6 +561,7 @@ def run_signal_backtest(
     ledger_path: Path,
     price_fixtures_path: Path,
     outputs_root: Path,
+    price_provider: str = "fixture",
     lookback_years: int = 5,
     dedupe_mode: str = "latest_per_ticker_per_day",
     minimum_group_size: int = 5,
@@ -553,14 +588,10 @@ def run_signal_backtest(
     total_records_before_dedupe = len(eligible_records)
     records = _dedupe_records(eligible_records, dedupe_mode)
     duplicate_records_removed = total_records_before_dedupe - len(records)
-    benchmark_path = fixture_path_for_ticker(price_fixtures_path, "SPY")
-    benchmark_points = (
-        load_price_history(benchmark_path)
-        if benchmark_path.exists()
-        else None
-    )
+    provider = create_price_provider(price_provider, price_fixtures_path)
+    benchmark_result = provider.get_price_history("SPY")
     rows = [
-        _evaluate_record(record, price_fixtures_path, benchmark_points)
+        _evaluate_record(record, provider, benchmark_result)
         for record in records
     ]
     evaluated_records = sum(
@@ -597,9 +628,16 @@ def run_signal_backtest(
     small_sample_warning = (
         len(rows) < minimum_group_size or bool(small_groups)
     )
-    quality_warnings = [
-        "Synthetic fixture price data is for framework testing only."
-    ]
+    quality_warnings = []
+    if provider.data_type == "synthetic_fixture":
+        quality_warnings.append(
+            "Synthetic fixture price data is for framework testing only."
+        )
+    if provider.provider_status != "available":
+        quality_warnings.append(
+            "Live data provider is not implemented in this build. "
+            "Use fixture or csv provider."
+        )
     if duplicate_records_removed:
         quality_warnings.append(
             f"Dedupe removed {duplicate_records_removed} repeated archive records."
@@ -628,7 +666,7 @@ def run_signal_backtest(
 
     metrics = calculate_backtest_metrics(
         rows,
-        price_data_type="synthetic_fixture",
+        price_data_type=provider.data_type,
     )
     metrics_summary_path = (
         backtest_folder / "backtest_metrics_summary.json"
@@ -648,6 +686,18 @@ def run_signal_backtest(
         "backtest_run_id": backtest_run_id,
         "ledger_path": str(ledger_path),
         "price_fixtures_path": str(price_fixtures_path),
+        "price_provider": price_provider,
+        "price_provider_name": provider.provider_name,
+        "price_data_root": (
+            str(provider.data_root) if provider.data_root is not None else None
+        ),
+        "live_data_enabled": provider.live_data_enabled,
+        "provider_status": provider.provider_status,
+        "live_provider_status": (
+            "not_implemented"
+            if provider.provider_name == "live_stub"
+            else None
+        ),
         "outputs_root": str(outputs_root),
         "lookback_years": lookback_years,
         "dedupe_mode": dedupe_mode,
@@ -658,13 +708,17 @@ def run_signal_backtest(
         "skipped_records": skipped_records,
         "group_small_sample_warning": small_sample_warning,
         "minimum_group_size": minimum_group_size,
-        "price_data_type": "synthetic_fixture",
+        "price_data_type": provider.data_type,
         "quality_warnings": quality_warnings,
         "tickers": sorted({str(row["ticker"]) for row in rows}),
         "forward_windows": ["3m", "6m", "12m"],
         "benchmark": (
-            "SPY synthetic fixture"
-            if benchmark_points
+            (
+                "SPY synthetic fixture"
+                if provider.data_type == "synthetic_fixture"
+                else f"SPY {provider.data_type}"
+            )
+            if benchmark_result.status == "available"
             else "Missing"
         ),
         "results_path": str(results_path),

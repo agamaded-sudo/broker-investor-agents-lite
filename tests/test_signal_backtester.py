@@ -165,6 +165,11 @@ def test_backtest_signals_creates_research_outputs(tmp_path: Path) -> None:
     assert manifest["small_sample_warning"] is True
     assert manifest["minimum_group_size"] == 5
     assert manifest["price_data_type"] == "synthetic_fixture"
+    assert manifest["price_provider"] == "fixture"
+    assert manifest["price_provider_name"] == "fixture"
+    assert manifest["price_data_root"] == str(PRICE_FIXTURES)
+    assert manifest["live_data_enabled"] is False
+    assert manifest["provider_status"] == "available"
     assert manifest["quality_warnings"]
     assert manifest["metrics_summary_path"] == str(metrics_path)
     assert manifest["metrics_summary_md_path"] == str(metrics_md_path)
@@ -280,6 +285,10 @@ def test_backtest_signals_creates_research_outputs(tmp_path: Path) -> None:
         "Median Max Drawdown 12M",
         "Synthetic Data Warning",
         "Grouped Metrics",
+        "Price Data Provider",
+        "Provider: fixture",
+        "Live Data Enabled: false",
+        "Live data is not enabled in this build",
     ):
         assert text in summary
     summary_lower = summary.lower()
@@ -300,6 +309,107 @@ def test_backtest_signals_creates_research_outputs(tmp_path: Path) -> None:
     assert "source_verification_status" in metrics_markdown
     assert "promotion_blocking_bucket" in metrics_markdown
     assert "not a recommendation" in metrics_markdown.lower()
+
+
+def test_backtest_signals_supports_csv_provider(tmp_path: Path) -> None:
+    ledger_path = tmp_path / "signal_ledger.csv"
+    outputs_root = tmp_path / "outputs"
+    _write_test_ledger(ledger_path)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "backtest-signals",
+            "--ledger",
+            str(ledger_path),
+            "--price-provider",
+            "csv",
+            "--price-fixtures",
+            str(PRICE_FIXTURES),
+            "--outputs-root",
+            str(outputs_root),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    manifest = json.loads(
+        (
+            outputs_root
+            / "backtests"
+            / "latest_backtest_manifest.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert manifest["price_provider"] == "csv"
+    assert manifest["price_provider_name"] == "csv"
+    assert manifest["price_data_type"] == "local_csv"
+    assert manifest["live_data_enabled"] is False
+    assert manifest["provider_status"] == "available"
+    assert manifest["synthetic_data_warning"] is False
+    with Path(manifest["results_path"]).open(
+        encoding="utf-8",
+        newline="",
+    ) as handle:
+        rows = list(csv.DictReader(handle))
+    cost = next(row for row in rows if row["ticker"] == "COST")
+    missing = next(row for row in rows if row["ticker"] == "MISSING")
+    assert cost["data_status"] == "complete_local_csv"
+    assert missing["data_status"] == "missing_price_data"
+    summary = Path(manifest["summary_path"]).read_text(encoding="utf-8")
+    assert "Provider: csv" in summary
+    assert "Data Type: local_csv" in summary
+
+
+def test_backtest_signals_live_stub_completes_without_data(
+    tmp_path: Path,
+) -> None:
+    ledger_path = tmp_path / "signal_ledger.csv"
+    outputs_root = tmp_path / "outputs"
+    _write_test_ledger(ledger_path)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "backtest-signals",
+            "--ledger",
+            str(ledger_path),
+            "--price-provider",
+            "live_stub",
+            "--price-fixtures",
+            str(PRICE_FIXTURES),
+            "--outputs-root",
+            str(outputs_root),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    manifest = json.loads(
+        (
+            outputs_root
+            / "backtests"
+            / "latest_backtest_manifest.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert manifest["price_provider"] == "live_stub"
+    assert manifest["price_provider_name"] == "live_stub"
+    assert manifest["price_data_type"] == "live_stub"
+    assert manifest["live_data_enabled"] is False
+    assert manifest["provider_status"] == "live_provider_not_configured"
+    assert manifest["live_provider_status"] == "not_implemented"
+    assert manifest["evaluated_records"] == 0
+    with Path(manifest["results_path"]).open(
+        encoding="utf-8",
+        newline="",
+    ) as handle:
+        rows = list(csv.DictReader(handle))
+    assert rows
+    assert all(
+        row["data_status"] == "live_provider_not_configured"
+        for row in rows
+    )
+    summary = Path(manifest["summary_path"]).read_text(encoding="utf-8")
+    assert "Provider: live_stub" in summary
+    assert "Provider Status: live_provider_not_configured" in summary
+    assert "Live data is not enabled in this build" in summary
 
 
 def test_dedupe_none_keeps_all_records(tmp_path: Path) -> None:
@@ -424,6 +534,9 @@ def test_backtesting_is_documented_and_demo_runner_remains() -> None:
     assert "Default dedupe mode is `latest_per_ticker_per_day`" in readme
     assert "Backtest Metrics Summary" in readme
     assert "Metrics evaluate archived signal behavior" in readme
+    assert "Data Provider Adapter" in readme
+    assert "--price-provider fixture" in readme
+    assert "--price-provider csv" in readme
 
     demo_script = (ROOT / "scripts" / "run_first_demo.ps1").read_text(
         encoding="utf-8"
