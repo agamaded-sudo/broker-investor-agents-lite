@@ -1923,6 +1923,20 @@ def backtest_signals(
             help="Minimum category size before a small-sample warning.",
         ),
     ] = 5,
+    walk_forward: Annotated[
+        bool,
+        typer.Option(
+            "--walk-forward",
+            help="Generate additional period-by-period validation outputs.",
+        ),
+    ] = False,
+    walk_forward_frequency: Annotated[
+        str,
+        typer.Option(
+            "--walk-forward-frequency",
+            help="Walk-forward cohort frequency; currently yearly.",
+        ),
+    ] = "yearly",
 ) -> None:
     """Evaluate archived signal fields using offline price fixtures."""
     try:
@@ -1934,6 +1948,8 @@ def backtest_signals(
             lookback_years=lookback_years,
             dedupe_mode=dedupe_mode,
             minimum_group_size=minimum_group_size,
+            walk_forward=walk_forward,
+            walk_forward_frequency=walk_forward_frequency,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         raise typer.BadParameter(f"Signal backtest failed: {exc}") from exc
@@ -1941,7 +1957,7 @@ def backtest_signals(
     table = Table(title="Archived Signal Backtest")
     table.add_column("Field")
     table.add_column("Value")
-    for label, value in (
+    rows = [
         ("Backtest Run ID", result.backtest_run_id),
         ("Backtest Folder", str(result.backtest_folder)),
         ("Backtest Summary", str(result.summary_path)),
@@ -1969,8 +1985,28 @@ def backtest_signals(
         ),
         ("Evaluated Records", str(result.evaluated_records)),
         ("Skipped Records", str(result.skipped_records)),
-        ("Status", "completed"),
-    ):
+    ]
+    if walk_forward:
+        rows.extend(
+            [
+                ("Walk-Forward", "enabled"),
+                ("Frequency", walk_forward_frequency),
+                (
+                    "Periods Evaluated",
+                    str(result.walk_forward_periods_evaluated),
+                ),
+                (
+                    "Walk-Forward Summary",
+                    str(result.walk_forward_summary_path),
+                ),
+                (
+                    "Walk-Forward Results",
+                    str(result.walk_forward_results_path),
+                ),
+            ]
+        )
+    rows.append(("Status", "completed"))
+    for label, value in rows:
         table.add_row(label, value)
     console.print(table)
 

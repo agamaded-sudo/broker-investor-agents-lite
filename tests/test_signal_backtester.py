@@ -172,6 +172,12 @@ def test_backtest_signals_creates_research_outputs(tmp_path: Path) -> None:
     assert manifest["price_data_root"] == str(PRICE_FIXTURES)
     assert manifest["live_data_enabled"] is False
     assert manifest["provider_status"] == "available"
+    assert manifest["walk_forward_enabled"] is False
+    assert manifest["walk_forward_frequency"] is None
+    assert manifest["walk_forward_summary_path"] is None
+    assert manifest["walk_forward_results_path"] is None
+    assert manifest["walk_forward_metrics_path"] is None
+    assert manifest["walk_forward_periods_evaluated"] == 0
     assert manifest["quality_warnings"]
     assert manifest["metrics_summary_path"] == str(metrics_path)
     assert manifest["metrics_summary_md_path"] == str(metrics_md_path)

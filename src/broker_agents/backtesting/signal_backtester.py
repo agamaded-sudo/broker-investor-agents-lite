@@ -17,6 +17,9 @@ from broker_agents.backtesting.price_history import (
     forward_return_observation,
     max_drawdown,
 )
+from broker_agents.backtesting.walk_forward import (
+    generate_walk_forward_outputs,
+)
 from broker_agents.data_providers.price_provider import (
     PriceHistoryProvider,
     PriceHistoryResult,
@@ -85,6 +88,10 @@ class BacktestRunResult:
     evaluated_records: int
     skipped_records: int
     metrics: dict
+    walk_forward_summary_path: Path | None = None
+    walk_forward_results_path: Path | None = None
+    walk_forward_metrics_path: Path | None = None
+    walk_forward_periods_evaluated: int = 0
 
 
 def _load_ledger(path: Path) -> list[dict]:
@@ -587,6 +594,8 @@ def run_signal_backtest(
     lookback_years: int = 5,
     dedupe_mode: str = "latest_per_ticker_per_day",
     minimum_group_size: int = 5,
+    walk_forward: bool = False,
+    walk_forward_frequency: str = "yearly",
     run_label: str | None = None,
     generated_at: datetime | None = None,
 ) -> BacktestRunResult:
@@ -598,6 +607,8 @@ def run_signal_backtest(
     if dedupe_mode not in DEDUPE_MODES:
         allowed = ", ".join(sorted(DEDUPE_MODES))
         raise ValueError(f"dedupe_mode must be one of: {allowed}.")
+    if walk_forward_frequency != "yearly":
+        raise ValueError("walk_forward_frequency must be yearly.")
     timestamp = generated_at or datetime.now(timezone.utc)
     cutoff = timestamp.replace(year=timestamp.year - lookback_years)
     loaded_records = _load_ledger(ledger_path)
@@ -722,6 +733,35 @@ def run_signal_backtest(
         render_backtest_metrics_summary(metrics),
         encoding="utf-8",
     )
+    benchmark_label = (
+        (
+            "SPY synthetic fixture"
+            if provider.data_type == "synthetic_fixture"
+            else f"SPY {provider.data_type}"
+        )
+        if benchmark_result.status == "available"
+        else "Missing"
+    )
+    walk_forward_result = None
+    if walk_forward:
+        walk_forward_result = generate_walk_forward_outputs(
+            rows=rows,
+            output_dir=backtest_folder,
+            context={
+                "backtest_run_id": backtest_run_id,
+                "ledger_path": str(ledger_path),
+                "price_provider": provider.provider_name,
+                "price_data_root": (
+                    str(provider.data_root)
+                    if provider.data_root is not None
+                    else "Not used"
+                ),
+                "price_data_type": provider.data_type,
+                "benchmark": benchmark_label,
+            },
+            frequency=walk_forward_frequency,
+            minimum_group_size=minimum_group_size,
+        )
     manifest = {
         "backtest_run_id": backtest_run_id,
         "ledger_path": str(ledger_path),
@@ -755,14 +795,30 @@ def run_signal_backtest(
         "quality_warnings": quality_warnings,
         "tickers": sorted({str(row["ticker"]) for row in rows}),
         "forward_windows": ["3m", "6m", "12m"],
-        "benchmark": (
-            (
-                "SPY synthetic fixture"
-                if provider.data_type == "synthetic_fixture"
-                else f"SPY {provider.data_type}"
-            )
-            if benchmark_result.status == "available"
-            else "Missing"
+        "benchmark": benchmark_label,
+        "walk_forward_enabled": walk_forward,
+        "walk_forward_frequency": (
+            walk_forward_frequency if walk_forward else None
+        ),
+        "walk_forward_summary_path": (
+            str(walk_forward_result.summary_path)
+            if walk_forward_result
+            else None
+        ),
+        "walk_forward_results_path": (
+            str(walk_forward_result.results_path)
+            if walk_forward_result
+            else None
+        ),
+        "walk_forward_metrics_path": (
+            str(walk_forward_result.metrics_path)
+            if walk_forward_result
+            else None
+        ),
+        "walk_forward_periods_evaluated": (
+            walk_forward_result.metrics["total_periods"]
+            if walk_forward_result
+            else 0
         ),
         "results_path": str(results_path),
         "summary_path": str(backtest_folder / "backtest_summary.md"),
@@ -795,4 +851,24 @@ def run_signal_backtest(
         evaluated_records=evaluated_records,
         skipped_records=skipped_records,
         metrics=metrics,
+        walk_forward_summary_path=(
+            walk_forward_result.summary_path
+            if walk_forward_result
+            else None
+        ),
+        walk_forward_results_path=(
+            walk_forward_result.results_path
+            if walk_forward_result
+            else None
+        ),
+        walk_forward_metrics_path=(
+            walk_forward_result.metrics_path
+            if walk_forward_result
+            else None
+        ),
+        walk_forward_periods_evaluated=(
+            walk_forward_result.metrics["total_periods"]
+            if walk_forward_result
+            else 0
+        ),
     )

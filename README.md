@@ -453,6 +453,24 @@ for pipeline validation only. It is not a real historical recommendation set.
 No recommendation, ranking, allocation instruction, or trade signal is
 produced.
 
+### Walk-Forward Historical Validation
+
+Walk-forward validation groups signal records into yearly cohorts and reports
+their 3-month, 6-month, and 12-month outcomes separately:
+
+```powershell
+python -m broker_agents.cli backtest-signals --ledger data/inputs/trial_ledgers/sample_historical_signal_ledger.csv --price-provider csv --price-fixtures tests/fixtures/historical_price_history --outputs-root data/outputs --lookback-years 5 --dedupe-mode latest_per_ticker_per_day --walk-forward --walk-forward-frequency yearly
+```
+
+When enabled, the backtest run folder also contains
+`walk_forward_summary.md`, `walk_forward_results.csv`, and
+`walk_forward_metrics.json`.
+
+This mode evaluates signal cohorts year by year to identify period-dependent
+behavior. It does not build or simulate a portfolio, define entry or exit
+rules, or represent live trading. It produces no recommendation, ranking, or
+trade signal.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from
