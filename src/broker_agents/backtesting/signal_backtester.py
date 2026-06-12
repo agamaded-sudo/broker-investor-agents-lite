@@ -8,6 +8,10 @@ from pathlib import Path
 import re
 from statistics import median
 
+from broker_agents.backtesting.backtest_metrics import (
+    calculate_backtest_metrics,
+    render_backtest_metrics_summary,
+)
 from broker_agents.backtesting.price_history import (
     fixture_path_for_ticker,
     forward_return,
@@ -69,10 +73,13 @@ class BacktestRunResult:
     backtest_folder: Path
     summary_path: Path
     results_path: Path
+    metrics_summary_path: Path
+    metrics_summary_md_path: Path
     manifest_path: Path
     latest_manifest_path: Path
     evaluated_records: int
     skipped_records: int
+    metrics: dict
 
 
 def _load_ledger(path: Path) -> list[dict]:
@@ -322,7 +329,42 @@ def _group_summary(
     return lines
 
 
-def _render_summary(manifest: dict, rows: list[dict]) -> str:
+def _metric_display(value: object) -> str:
+    """Format an optional metric for the main Markdown summary."""
+    if value is None:
+        return "Missing"
+    if isinstance(value, bool):
+        return str(value).lower()
+    if isinstance(value, float):
+        return f"{value:.4f}"
+    return str(value)
+
+
+def _compact_metrics_table(metrics: dict, field: str) -> list[str]:
+    """Render one compact grouped metrics table."""
+    lines = [
+        f"### {field}",
+        "",
+        (
+            "| Group | Sample Size | Median 12M Return | "
+            "Median Relative 12M Return | Hit Rate vs Benchmark 12M | "
+            "Small Sample Warning |"
+        ),
+        "|---|---:|---:|---:|---:|---|",
+    ]
+    for group in metrics["grouped_metrics"][field]:
+        lines.append(
+            f"| {group['group_name']} | {group['sample_size']} | "
+            f"{_metric_display(group['median_forward_return_12m'])} | "
+            f"{_metric_display(group['median_relative_return_12m'])} | "
+            f"{_metric_display(group['hit_rate_vs_benchmark_12m'])} | "
+            f"{_metric_display(group['small_sample_warning'])} |"
+        )
+    lines.append("")
+    return lines
+
+
+def _render_summary(manifest: dict, rows: list[dict], metrics: dict) -> str:
     """Render a transparent research-only backtest summary."""
     lines = [
         "# Archived Signal Backtest Summary",
@@ -405,6 +447,54 @@ def _render_summary(manifest: dict, rows: list[dict]) -> str:
                 manifest["minimum_group_size"],
             )
         )
+    lines.extend(
+        [
+            "## Metrics Summary",
+            "",
+            f"- Sample Size: {metrics['sample_size']}",
+            (
+                "- Hit Rate vs Benchmark 12M: "
+                f"{_metric_display(metrics['hit_rate_vs_benchmark_12m'])}"
+            ),
+            (
+                "- Median Relative Return 12M: "
+                f"{_metric_display(metrics['median_relative_return_12m'])}"
+            ),
+            (
+                "- Positive Return Rate 12M: "
+                f"{_metric_display(metrics['positive_return_rate_12m'])}"
+            ),
+            (
+                "- Median Max Drawdown 12M: "
+                f"{_metric_display(metrics['median_max_drawdown_12m'])}"
+            ),
+            (
+                "- Small Sample Warning: "
+                f"{_metric_display(metrics['small_sample_warning'])}"
+            ),
+            (
+                "- Concentration Warning: "
+                f"{_metric_display(metrics['concentration_warning'])}"
+            ),
+            (
+                "- Synthetic Data Warning: "
+                f"{_metric_display(metrics['synthetic_data_warning'])}"
+            ),
+            (
+                "- Full Metrics JSON: "
+                f"{manifest['metrics_summary_path']}"
+            ),
+            "",
+            "## Grouped Metrics",
+            "",
+        ]
+    )
+    for field in (
+        "readiness_label",
+        "source_verification_status",
+        "promotion_blocking_bucket",
+    ):
+        lines.extend(_compact_metrics_table(metrics, field))
     lines.extend(
         [
             "## Limitations",
@@ -536,6 +626,24 @@ def run_signal_backtest(
         writer.writeheader()
         writer.writerows(rows)
 
+    metrics = calculate_backtest_metrics(
+        rows,
+        price_data_type="synthetic_fixture",
+    )
+    metrics_summary_path = (
+        backtest_folder / "backtest_metrics_summary.json"
+    )
+    metrics_summary_path.write_text(
+        json.dumps(metrics, indent=2),
+        encoding="utf-8",
+    )
+    metrics_summary_md_path = (
+        backtest_folder / "backtest_metrics_summary.md"
+    )
+    metrics_summary_md_path.write_text(
+        render_backtest_metrics_summary(metrics),
+        encoding="utf-8",
+    )
     manifest = {
         "backtest_run_id": backtest_run_id,
         "ledger_path": str(ledger_path),
@@ -548,7 +656,7 @@ def run_signal_backtest(
         "duplicate_records_removed": duplicate_records_removed,
         "evaluated_records": evaluated_records,
         "skipped_records": skipped_records,
-        "small_sample_warning": small_sample_warning,
+        "group_small_sample_warning": small_sample_warning,
         "minimum_group_size": minimum_group_size,
         "price_data_type": "synthetic_fixture",
         "quality_warnings": quality_warnings,
@@ -561,6 +669,11 @@ def run_signal_backtest(
         ),
         "results_path": str(results_path),
         "summary_path": str(backtest_folder / "backtest_summary.md"),
+        "metrics_summary_path": str(metrics_summary_path),
+        "metrics_summary_md_path": str(metrics_summary_md_path),
+        "overall_sample_size": metrics["sample_size"],
+        "small_sample_warning": metrics["small_sample_warning"],
+        "synthetic_data_warning": metrics["synthetic_data_warning"],
         "status": "completed",
     }
     manifest_text = json.dumps(manifest, indent=2)
@@ -568,7 +681,7 @@ def run_signal_backtest(
     manifest_path.write_text(manifest_text, encoding="utf-8")
     summary_path = backtest_folder / "backtest_summary.md"
     summary_path.write_text(
-        _render_summary(manifest, rows),
+        _render_summary(manifest, rows, metrics),
         encoding="utf-8",
     )
     latest_manifest_path = backtests_root / "latest_backtest_manifest.json"
@@ -578,8 +691,11 @@ def run_signal_backtest(
         backtest_folder=backtest_folder,
         summary_path=summary_path,
         results_path=results_path,
+        metrics_summary_path=metrics_summary_path,
+        metrics_summary_md_path=metrics_summary_md_path,
         manifest_path=manifest_path,
         latest_manifest_path=latest_manifest_path,
         evaluated_records=evaluated_records,
         skipped_records=skipped_records,
+        metrics=metrics,
     )

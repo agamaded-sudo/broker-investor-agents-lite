@@ -1935,8 +1935,26 @@ def backtest_signals(
         ("Backtest Folder", str(result.backtest_folder)),
         ("Backtest Summary", str(result.summary_path)),
         ("Backtest Results", str(result.results_path)),
+        ("Metrics Summary", str(result.metrics_summary_path)),
         ("Backtest Manifest", str(result.manifest_path)),
         ("Dedupe Mode", dedupe_mode),
+        ("Sample Size", str(result.metrics["sample_size"])),
+        (
+            "Hit Rate vs Benchmark 12M",
+            (
+                f"{result.metrics['hit_rate_vs_benchmark_12m']:.4f}"
+                if result.metrics["hit_rate_vs_benchmark_12m"] is not None
+                else "Missing"
+            ),
+        ),
+        (
+            "Small Sample Warning",
+            str(result.metrics["small_sample_warning"]).lower(),
+        ),
+        (
+            "Synthetic Data Warning",
+            str(result.metrics["synthetic_data_warning"]).lower(),
+        ),
         ("Evaluated Records", str(result.evaluated_records)),
         ("Skipped Records", str(result.skipped_records)),
         ("Status", "completed"),

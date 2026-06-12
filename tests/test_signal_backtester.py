@@ -128,7 +128,12 @@ def test_backtest_signals_creates_research_outputs(tmp_path: Path) -> None:
         "Backtest Folder",
         "Backtest Summary",
         "Backtest Results",
+        "Metrics Summary",
         "Backtest Manifest",
+        "Sample Size",
+        "Hit Rate vs Benchmark 12M",
+        "Small Sample Warning",
+        "Synthetic Data Warning",
         "Evaluated Records",
         "Skipped Records",
         "completed",
@@ -142,9 +147,13 @@ def test_backtest_signals_creates_research_outputs(tmp_path: Path) -> None:
     summary_path = backtest_folder / "backtest_summary.md"
     results_path = backtest_folder / "backtest_results.csv"
     manifest_path = backtest_folder / "backtest_manifest.json"
+    metrics_path = backtest_folder / "backtest_metrics_summary.json"
+    metrics_md_path = backtest_folder / "backtest_metrics_summary.md"
     assert summary_path.exists()
     assert results_path.exists()
     assert manifest_path.exists()
+    assert metrics_path.exists()
+    assert metrics_md_path.exists()
     assert manifest["ledger_path"] == str(ledger_path)
     assert manifest["lookback_years"] == 5
     assert manifest["dedupe_mode"] == "latest_per_ticker_per_day"
@@ -157,6 +166,11 @@ def test_backtest_signals_creates_research_outputs(tmp_path: Path) -> None:
     assert manifest["minimum_group_size"] == 5
     assert manifest["price_data_type"] == "synthetic_fixture"
     assert manifest["quality_warnings"]
+    assert manifest["metrics_summary_path"] == str(metrics_path)
+    assert manifest["metrics_summary_md_path"] == str(metrics_md_path)
+    assert manifest["overall_sample_size"] == 1
+    assert manifest["small_sample_warning"] is True
+    assert manifest["synthetic_data_warning"] is True
     assert manifest["status"] == "completed"
     assert manifest["benchmark"] == "SPY synthetic fixture"
 
@@ -199,6 +213,45 @@ def test_backtest_signals_creates_research_outputs(tmp_path: Path) -> None:
     assert missing["data_status"] == "missing_price_data"
     assert missing["forward_return_12m"] == ""
 
+    metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+    for field in (
+        "sample_size",
+        "median_relative_return_12m",
+        "hit_rate_vs_benchmark_12m",
+        "positive_return_rate_12m",
+        "median_max_drawdown_12m",
+        "small_sample_warning",
+        "synthetic_data_warning",
+        "grouped_metrics",
+    ):
+        assert field in metrics
+    assert metrics["sample_size"] == 1
+    assert metrics["hit_rate_vs_benchmark_12m"] == 1.0
+    assert metrics["positive_return_rate_12m"] == 1.0
+    assert metrics["small_sample_warning"] is True
+    assert metrics["concentration_warning"] is True
+    assert metrics["synthetic_data_warning"] is True
+    assert metrics["highest_forward_return_12m"] is not None
+    assert metrics["lowest_forward_return_12m"] is not None
+    for group_field in (
+        "readiness_label",
+        "source_verification_status",
+        "promotion_blocking_bucket",
+        "buffett_interest_level",
+        "munger_interest_level",
+        "fisher_interest_level",
+        "lynch_interest_level",
+        "bogle_interest_level",
+    ):
+        assert group_field in metrics["grouped_metrics"]
+        assert metrics["grouped_metrics"][group_field]
+        assert (
+            metrics["grouped_metrics"][group_field][0][
+                "small_sample_warning"
+            ]
+            is True
+        )
+
     summary = summary_path.read_text(encoding="utf-8")
     for text in (
         "Lookback Years: 5",
@@ -220,6 +273,13 @@ def test_backtest_signals_creates_research_outputs(tmp_path: Path) -> None:
         "fisher_interest_level",
         "lynch_interest_level",
         "bogle_interest_level",
+        "Metrics Summary",
+        "Hit Rate vs Benchmark 12M",
+        "Median Relative Return 12M",
+        "Positive Return Rate 12M",
+        "Median Max Drawdown 12M",
+        "Synthetic Data Warning",
+        "Grouped Metrics",
     ):
         assert text in summary
     summary_lower = summary.lower()
@@ -233,6 +293,13 @@ def test_backtest_signals_creates_research_outputs(tmp_path: Path) -> None:
     assert "not a recommendation" in summary_lower
     assert "or trade signal" in summary_lower
     assert "research-only associations" in summary_lower
+
+    metrics_markdown = metrics_md_path.read_text(encoding="utf-8")
+    assert "Backtest Metrics Summary" in metrics_markdown
+    assert "readiness_label" in metrics_markdown
+    assert "source_verification_status" in metrics_markdown
+    assert "promotion_blocking_bucket" in metrics_markdown
+    assert "not a recommendation" in metrics_markdown.lower()
 
 
 def test_dedupe_none_keeps_all_records(tmp_path: Path) -> None:
@@ -355,6 +422,8 @@ def test_backtesting_is_documented_and_demo_runner_remains() -> None:
     assert "Backtest Quality Controls" in readme
     assert "--dedupe-mode latest_per_ticker_per_day" in readme
     assert "Default dedupe mode is `latest_per_ticker_per_day`" in readme
+    assert "Backtest Metrics Summary" in readme
+    assert "Metrics evaluate archived signal behavior" in readme
 
     demo_script = (ROOT / "scripts" / "run_first_demo.ps1").read_text(
         encoding="utf-8"

@@ -363,6 +363,21 @@ small-sample warnings. Synthetic fixture data is for framework testing only.
 Results remain research-only associations, not recommendations or trade
 signals.
 
+### Backtest Metrics Summary
+
+Each backtest also creates `backtest_metrics_summary.json` and
+`backtest_metrics_summary.md` in its run folder:
+
+```powershell
+python -m broker_agents.cli backtest-signals --ledger data/outputs/signal_archive/signal_ledger.csv --price-fixtures tests/fixtures/price_history --outputs-root data/outputs --lookback-years 5 --dedupe-mode latest_per_ticker_per_day
+```
+
+Metrics evaluate archived signal behavior through forward-return,
+benchmark-relative, positive-return, and drawdown statistics. Grouped metrics
+cover readiness, source verification, promotion blockers, and each investor's
+interest level. Synthetic fixture data is not real market data. These metrics
+are research-only and produce no recommendation, ranking, or trading signal.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from
