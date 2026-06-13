@@ -715,6 +715,27 @@ outcomes after readiness events. It remains separate from the main signal
 ledger and produces no recommendation, ranking, allocation instruction,
 rebalancing instruction, trade signal, or execution instruction.
 
+### Readiness Trial Backtest
+
+The existing research backtester detects exported readiness-only ledgers and
+labels the run as `readiness_trial`:
+
+```powershell
+python -m broker_agents.cli backtest-signals --ledger data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv --price-provider csv --price-fixtures tests/fixtures/historical_price_history --outputs-root data/outputs --lookback-years 5 --dedupe-mode latest_per_ticker_per_day
+```
+
+This studies outcomes after readiness events.
+It is not a trading strategy backtest.
+It is not a recommendation backtest or proof of investment performance.
+Readiness safety fields are preserved in `backtest_results.csv`; invalid rows
+are skipped with warnings. Deduplication should remain enabled to prevent
+repeated run artifacts from inflating the sample. When only one ticker is
+present, concentration and small-sample warnings are expected.
+
+Results are research diagnostics only and must not be interpreted as
+recommendations, rankings, allocation instructions, rebalancing instructions,
+trade signals, or execution instructions.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from

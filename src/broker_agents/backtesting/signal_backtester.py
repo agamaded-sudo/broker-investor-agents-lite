@@ -40,6 +40,28 @@ INTEREST_FIELDS = (
     "lynch_interest_level",
     "bogle_interest_level",
 )
+READINESS_TRIAL_FIELDS = (
+    "record_type",
+    "signal_generation_status",
+    "safe_for_historical_signal_generation",
+    "not_trade_signal",
+    "not_recommendation",
+    "not_allocation_instruction",
+    "source_run_id",
+    "assembly_status",
+    "partial_sections_count",
+    "readiness_only_sections_count",
+    "leakage_risk_sections_count",
+    "blocking_reasons_count",
+    "trial_backtest_label",
+)
+READINESS_RECORD_TYPE = "historical_signal_readiness_candidate"
+READINESS_TRIAL_SAFETY_NOTICE = (
+    "This readiness trial backtest evaluates readiness-only research "
+    "artifacts. It is not a recommendation backtest, ranking backtest, "
+    "allocation backtest, rebalancing backtest, trade signal backtest, or "
+    "execution instruction."
+)
 RESULT_FIELDS = (
     "ticker",
     "run_id",
@@ -55,6 +77,7 @@ RESULT_FIELDS = (
     "promotion_blocking_count",
     "total_work_orders",
     *INTEREST_FIELDS,
+    *READINESS_TRIAL_FIELDS,
     "price_column_used",
     "price_start_date",
     "price_end_date_3m",
@@ -90,6 +113,7 @@ class BacktestRunResult:
     evaluated_records: int
     skipped_records: int
     metrics: dict
+    backtest_run_type: str = "standard"
     walk_forward_summary_path: Path | None = None
     walk_forward_results_path: Path | None = None
     walk_forward_metrics_path: Path | None = None
@@ -122,6 +146,36 @@ def _parse_generated_at(value: str | None) -> datetime | None:
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
     return parsed.astimezone(timezone.utc)
+
+
+def _as_bool(value: object) -> bool:
+    """Normalize boolean fields from JSON or CSV ledgers."""
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"true", "1", "yes"}
+
+
+def _is_readiness_trial(records: list[dict]) -> bool:
+    """Detect a readiness-only trial ledger from explicit record metadata."""
+    return any(
+        record.get("record_type") == READINESS_RECORD_TYPE
+        or record.get("trial_backtest_label") == "readiness_only_trial"
+        for record in records
+    )
+
+
+def _valid_readiness_trial_record(record: dict) -> bool:
+    """Require every readiness-only safety invariant before evaluation."""
+    return (
+        record.get("record_type") == READINESS_RECORD_TYPE
+        and record.get("signal_generation_status") == "readiness_only"
+        and not _as_bool(
+            record.get("safe_for_historical_signal_generation")
+        )
+        and _as_bool(record.get("not_trade_signal"))
+        and _as_bool(record.get("not_recommendation"))
+        and _as_bool(record.get("not_allocation_instruction"))
+    )
 
 
 def _signal_date(record: dict) -> str:
@@ -418,6 +472,26 @@ def _render_summary(manifest: dict, rows: list[dict], metrics: dict) -> str:
         f"- Price Data Type: {manifest['price_data_type']}",
         f"- Minimum Group Size: {manifest['minimum_group_size']}",
         f"- Small Sample Warning: {str(manifest['small_sample_warning']).lower()}",
+        *(
+            [
+                "",
+                "## Readiness Trial Backtest Notice",
+                "",
+                "- Backtest Run Type: readiness_trial",
+                "- Readiness Only: Yes",
+                "- Not Trade Signal: Yes",
+                "- Not Recommendation: Yes",
+                "- Not Allocation Instruction: Yes",
+                f"- Safety Notice: {manifest['safety_notice']}",
+                "",
+                (
+                    "These results must not be interpreted as investment "
+                    "recommendations or trading signals."
+                ),
+            ]
+            if manifest["backtest_run_type"] == "readiness_trial"
+            else []
+        ),
         "",
         "## Price Data Provider",
         "",
@@ -614,6 +688,22 @@ def run_signal_backtest(
     timestamp = generated_at or datetime.now(timezone.utc)
     cutoff = timestamp.replace(year=timestamp.year - lookback_years)
     loaded_records = _load_ledger(ledger_path)
+    input_rows = len(loaded_records)
+    readiness_trial = _is_readiness_trial(loaded_records)
+    invalid_readiness_rows = 0
+    readiness_warnings = []
+    if readiness_trial:
+        valid_records = []
+        for index, record in enumerate(loaded_records, start=1):
+            if _valid_readiness_trial_record(record):
+                valid_records.append(record)
+            else:
+                invalid_readiness_rows += 1
+                readiness_warnings.append(
+                    f"Skipped readiness trial row {index}: safety fields are "
+                    "missing or invalid."
+                )
+        loaded_records = valid_records
     trial_sources = sorted(
         {
             str(record.get("trial_signal_source") or "").strip()
@@ -629,6 +719,7 @@ def run_signal_backtest(
         generated_at_value = _parse_generated_at(record.get("generated_at"))
         if generated_at_value is None or generated_at_value >= cutoff:
             eligible_records.append(record)
+    noneligible_rows = len(loaded_records) - len(eligible_records)
     total_records_before_dedupe = len(eligible_records)
     records = _dedupe_records(eligible_records, dedupe_mode)
     duplicate_records_removed = total_records_before_dedupe - len(records)
@@ -682,6 +773,12 @@ def run_signal_backtest(
         len(rows) < minimum_group_size or bool(small_groups)
     )
     quality_warnings = []
+    quality_warnings.extend(readiness_warnings)
+    if readiness_trial:
+        quality_warnings.append(
+            "Readiness trial rows are research-only artifacts and are not "
+            "actionable signals."
+        )
     if provider.data_type == "synthetic_fixture":
         quality_warnings.append(
             "Synthetic fixture price data is for framework testing only."
@@ -767,6 +864,25 @@ def run_signal_backtest(
     manifest = {
         "backtest_run_id": backtest_run_id,
         "ledger_path": str(ledger_path),
+        "backtest_run_type": (
+            "readiness_trial" if readiness_trial else "standard"
+        ),
+        "source_ledger_type": (
+            "historical_readiness_trial_ledger"
+            if readiness_trial
+            else "standard_signal_ledger"
+        ),
+        "readiness_only": readiness_trial,
+        "not_trade_signal": readiness_trial,
+        "not_recommendation": readiness_trial,
+        "not_allocation_instruction": readiness_trial,
+        "safety_notice": (
+            READINESS_TRIAL_SAFETY_NOTICE if readiness_trial else None
+        ),
+        "input_rows": input_rows,
+        "evaluated_rows": len(records),
+        "skipped_rows": invalid_readiness_rows + noneligible_rows,
+        "invalid_readiness_rows": invalid_readiness_rows,
         "historical_trial_ledger": historical_trial_ledger,
         "trial_signal_source": ";".join(trial_sources) or None,
         "price_fixtures_path": str(price_fixtures_path),
@@ -853,6 +969,7 @@ def run_signal_backtest(
         evaluated_records=evaluated_records,
         skipped_records=skipped_records,
         metrics=metrics,
+        backtest_run_type=manifest["backtest_run_type"],
         walk_forward_summary_path=(
             walk_forward_result.summary_path
             if walk_forward_result

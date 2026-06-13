@@ -2760,6 +2760,7 @@ def backtest_signals(
     table.add_column("Field")
     table.add_column("Value")
     rows = [
+        ("Backtest Run Type", result.backtest_run_type),
         ("Backtest Run ID", result.backtest_run_id),
         ("Backtest Folder", str(result.backtest_folder)),
         ("Backtest Summary", str(result.summary_path)),
