@@ -19,6 +19,13 @@ from broker_agents.historical.historical_financials import (
     validate_historical_financials_csv,
     write_historical_financials_csv,
 )
+from broker_agents.historical.historical_enriched_input import (
+    HistoricalEnrichedInputAssembly,
+    HistoricalInputSectionStatus,
+    build_historical_enriched_input_assembly,
+    render_historical_enriched_input_assembly,
+    write_historical_enriched_input_assembly,
+)
 from broker_agents.historical.price_windows import (
     PriceHistoryFilterResult,
     PriceWindowPolicy,
@@ -40,6 +47,8 @@ __all__ = [
     "HistoricalFinancialRow",
     "HistoricalFinancialsFilterResult",
     "HistoricalFinancialsValidationResult",
+    "HistoricalEnrichedInputAssembly",
+    "HistoricalInputSectionStatus",
     "HistoricalProviderCapability",
     "PriceHistoryFilterResult",
     "PriceWindowPolicy",
@@ -47,11 +56,14 @@ __all__ = [
     "build_financials_as_of_contract",
     "build_as_of_context",
     "build_historical_snapshot_contract",
+    "build_historical_enriched_input_assembly",
     "build_outcome_price_window",
     "filter_financials_as_of",
     "filter_price_history_by_date",
     "historical_financial_row_to_dict",
     "load_historical_financials_csv",
+    "render_historical_enriched_input_assembly",
     "validate_historical_financials_csv",
     "write_historical_financials_csv",
+    "write_historical_enriched_input_assembly",
 ]

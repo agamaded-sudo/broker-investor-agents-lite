@@ -619,6 +619,28 @@ step for future historical analysis. No live API or SEC request is used, and
 no recommendation, ranking, allocation instruction, or trade signal is
 produced.
 
+### Historical Enriched Input Assembly
+
+Each historical `analyze-stock` run now creates a run-local readiness artifact
+that combines the historical snapshot contract, analysis price window, and
+official-financials snapshot metadata:
+
+```powershell
+python -m broker_agents.cli analyze-stock --ticker COST --examples-root examples --outputs-root data/outputs --fixtures-root tests/fixtures --portfolio-context examples/portfolio_context.yaml --as-of-date 2023-06-30 --financials-provider historical_csv --financials-root tests/fixtures/historical_financials
+```
+
+Inspect `historical_enriched_input_assembly.json`,
+`historical_enriched_input_assembly.md`, `run_manifest.json`, and
+`run_summary.md` under `data/outputs/COST/runs/{RUN_ID}/`.
+
+The assembly identifies partial/as-of-capable sections and the valuation,
+growth, market snapshot, qualitative, index-overlap, verification, and
+investor-output sections that remain readiness-only or leakage-risk.
+It does not generate signals. It does not alter investor decisions.
+`safe_for_historical_signal_generation` remains `false` until sufficient
+point-in-time inputs are available. No live API is used. No recommendation,
+ranking, allocation instruction, or trade signal is produced.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from

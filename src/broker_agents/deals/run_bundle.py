@@ -19,6 +19,10 @@ from broker_agents.historical.historical_financials import (
     validate_historical_financials_csv,
     write_historical_financials_csv,
 )
+from broker_agents.historical.historical_enriched_input import (
+    build_historical_enriched_input_assembly,
+    write_historical_enriched_input_assembly,
+)
 from broker_agents.historical.price_windows import (
     build_analysis_price_window,
 )
@@ -149,6 +153,9 @@ def _run_summary(manifest: dict) -> str:
     financials_contract = manifest.get("official_financials_as_of_contract") or {}
     financials_snapshot = manifest.get("official_financials_as_of_snapshot") or {}
     price_window = manifest.get("historical_price_window") or {}
+    historical_assembly = (
+        manifest.get("historical_enriched_input_assembly") or {}
+    )
     capability_lines = [
         (
             f"- {item['section']}: {item['provider_name']} / "
@@ -372,6 +379,39 @@ def _run_summary(manifest: dict) -> str:
                         "trade signal."
                     ),
                     "",
+                    "## Historical Enriched Input Assembly",
+                    "",
+                    (
+                        "- Assembly Status: "
+                        f"{historical_assembly['assembly_status']}"
+                    ),
+                    "- Safe for Historical Signal Generation: No",
+                    (
+                        "- Supported / Partial Sections: "
+                        f"{', '.join(historical_assembly['supported_sections'] + historical_assembly['partial_sections']) or 'None'}"
+                    ),
+                    (
+                        "- Readiness-Only Sections: "
+                        f"{', '.join(historical_assembly['readiness_only_sections']) or 'None'}"
+                    ),
+                    (
+                        "- Leakage Risk Sections: "
+                        f"{', '.join(historical_assembly['leakage_risk_sections']) or 'None'}"
+                    ),
+                    (
+                        "- Assembly File: "
+                        f"{historical_assembly['assembly_file']}"
+                    ),
+                    "",
+                    (
+                        "Historical signal generation remains disabled until "
+                        "sufficient point-in-time inputs are available."
+                    ),
+                    *[
+                        f"- Warning: {warning}"
+                        for warning in historical_assembly["warnings"]
+                    ],
+                    "",
                     "## Historical Analysis Warning",
                     "",
                     manifest["data_cutoff_note"],
@@ -475,6 +515,74 @@ def create_analyze_stock_run_bundle(
         if analysis_window
         else None
     )
+    assembly_json_path = (
+        run_folder / "historical_enriched_input_assembly.json"
+    )
+    assembly_markdown_path = (
+        run_folder / "historical_enriched_input_assembly.md"
+    )
+    if as_of_context.historical_mode:
+        historical_assembly = build_historical_enriched_input_assembly(
+            ticker=intake.ticker,
+            as_of_date=as_of_context.as_of_date.isoformat(),
+            run_id=run_id,
+            point_in_time_enforcement=(
+                as_of_context.point_in_time_enforcement
+            ),
+            historical_snapshot_contract=snapshot_contract.to_dict(),
+            historical_price_window=historical_price_window,
+            official_financials_snapshot=financials_snapshot,
+            artifacts={
+                "historical_snapshot_contract": (
+                    f"{run_folder / 'run_manifest.json'}"
+                    "#historical_snapshot_contract"
+                ),
+                "historical_price_window": (
+                    f"{run_folder / 'run_manifest.json'}"
+                    "#historical_price_window"
+                ),
+                **(
+                    {
+                        "official_financials_snapshot": (
+                            financials_snapshot["snapshot_file"]
+                        ),
+                        "official_financials_snapshot_metadata": (
+                            financials_snapshot["metadata_file"]
+                        ),
+                    }
+                    if financials_snapshot.get("enabled")
+                    else {}
+                ),
+            },
+        )
+        write_historical_enriched_input_assembly(
+            historical_assembly,
+            json_path=assembly_json_path,
+            markdown_path=assembly_markdown_path,
+        )
+        historical_assembly_manifest = {
+            "enabled": True,
+            "assembly_file": str(assembly_json_path),
+            "assembly_markdown": str(assembly_markdown_path),
+            "assembly_status": historical_assembly.assembly_status,
+            "safe_for_historical_signal_generation": False,
+            "supported_sections": historical_assembly.supported_sections,
+            "partial_sections": historical_assembly.partial_sections,
+            "readiness_only_sections": (
+                historical_assembly.readiness_only_sections
+            ),
+            "leakage_risk_sections": (
+                historical_assembly.leakage_risk_sections
+            ),
+            "warnings": historical_assembly.warnings,
+        }
+    else:
+        historical_assembly_manifest = {
+            "enabled": False,
+            "assembly_status": "not_enabled",
+            "safe_for_historical_signal_generation": False,
+            "warnings": [],
+        }
     manifest = {
         "run_id": run_id,
         "ticker": intake.ticker,
@@ -491,6 +599,9 @@ def create_analyze_stock_run_bundle(
         ),
         "official_financials_as_of_snapshot": financials_snapshot,
         "historical_price_window": historical_price_window,
+        "historical_enriched_input_assembly": (
+            historical_assembly_manifest
+        ),
         "market_price_window_enforcement": (
             analysis_window.enforcement_status if analysis_window else None
         ),
