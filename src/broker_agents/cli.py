@@ -38,6 +38,9 @@ from broker_agents.backtesting.signal_backtester import run_signal_backtest
 from broker_agents.backtesting.readiness_trial_decision_report import (
     regenerate_readiness_trial_decision_report,
 )
+from broker_agents.backtesting.readiness_trial_diagnostic_report import (
+    regenerate_readiness_trial_diagnostic_report,
+)
 from broker_agents.backtesting.readiness_trial_export import (
     export_readiness_ledger_to_trial_ledger,
     validate_readiness_trial_ledger,
@@ -3240,6 +3243,8 @@ def backtest_signals(
                     "Statistical Validity",
                     str(result.statistical_validity),
                 ),
+                ("Diagnostic Report", str(result.diagnostic_report_path)),
+                ("Diagnostic Status", str(result.diagnostic_status)),
             ]
         )
     rows.append(("Status", "completed"))
@@ -3280,6 +3285,46 @@ def generate_readiness_trial_decision_report(
         ("Statistical Validity", files.report.statistical_validity),
         ("Decision Report", str(files.markdown_path)),
         ("Decision Report JSON", str(files.json_path)),
+        ("Status", "completed"),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+
+
+@app.command("generate-readiness-trial-diagnostic-report")
+def generate_readiness_trial_diagnostic_report(
+    backtest_folder: Annotated[
+        Path,
+        typer.Option(
+            "--backtest-folder",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Completed readiness trial backtest folder.",
+        ),
+    ],
+) -> None:
+    """Regenerate attribution diagnostics for a readiness trial."""
+    try:
+        files = regenerate_readiness_trial_diagnostic_report(
+            backtest_folder
+        )
+    except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Diagnostic report generation failed: {exc}"
+        ) from exc
+
+    table = Table(title="Readiness Trial Diagnostic Report")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Backtest Run ID", files.report.backtest_run_id),
+        ("Diagnostic Status", files.report.diagnostic_status),
+        ("Diagnostic Report", str(files.markdown_path)),
+        ("Diagnostic Report JSON", str(files.json_path)),
         ("Status", "completed"),
     )
     for label, value in rows:

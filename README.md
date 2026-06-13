@@ -830,6 +830,27 @@ instructions. Results remain diagnostic until sample size and data quality are
 sufficient. Missing metadata and readiness-only sections remain visible, and
 dedupe remains important because repeated runs may inflate raw records.
 
+### Readiness Trial Diagnostic Report
+
+Readiness trial backtests now create a diagnostic report beside the decision
+report:
+
+```powershell
+python -m broker_agents.cli backtest-signals --ledger data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv --price-provider csv --price-fixtures tests/fixtures/historical_price_history --outputs-root data/outputs --lookback-years 5 --dedupe-mode latest_per_ticker_per_day --walk-forward --walk-forward-frequency yearly
+```
+
+The decision report states whether results are decision-grade. The diagnostic
+report explains what is driving results through several focused reviews. It
+covers period, ticker, outlier, horizon, concentration, stability, and
+missing-metadata drivers. It is research-only and does not create
+recommendations or trade signals.
+
+Regenerate diagnostics from an existing readiness backtest folder with:
+
+```powershell
+python -m broker_agents.cli generate-readiness-trial-diagnostic-report --backtest-folder data/outputs/backtests/{RUN_ID}
+```
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from

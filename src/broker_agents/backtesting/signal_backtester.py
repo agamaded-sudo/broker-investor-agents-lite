@@ -20,6 +20,9 @@ from broker_agents.backtesting.price_history import (
 from broker_agents.backtesting.readiness_trial_decision_report import (
     write_readiness_trial_decision_report,
 )
+from broker_agents.backtesting.readiness_trial_diagnostic_report import (
+    write_readiness_trial_diagnostic_report,
+)
 from broker_agents.backtesting.walk_forward import (
     generate_walk_forward_outputs,
 )
@@ -121,6 +124,9 @@ class BacktestRunResult:
     decision_report_json_path: Path | None = None
     decision_status: str | None = None
     statistical_validity: str | None = None
+    diagnostic_report_path: Path | None = None
+    diagnostic_report_json_path: Path | None = None
+    diagnostic_status: str | None = None
     walk_forward_stability: str | None = None
     walk_forward_summary_path: Path | None = None
     walk_forward_results_path: Path | None = None
@@ -973,6 +979,7 @@ def run_signal_backtest(
         "status": "completed",
     }
     decision_report_files = None
+    diagnostic_report_files = None
     if readiness_trial:
         decision_report_files = write_readiness_trial_decision_report(
             output_dir=backtest_folder,
@@ -1002,6 +1009,28 @@ def run_signal_backtest(
                 ),
             }
         )
+        diagnostic_report_files = write_readiness_trial_diagnostic_report(
+            output_dir=backtest_folder,
+            manifest=manifest,
+            metrics=metrics,
+            rows=rows,
+        )
+        manifest.update(
+            {
+                "readiness_trial_diagnostic_report_path": str(
+                    diagnostic_report_files.markdown_path
+                ),
+                "readiness_trial_diagnostic_report_json_path": str(
+                    diagnostic_report_files.json_path
+                ),
+                "diagnostic_status": (
+                    diagnostic_report_files.report.diagnostic_status
+                ),
+                "next_research_action": (
+                    diagnostic_report_files.report.next_research_action
+                ),
+            }
+        )
     else:
         manifest.update(
             {
@@ -1011,6 +1040,10 @@ def run_signal_backtest(
                 "statistical_validity": None,
                 "next_required_action": None,
                 "walk_forward_stability_judgment": None,
+                "readiness_trial_diagnostic_report_path": None,
+                "readiness_trial_diagnostic_report_json_path": None,
+                "diagnostic_status": None,
+                "next_research_action": None,
             }
         )
     manifest_text = json.dumps(manifest, indent=2)
@@ -1048,6 +1081,17 @@ def run_signal_backtest(
         ),
         decision_status=manifest["decision_status"],
         statistical_validity=manifest["statistical_validity"],
+        diagnostic_report_path=(
+            diagnostic_report_files.markdown_path
+            if diagnostic_report_files
+            else None
+        ),
+        diagnostic_report_json_path=(
+            diagnostic_report_files.json_path
+            if diagnostic_report_files
+            else None
+        ),
+        diagnostic_status=manifest["diagnostic_status"],
         walk_forward_stability=(
             decision_report_files.report.walk_forward_stability_judgment
             if decision_report_files
