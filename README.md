@@ -763,6 +763,32 @@ The report is about research data readiness, not strategy performance. It
 produces no recommendation, ranking, allocation instruction, rebalancing
 instruction, trade signal, execution instruction, or investment advice.
 
+### Multi-Ticker Historical Readiness Batch
+
+Generate readiness-only historical candidates for several tickers at one
+as-of date:
+
+```powershell
+python -m broker_agents.cli run-historical-readiness-batch --tickers MSFT,AAPL,NVDA,COST --as-of-date 2023-06-30 --examples-root examples --outputs-root data/outputs --fixtures-root tests/fixtures --portfolio-context examples/portfolio_context.yaml --financials-provider historical_csv --financials-root tests/fixtures/historical_financials
+```
+
+The command uses the existing historical `analyze-stock` pipeline for each
+ticker, continues after individual failures, archives each readiness candidate,
+and writes a manifest, summary, and results CSV under
+`data/outputs/historical_readiness_batch_runs/{BATCH_RUN_ID}/`.
+
+The optional full research pipeline exports and validates the readiness trial
+ledger, then runs the existing readiness-only backtest and decision report:
+
+```powershell
+python -m broker_agents.cli run-historical-readiness-batch --tickers MSFT,AAPL,NVDA,COST --as-of-date 2023-06-30 --examples-root examples --outputs-root data/outputs --fixtures-root tests/fixtures --portfolio-context examples/portfolio_context.yaml --financials-provider historical_csv --financials-root tests/fixtures/historical_financials --export-trial-ledger --validate-trial-ledger --run-readiness-backtest
+```
+
+This expands the research sample before interpretation. Dedupe remains important
+because repeated historical runs can inflate raw record counts. The batch
+creates no recommendation, ranking, allocation instruction, rebalancing
+instruction, trade signal, or execution instruction.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from
