@@ -35,6 +35,9 @@ from broker_agents.agents.lynch_agent import LynchAgent
 from broker_agents.agents.munger_agent import MungerAgent
 from broker_agents.archive.signal_ledger import archive_completed_run
 from broker_agents.backtesting.signal_backtester import run_signal_backtest
+from broker_agents.backtesting.readiness_trial_decision_report import (
+    regenerate_readiness_trial_decision_report,
+)
 from broker_agents.backtesting.readiness_trial_export import (
     export_readiness_ledger_to_trial_ledger,
     validate_readiness_trial_ledger,
@@ -2808,7 +2811,57 @@ def backtest_signals(
                 ),
             ]
         )
+    if result.backtest_run_type == "readiness_trial":
+        rows.extend(
+            [
+                ("Decision Report", str(result.decision_report_path)),
+                ("Decision Status", str(result.decision_status)),
+                (
+                    "Statistical Validity",
+                    str(result.statistical_validity),
+                ),
+            ]
+        )
     rows.append(("Status", "completed"))
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+
+
+@app.command("generate-readiness-trial-decision-report")
+def generate_readiness_trial_decision_report(
+    backtest_folder: Annotated[
+        Path,
+        typer.Option(
+            "--backtest-folder",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Completed readiness trial backtest folder.",
+        ),
+    ],
+) -> None:
+    """Regenerate conservative decision artifacts for a readiness trial."""
+    try:
+        files = regenerate_readiness_trial_decision_report(backtest_folder)
+    except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Decision report generation failed: {exc}"
+        ) from exc
+
+    table = Table(title="Readiness Trial Backtest Decision Report")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Backtest Run ID", files.report.backtest_run_id),
+        ("Decision Status", files.report.decision_status),
+        ("Statistical Validity", files.report.statistical_validity),
+        ("Decision Report", str(files.markdown_path)),
+        ("Decision Report JSON", str(files.json_path)),
+        ("Status", "completed"),
+    )
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)

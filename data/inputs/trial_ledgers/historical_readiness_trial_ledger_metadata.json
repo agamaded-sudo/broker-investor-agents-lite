@@ -4,7 +4,7 @@
   "total_input_records": 6,
   "total_exported_records": 6,
   "skipped_records": 0,
-  "generated_at": "2026-06-13T11:40:45.096522+00:00",
+  "generated_at": "2026-06-13T16:05:58.413211+00:00",
   "safety_notice": "This historical readiness trial ledger contains readiness-only research artifacts. It is not a recommendation ledger, ranking ledger, allocation ledger, rebalancing ledger, trade signal ledger, or execution instruction ledger.",
   "warnings": []
 }

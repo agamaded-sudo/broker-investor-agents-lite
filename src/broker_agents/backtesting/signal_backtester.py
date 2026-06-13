@@ -17,6 +17,9 @@ from broker_agents.backtesting.price_history import (
     forward_return_observation,
     max_drawdown,
 )
+from broker_agents.backtesting.readiness_trial_decision_report import (
+    write_readiness_trial_decision_report,
+)
 from broker_agents.backtesting.walk_forward import (
     generate_walk_forward_outputs,
 )
@@ -114,6 +117,10 @@ class BacktestRunResult:
     skipped_records: int
     metrics: dict
     backtest_run_type: str = "standard"
+    decision_report_path: Path | None = None
+    decision_report_json_path: Path | None = None
+    decision_status: str | None = None
+    statistical_validity: str | None = None
     walk_forward_summary_path: Path | None = None
     walk_forward_results_path: Path | None = None
     walk_forward_metrics_path: Path | None = None
@@ -947,6 +954,43 @@ def run_signal_backtest(
         "synthetic_data_warning": metrics["synthetic_data_warning"],
         "status": "completed",
     }
+    decision_report_files = None
+    if readiness_trial:
+        decision_report_files = write_readiness_trial_decision_report(
+            output_dir=backtest_folder,
+            manifest=manifest,
+            metrics=metrics,
+            rows=rows,
+        )
+        manifest.update(
+            {
+                "readiness_trial_decision_report_path": str(
+                    decision_report_files.markdown_path
+                ),
+                "readiness_trial_decision_report_json_path": str(
+                    decision_report_files.json_path
+                ),
+                "decision_status": (
+                    decision_report_files.report.decision_status
+                ),
+                "statistical_validity": (
+                    decision_report_files.report.statistical_validity
+                ),
+                "next_required_action": (
+                    decision_report_files.report.next_required_action
+                ),
+            }
+        )
+    else:
+        manifest.update(
+            {
+                "readiness_trial_decision_report_path": None,
+                "readiness_trial_decision_report_json_path": None,
+                "decision_status": None,
+                "statistical_validity": None,
+                "next_required_action": None,
+            }
+        )
     manifest_text = json.dumps(manifest, indent=2)
     manifest_path = backtest_folder / "backtest_manifest.json"
     manifest_path.write_text(manifest_text, encoding="utf-8")
@@ -970,6 +1014,18 @@ def run_signal_backtest(
         skipped_records=skipped_records,
         metrics=metrics,
         backtest_run_type=manifest["backtest_run_type"],
+        decision_report_path=(
+            decision_report_files.markdown_path
+            if decision_report_files
+            else None
+        ),
+        decision_report_json_path=(
+            decision_report_files.json_path
+            if decision_report_files
+            else None
+        ),
+        decision_status=manifest["decision_status"],
+        statistical_validity=manifest["statistical_validity"],
         walk_forward_summary_path=(
             walk_forward_result.summary_path
             if walk_forward_result

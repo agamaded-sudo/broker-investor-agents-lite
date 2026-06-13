@@ -736,6 +736,33 @@ Results are research diagnostics only and must not be interpreted as
 recommendations, rankings, allocation instructions, rebalancing instructions,
 trade signals, or execution instructions.
 
+### Readiness Trial Backtest Decision Report
+
+Readiness trial backtests automatically create
+`readiness_trial_decision_report.md` and
+`readiness_trial_decision_report.json` beside the existing backtest artifacts:
+
+```powershell
+python -m broker_agents.cli backtest-signals --ledger data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv --price-provider csv --price-fixtures tests/fixtures/historical_price_history --outputs-root data/outputs --lookback-years 5 --dedupe-mode latest_per_ticker_per_day
+```
+
+Raw return metrics can be misleading when the evaluated sample is tiny. The
+decision report interprets readiness results conservatively by diagnosing
+sample size, dedupe impact, ticker concentration, and missing grouped metadata.
+It states whether the run is decision-grade; current small samples are
+expected to remain diagnostic only.
+
+An existing readiness trial folder can be regenerated without rerunning price
+calculations:
+
+```powershell
+python -m broker_agents.cli generate-readiness-trial-decision-report --backtest-folder data/outputs/backtests/{RUN_ID}
+```
+
+The report is about research data readiness, not strategy performance. It
+produces no recommendation, ranking, allocation instruction, rebalancing
+instruction, trade signal, execution instruction, or investment advice.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from
