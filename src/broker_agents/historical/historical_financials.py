@@ -311,3 +311,49 @@ def filter_financials_as_of(
         status=status,
         warnings=warnings,
     )
+
+def historical_financial_row_to_dict(row: HistoricalFinancialRow) -> dict[str, str]:
+    """Serialize one normalized row using the public CSV schema."""
+    return {
+        "ticker": row.ticker,
+        "fiscal_period_end_date": row.fiscal_period_end_date.isoformat(),
+        "filing_date": row.filing_date.isoformat() if row.filing_date else "",
+        "accepted_date": (
+            row.accepted_date.isoformat() if row.accepted_date else ""
+        ),
+        "statement_type": row.statement_type,
+        "period_type": row.period_type,
+        "metric": row.metric,
+        "value": str(row.value),
+        "source_url_or_accession_number": (
+            row.source_url_or_accession_number
+        ),
+        "currency": row.currency or "",
+        "units": row.units or "",
+        "form_type": row.form_type or "",
+        "fiscal_year": row.fiscal_year or "",
+        "fiscal_quarter": row.fiscal_quarter or "",
+        "data_as_of_date": (
+            row.data_as_of_date.isoformat() if row.data_as_of_date else ""
+        ),
+        "ingestion_date": (
+            row.ingestion_date.isoformat() if row.ingestion_date else ""
+        ),
+        "source_name": row.source_name or "",
+    }
+
+
+def write_historical_financials_csv(
+    path: Path,
+    rows: list[HistoricalFinancialRow],
+) -> Path:
+    """Write filtered rows as a lightweight run-local CSV snapshot."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fieldnames = [*REQUIRED_COLUMNS, *OPTIONAL_COLUMNS]
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(historical_financial_row_to_dict(row))
+    return path

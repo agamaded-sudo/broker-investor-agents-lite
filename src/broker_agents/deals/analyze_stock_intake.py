@@ -28,6 +28,8 @@ class AnalyzeStockIntake:
     output_mode: str = "full_bundle"
     run_label: str | None = None
     as_of_date: str | None = None
+    financials_provider: str = "sec_fixture"
+    financials_root: Path | None = None
     examples_root: Path = Path("examples")
     outputs_root: Path = Path("data/outputs")
     fixtures_root: Path = Path("tests/fixtures")
@@ -52,6 +54,10 @@ class AnalyzeStockIntake:
             "investor_set": list(self.investor_set),
             "run_label": self.run_label,
             "as_of_date": self.as_of_date,
+            "financials_provider": self.financials_provider,
+            "financials_root": (
+                str(self.financials_root) if self.financials_root else None
+            ),
             "input_mode": input_mode,
             "intake_file": str(intake_file) if intake_file else None,
         }
@@ -64,6 +70,7 @@ class AnalyzeStockIntake:
             "examples_root",
             "outputs_root",
             "fixtures_root",
+            "financials_root",
             "portfolio_context",
         ):
             value = data[key]
@@ -132,6 +139,14 @@ def load_analyze_stock_intake(path: Path) -> AnalyzeStockIntake:
             if as_of_context.as_of_date
             else None
         ),
+        financials_provider=str(
+            data.get("financials_provider") or "sec_fixture"
+        ).strip().lower(),
+        financials_root=(
+            Path(data["financials_root"])
+            if data.get("financials_root")
+            else None
+        ),
         examples_root=Path(data.get("examples_root") or "examples"),
         outputs_root=Path(data.get("outputs_root") or "data/outputs"),
         fixtures_root=Path(data.get("fixtures_root") or "tests/fixtures"),
@@ -148,6 +163,8 @@ def build_ticker_analyze_stock_intake(
     fixtures_root: Path,
     portfolio_context: Path | None,
     as_of_date: str | None = None,
+    financials_provider: str = "sec_fixture",
+    financials_root: Path | None = None,
 ) -> AnalyzeStockIntake:
     """Create the equivalent structured intake for legacy ticker mode."""
     normalized = str(ticker or "").strip().upper()
@@ -160,6 +177,12 @@ def build_ticker_analyze_stock_intake(
             as_of_context.as_of_date.isoformat()
             if as_of_context.as_of_date
             else None
+        ),
+        financials_provider=str(
+            financials_provider or "sec_fixture"
+        ).strip().lower(),
+        financials_root=(
+            Path(financials_root) if financials_root is not None else None
         ),
         examples_root=Path(examples_root),
         outputs_root=Path(outputs_root),
@@ -180,5 +203,37 @@ def with_as_of_date(
         intake,
         as_of_date=(
             context.as_of_date.isoformat() if context.as_of_date else None
+        ),
+    )
+
+def with_financials_provider(
+    intake: AnalyzeStockIntake,
+    provider_name: str,
+    financials_root: Path | None,
+) -> AnalyzeStockIntake:
+    """Return an intake with explicit historical financials configuration."""
+    normalized = str(provider_name or "sec_fixture").strip().lower()
+    if normalized in {"fixture", "default"}:
+        normalized = "sec_fixture"
+    if normalized not in {"sec_fixture", "historical_csv"}:
+        raise ValueError(
+            "financials_provider must be one of: fixture, sec_fixture, "
+            "default, historical_csv."
+        )
+    if normalized == "historical_csv" and financials_root is None:
+        raise ValueError(
+            "--financials-root is required when --financials-provider "
+            "historical_csv is used."
+        )
+    if normalized == "historical_csv" and not intake.as_of_date:
+        raise ValueError(
+            "--as-of-date is required when --financials-provider "
+            "historical_csv is used."
+        )
+    return replace(
+        intake,
+        financials_provider=normalized,
+        financials_root=(
+            Path(financials_root) if financials_root is not None else None
         ),
     )

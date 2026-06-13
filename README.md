@@ -598,6 +598,27 @@ historical financials CSV input format is not a recommendation, ranking, vote,
 average score, consensus, allocation instruction, rebalancing instruction, or
 trade signal.
 
+### Historical Financials Provider Wiring
+
+`validate-financials-csv` checks local point-in-time financial statement files.
+`analyze-stock` can now attach a filtered official-financials snapshot to a
+historical run when `historical_csv` is selected:
+
+```powershell
+python -m broker_agents.cli analyze-stock --ticker COST --examples-root examples --outputs-root data/outputs --fixtures-root tests/fixtures --portfolio-context examples/portfolio_context.yaml --as-of-date 2023-06-30 --financials-provider historical_csv --financials-root tests/fixtures/historical_financials
+```
+
+The run folder contains `official_financials_as_of_snapshot.csv`, optional
+snapshot metadata JSON, `run_manifest.json`, and `run_summary.md`. Rows are
+included only when `filing_date` or `accepted_date` is on or before
+`as_of_date`; rows missing both availability dates are counted and excluded.
+
+This attachment does not alter investor decisions, generate historical
+signals, or replace the existing enriched input assembly. It is a readiness
+step for future historical analysis. No live API or SEC request is used, and
+no recommendation, ranking, allocation instruction, or trade signal is
+produced.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from

@@ -12,6 +12,13 @@ from broker_agents.historical.as_of_context import build_as_of_context
 from broker_agents.historical.financials_as_of_contract import (
     build_financials_as_of_contract,
 )
+from broker_agents.historical.historical_financials import (
+    filter_financials_as_of,
+    historical_financials_path,
+    load_historical_financials_csv,
+    validate_historical_financials_csv,
+    write_historical_financials_csv,
+)
 from broker_agents.historical.price_windows import (
     build_analysis_price_window,
 )
@@ -72,11 +79,75 @@ def _allocate_run_id(
     return run_id
 
 
+def _create_official_financials_snapshot(
+    *,
+    intake: AnalyzeStockIntake,
+    run_folder: Path,
+) -> dict:
+    """Create the optional filtered financials snapshot and audit metadata."""
+    if intake.financials_provider != "historical_csv":
+        return {
+            "enabled": False,
+            "provider": "sec_fixture",
+            "status": "not_enabled",
+            "warnings": [],
+        }
+    if not intake.as_of_date or intake.financials_root is None:
+        raise ValueError(
+            "Historical financials snapshots require --as-of-date and "
+            "--financials-root."
+        )
+    source_path = historical_financials_path(
+        intake.financials_root,
+        intake.ticker,
+    )
+    validation = validate_historical_financials_csv(source_path)
+    if not validation.file_found:
+        raise ValueError(validation.warnings[0])
+    if not validation.required_columns_present:
+        raise ValueError("; ".join(validation.warnings))
+    rows = load_historical_financials_csv(source_path)
+    filtered = filter_financials_as_of(rows, intake.as_of_date)
+    snapshot_path = run_folder / "official_financials_as_of_snapshot.csv"
+    metadata_path = (
+        run_folder / "official_financials_as_of_snapshot_metadata.json"
+    )
+    write_historical_financials_csv(snapshot_path, filtered.rows)
+    warnings = [*validation.warnings, *filtered.warnings]
+    metadata = {
+        "enabled": True,
+        "ticker": intake.ticker,
+        "as_of_date": intake.as_of_date,
+        "provider": "historical_financials_csv",
+        "source_file": str(source_path),
+        "snapshot_file": str(snapshot_path),
+        "metadata_file": str(metadata_path),
+        "file_found": True,
+        "rows_before_filter": filtered.rows_before_filter,
+        "rows_after_filter": filtered.rows_after_filter,
+        "future_rows_excluded_count": filtered.future_rows_excluded_count,
+        "rows_missing_availability_date_count": (
+            filtered.rows_missing_availability_date_count
+        ),
+        "max_filing_date_after_filter": (
+            filtered.max_filing_date_after_filter
+        ),
+        "max_accepted_date_after_filter": (
+            filtered.max_accepted_date_after_filter
+        ),
+        "status": filtered.status,
+        "warnings": warnings,
+    }
+    metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+    return metadata
+
+
 def _run_summary(manifest: dict) -> str:
     """Render the human-readable run summary."""
     blockers = manifest["promotion_blocking_categories"]
     snapshot = manifest["historical_snapshot_contract"]
     financials_contract = manifest.get("official_financials_as_of_contract") or {}
+    financials_snapshot = manifest.get("official_financials_as_of_snapshot") or {}
     price_window = manifest.get("historical_price_window") or {}
     capability_lines = [
         (
@@ -212,12 +283,67 @@ def _run_summary(manifest: dict) -> str:
                         for warning in financials_contract["warnings"]
                     ],
                     "",
-                    "Official financials are not yet guaranteed point-in-time safe.",
+                    (
+                        "Official financials are not yet guaranteed point-in-time safe."
+                        if not financials_contract["supports_as_of_date"]
+                        else (
+                            "Historical financials filtering is partial; source "
+                            "provenance remains user-managed."
+                        )
+                    ),
                     (
                         "This official financials as-of contract is not a "
                         "recommendation, ranking, vote, average score, consensus, "
                         "allocation instruction, rebalancing instruction, or "
                         "trade signal."
+                    ),
+                    *(
+                        [
+                            "",
+                            "## Official Financials As-Of Snapshot",
+                            "",
+                            f"- Provider: {financials_snapshot['provider']}",
+                            f"- Source File: {financials_snapshot['source_file']}",
+                            f"- Snapshot File: {financials_snapshot['snapshot_file']}",
+                            (
+                                "- Rows Before Filter: "
+                                f"{financials_snapshot['rows_before_filter']}"
+                            ),
+                            (
+                                "- Rows After Filter: "
+                                f"{financials_snapshot['rows_after_filter']}"
+                            ),
+                            (
+                                "- Future Rows Excluded: "
+                                f"{financials_snapshot['future_rows_excluded_count']}"
+                            ),
+                            (
+                                "- Rows Missing Availability Date: "
+                                f"{financials_snapshot['rows_missing_availability_date_count']}"
+                            ),
+                            (
+                                "- Max Filing Date After Filter: "
+                                f"{financials_snapshot['max_filing_date_after_filter'] or 'None'}"
+                            ),
+                            (
+                                "- Max Accepted Date After Filter: "
+                                f"{financials_snapshot['max_accepted_date_after_filter'] or 'None'}"
+                            ),
+                            f"- Status: {financials_snapshot['status']}",
+                            "",
+                            (
+                                "Historical financials CSV rows are filtered by "
+                                "filing_date or accepted_date."
+                            ),
+                            (
+                                "This official financials as-of snapshot is not a "
+                                "recommendation, ranking, vote, average score, "
+                                "consensus, allocation instruction, rebalancing "
+                                "instruction, or trade signal."
+                            ),
+                        ]
+                        if financials_snapshot.get("enabled")
+                        else []
                     ),
                     "",
                     "## Historical Price Window",
@@ -312,6 +438,10 @@ def create_analyze_stock_run_bundle(
     executive_summary = package_payload.get("executive_summary", {})
     work_order_plan = package_payload.get("backoffice_work_order_plan", {})
     as_of_context = build_as_of_context(intake.as_of_date)
+    financials_snapshot = _create_official_financials_snapshot(
+        intake=intake,
+        run_folder=run_folder,
+    )
     snapshot_contract = build_historical_snapshot_contract(
         intake.as_of_date,
         price_provider="fixture",
@@ -319,11 +449,15 @@ def create_analyze_stock_run_bundle(
         fixtures_root=intake.fixtures_root,
         price_data_root=intake.fixtures_root,
         ticker=intake.ticker,
+        financials_provider=intake.financials_provider,
+        financials_root=intake.financials_root,
     )
     financials_contract = build_financials_as_of_contract(
         intake.as_of_date,
         fixtures_root=intake.fixtures_root,
         ticker=intake.ticker,
+        provider_name=intake.financials_provider,
+        financials_root=intake.financials_root,
     )
     analysis_window = (
         build_analysis_price_window(intake.as_of_date)
@@ -355,6 +489,7 @@ def create_analyze_stock_run_bundle(
         "official_financials_as_of_contract": (
             financials_contract.to_dict() if intake.as_of_date else None
         ),
+        "official_financials_as_of_snapshot": financials_snapshot,
         "historical_price_window": historical_price_window,
         "market_price_window_enforcement": (
             analysis_window.enforcement_status if analysis_window else None

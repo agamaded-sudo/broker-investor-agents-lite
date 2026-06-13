@@ -43,6 +43,7 @@ from broker_agents.deals.analyze_stock_intake import (
     build_ticker_analyze_stock_intake,
     load_analyze_stock_intake,
     with_as_of_date,
+    with_financials_provider,
 )
 from broker_agents.historical.as_of_context import build_as_of_context
 from broker_agents.historical.financials_as_of_contract import (
@@ -1769,6 +1770,27 @@ def analyze_stock(
             help="Historical-readiness date in YYYY-MM-DD format.",
         ),
     ] = None,
+    financials_provider: Annotated[
+        str | None,
+        typer.Option(
+            "--financials-provider",
+            help=(
+                "Official financials provider: fixture, sec_fixture, default, "
+                "or historical_csv."
+            ),
+        ),
+    ] = None,
+    financials_root: Annotated[
+        Path | None,
+        typer.Option(
+            "--financials-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            help="Directory containing historical financials CSV files.",
+        ),
+    ] = None,
 ) -> None:
     """Run intake and the complete existing broker deal workflow for one ticker."""
     if ticker is not None and intake_file is not None:
@@ -1793,8 +1815,15 @@ def analyze_stock(
                 fixtures_root=fixtures_root,
                 portfolio_context=portfolio_context_path,
                 as_of_date=as_of_date,
+                financials_provider=(financials_provider or "sec_fixture"),
+                financials_root=financials_root,
             )
             input_mode = "ticker"
+        intake = with_financials_provider(
+            intake,
+            financials_provider or intake.financials_provider,
+            financials_root or intake.financials_root,
+        )
     except (OSError, ValueError, yaml.YAMLError, json.JSONDecodeError) as exc:
         raise typer.BadParameter(str(exc)) from exc
 
@@ -1841,6 +1870,11 @@ def analyze_stock(
             str(intake_file) if intake_file is not None else "Not used",
         ),
         ("Run Label", intake.run_label or "Not provided"),
+        ("Financials Provider", intake.financials_provider),
+        (
+            "Financials Root",
+            str(intake.financials_root) if intake.financials_root else "Not used",
+        ),
         (
             "As-Of Date",
             (
@@ -1861,6 +1895,15 @@ def analyze_stock(
         ("Run Folder", str(run_bundle.run_folder)),
         ("Run Manifest", str(run_bundle.run_manifest_path)),
         ("Run Summary", str(run_bundle.run_summary_path)),
+        (
+            "Official Financials Snapshot",
+            str(
+                run_bundle.run_folder
+                / "official_financials_as_of_snapshot.csv"
+            )
+            if intake.financials_provider == "historical_csv"
+            else "Not enabled",
+        ),
         ("Ticker", normalized),
         ("Broker Deal Package", str(result.broker_deal_package_path)),
         ("Enriched Input", str(result.enriched_pack_path)),

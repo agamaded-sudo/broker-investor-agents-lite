@@ -14,8 +14,10 @@ from broker_agents.historical.historical_financials import (
     HistoricalFinancialsFilterResult,
     HistoricalFinancialsValidationResult,
     filter_financials_as_of,
+    historical_financial_row_to_dict,
     load_historical_financials_csv,
     validate_historical_financials_csv,
+    write_historical_financials_csv,
 )
 from broker_agents.historical.price_windows import (
     PriceHistoryFilterResult,
@@ -48,6 +50,8 @@ __all__ = [
     "build_outcome_price_window",
     "filter_financials_as_of",
     "filter_price_history_by_date",
+    "historical_financial_row_to_dict",
     "load_historical_financials_csv",
     "validate_historical_financials_csv",
+    "write_historical_financials_csv",
 ]
