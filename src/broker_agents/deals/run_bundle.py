@@ -6,6 +6,9 @@ import json
 from pathlib import Path
 import re
 
+from broker_agents.archive.historical_readiness_ledger import (
+    append_historical_readiness_candidate,
+)
 from broker_agents.deals.analyze_stock_intake import AnalyzeStockIntake
 from broker_agents.deals.broker_deal_workflow import BrokerDealWorkflowResult
 from broker_agents.historical.as_of_context import build_as_of_context
@@ -644,6 +647,29 @@ def create_analyze_stock_run_bundle(
             ),
             "warnings": historical_candidate.warnings,
         }
+        readiness_archive = append_historical_readiness_candidate(
+            outputs_root=intake.outputs_root,
+            candidate=historical_candidate,
+            run_folder=run_folder,
+            candidate_file=candidate_json_path,
+            assembly_file=assembly_json_path,
+            created_at=generated_at_text,
+        )
+        historical_readiness_ledger_record = {
+            "archived": True,
+            "ledger_jsonl": str(readiness_archive.jsonl_path),
+            "ledger_csv": str(readiness_archive.csv_path),
+            "latest_snapshot": str(readiness_archive.snapshot_path),
+            "record_type": readiness_archive.record.record_type,
+            "signal_generation_status": (
+                readiness_archive.record.signal_generation_status
+            ),
+            "not_trade_signal": readiness_archive.record.not_trade_signal,
+            "not_recommendation": readiness_archive.record.not_recommendation,
+            "not_allocation_instruction": (
+                readiness_archive.record.not_allocation_instruction
+            ),
+        }
     else:
         historical_assembly_manifest = {
             "enabled": False,
@@ -658,6 +684,14 @@ def create_analyze_stock_run_bundle(
             "not_trade_signal": True,
             "not_recommendation": True,
             "warnings": [],
+        }
+        historical_readiness_ledger_record = {
+            "archived": False,
+            "record_type": "historical_signal_readiness_candidate",
+            "signal_generation_status": "not_enabled",
+            "not_trade_signal": True,
+            "not_recommendation": True,
+            "not_allocation_instruction": True,
         }
     manifest = {
         "run_id": run_id,
@@ -680,6 +714,9 @@ def create_analyze_stock_run_bundle(
         ),
         "historical_signal_readiness_candidate": (
             historical_candidate_manifest
+        ),
+        "historical_readiness_ledger_record": (
+            historical_readiness_ledger_record
         ),
         "market_price_window_enforcement": (
             analysis_window.enforcement_status if analysis_window else None

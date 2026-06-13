@@ -1853,6 +1853,13 @@ def analyze_stock(
         broker_deal_package_path=result.broker_deal_package_path,
     )
     historical_context = build_as_of_context(intake.as_of_date)
+    run_manifest = json.loads(
+        run_bundle.run_manifest_path.read_text(encoding="utf-8")
+    )
+    readiness_ledger = run_manifest.get(
+        "historical_readiness_ledger_record",
+        {},
+    )
 
     console.print(f"Input Mode: {input_mode}", soft_wrap=True)
     console.print(
@@ -1942,6 +1949,17 @@ def analyze_stock(
         ),
         ("Signal Archive Record", "archived"),
         ("Signal Ledger", str(archive_result.jsonl_path)),
+        *(
+            [
+                ("Historical Readiness Ledger Record", "archived"),
+                (
+                    "Historical Readiness Ledger",
+                    str(readiness_ledger["ledger_jsonl"]),
+                ),
+            ]
+            if readiness_ledger.get("archived")
+            else []
+        ),
         ("Status", "completed"),
     ]
     for label, value in rows:
@@ -2429,6 +2447,79 @@ def validate_historical_signal_candidate(
     )
     console.print(f"blocking_reasons_count={len(candidate.blocking_reasons)}")
     console.print("status=valid_readiness_candidate")
+
+
+@app.command("show-historical-readiness-ledger")
+def show_historical_readiness_ledger(
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            help="Output root containing the historical readiness ledger.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Show the latest separate historical-readiness ledger snapshot."""
+    ledger_dir = outputs_root / "historical_readiness_ledger"
+    snapshot_path = (
+        ledger_dir / "latest_historical_signal_readiness_ledger_snapshot.json"
+    )
+    if not snapshot_path.is_file():
+        raise typer.BadParameter(
+            f"Historical readiness ledger snapshot not found: {snapshot_path}"
+        )
+    try:
+        snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Historical readiness ledger could not be read: {exc}"
+        ) from exc
+    latest = snapshot.get("latest_record", {})
+    table = Table(title="Historical Readiness Candidate Ledger")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Total Records", str(snapshot.get("total_records", 0))),
+        ("Latest Ticker", str(latest.get("ticker", "None"))),
+        ("Latest As-Of Date", str(latest.get("as_of_date", "None"))),
+        (
+            "Latest Signal Generation Status",
+            str(latest.get("signal_generation_status", "None")),
+        ),
+        (
+            "Latest Not Trade Signal",
+            str(latest.get("not_trade_signal", False)).lower(),
+        ),
+        (
+            "Latest Not Recommendation",
+            str(latest.get("not_recommendation", False)).lower(),
+        ),
+        ("Ledger JSONL", str(snapshot.get("ledger_jsonl", "None"))),
+        ("Ledger CSV", str(snapshot.get("ledger_csv", "None"))),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(f"total_records={snapshot.get('total_records', 0)}")
+    console.print(f"latest_ticker={latest.get('ticker', 'None')}")
+    console.print(f"latest_as_of_date={latest.get('as_of_date', 'None')}")
+    console.print(
+        "latest_signal_generation_status="
+        f"{latest.get('signal_generation_status', 'None')}"
+    )
+    console.print(
+        "latest_not_trade_signal="
+        f"{str(latest.get('not_trade_signal', False)).lower()}"
+    )
+    console.print(
+        "latest_not_recommendation="
+        f"{str(latest.get('not_recommendation', False)).lower()}"
+    )
+    console.print(f"ledger_jsonl={snapshot.get('ledger_jsonl', 'None')}")
+    console.print(f"ledger_csv={snapshot.get('ledger_csv', 'None')}")
 
 
 @app.command("backtest-signals")

@@ -667,6 +667,32 @@ future historical research while preserving methodological honesty. It is not
 a recommendation, ranking, vote, consensus, allocation instruction,
 rebalancing instruction, trade signal, or execution instruction.
 
+### Historical Readiness Candidate Ledger
+
+Historical readiness candidates are exported to a dedicated research ledger,
+separate from `data/outputs/signal_archive/signal_ledger.jsonl`:
+
+```powershell
+python -m broker_agents.cli analyze-stock --ticker COST --examples-root examples --outputs-root data/outputs --fixtures-root tests/fixtures --portfolio-context examples/portfolio_context.yaml --as-of-date 2023-06-30 --financials-provider historical_csv --financials-root tests/fixtures/historical_financials
+python -m broker_agents.cli show-historical-readiness-ledger --outputs-root data/outputs
+```
+
+Inspect:
+
+* `data/outputs/historical_readiness_ledger/historical_signal_readiness_ledger.jsonl`
+* `data/outputs/historical_readiness_ledger/historical_signal_readiness_ledger.csv`
+* `data/outputs/historical_readiness_ledger/latest_historical_signal_readiness_ledger_snapshot.json`
+* the latest historical run's `run_manifest.json`
+
+Every record is explicitly `readiness_only`, with
+`safe_for_historical_signal_generation=false`, `not_trade_signal=true`, and
+`not_recommendation=true`. This separate ledger supports research traceability
+before any future trial-backtest integration.
+It must not be confused with the main signal ledger.
+No live API is used, and no recommendation, ranking,
+allocation instruction, rebalancing instruction, trade signal, or execution
+instruction is produced.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from
