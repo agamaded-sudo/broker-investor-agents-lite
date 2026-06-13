@@ -1,10 +1,10 @@
 {
   "source_ledger": "data\\outputs\\historical_readiness_ledger\\historical_signal_readiness_ledger.csv",
   "output_ledger": "data\\inputs\\trial_ledgers\\historical_readiness_trial_ledger.csv",
-  "total_input_records": 14,
-  "total_exported_records": 14,
+  "total_input_records": 38,
+  "total_exported_records": 38,
   "skipped_records": 0,
-  "generated_at": "2026-06-13T17:12:07.802922+00:00",
+  "generated_at": "2026-06-13T18:15:30.655907+00:00",
   "safety_notice": "This historical readiness trial ledger contains readiness-only research artifacts. It is not a recommendation ledger, ranking ledger, allocation ledger, rebalancing ledger, trade signal ledger, or execution instruction ledger.",
   "warnings": []
 }

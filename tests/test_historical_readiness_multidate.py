@@ -1,0 +1,238 @@
+"""Integration tests for multi-date historical readiness trials."""
+
+import csv
+import json
+from pathlib import Path
+
+from typer.testing import CliRunner
+
+from broker_agents.cli import app
+
+ROOT = Path(__file__).resolve().parents[1]
+EXAMPLES = ROOT / "examples"
+FIXTURES = ROOT / "tests" / "fixtures"
+FINANCIALS = FIXTURES / "historical_financials"
+HISTORICAL_PRICES = FIXTURES / "historical_price_history"
+PORTFOLIO = EXAMPLES / "portfolio_context.yaml"
+
+
+def _run_multidate(
+    tmp_path: Path,
+    *,
+    tickers: str,
+    as_of_dates: str,
+    full_pipeline: bool,
+):
+    outputs_root = tmp_path / "outputs"
+    trial_ledger = tmp_path / "trial_ledgers" / "readiness.csv"
+    args = [
+        "run-historical-readiness-multidate",
+        "--tickers",
+        tickers,
+        "--as-of-dates",
+        as_of_dates,
+        "--examples-root",
+        str(EXAMPLES),
+        "--outputs-root",
+        str(outputs_root),
+        "--fixtures-root",
+        str(FIXTURES),
+        "--portfolio-context",
+        str(PORTFOLIO),
+        "--financials-provider",
+        "historical_csv",
+        "--financials-root",
+        str(FINANCIALS),
+        "--trial-ledger",
+        str(trial_ledger),
+        "--price-fixtures",
+        str(HISTORICAL_PRICES),
+    ]
+    if full_pipeline:
+        args.extend(
+            [
+                "--export-trial-ledger",
+                "--validate-trial-ledger",
+                "--run-readiness-backtest",
+            ]
+        )
+    return CliRunner().invoke(app, args), outputs_root, trial_ledger
+
+
+def _latest_manifest(outputs_root: Path) -> dict:
+    path = (
+        outputs_root
+        / "historical_readiness_multidate_runs"
+        / "latest_historical_readiness_multidate_manifest.json"
+    )
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_full_multidate_trial_builds_twelve_event_sample(
+    tmp_path: Path,
+) -> None:
+    result, outputs_root, trial_ledger = _run_multidate(
+        tmp_path,
+        tickers="MSFT,AAPL,NVDA,COST",
+        as_of_dates="2021-06-30,2022-06-30,2023-06-30",
+        full_pipeline=True,
+    )
+
+    assert result.exit_code == 0, result.output
+    for text in (
+        "Historical Readiness Multi-Date Trial",
+        "Expected Runs",
+        "12",
+        "Completed Runs",
+        "Failed Runs",
+        "Sample Size After Dedupe",
+        "multidate_run_id=",
+        "total_expected_runs=12",
+        "total_completed_runs=12",
+        "total_failed_runs=0",
+        "trial_ledger_exported=true",
+        "readiness_backtest_run=true",
+        "sample_size_after_dedupe=12",
+        "status=completed",
+    ):
+        assert text in result.output
+
+    manifest = _latest_manifest(outputs_root)
+    assert manifest["tickers_requested"] == ["MSFT", "AAPL", "NVDA", "COST"]
+    assert manifest["as_of_dates_requested"] == [
+        "2021-06-30",
+        "2022-06-30",
+        "2023-06-30",
+    ]
+    assert manifest["total_expected_runs"] == 12
+    assert manifest["total_completed_runs"] == 12
+    assert manifest["total_failed_runs"] == 0
+    assert manifest["completed_dates"] == manifest["as_of_dates_requested"]
+    assert manifest["failed_dates"] == []
+    assert len(manifest["date_batch_records"]) == 3
+    assert manifest["trial_ledger_exported"] is True
+    assert manifest["trial_ledger_validation_status"] == "valid"
+    assert manifest["trial_ledger_validation_invalid_rows"] == 0
+    assert manifest["readiness_backtest_run"] is True
+    assert manifest["sample_size_after_dedupe"] == 12
+    assert manifest["decision_status"] in {
+        "needs_more_samples",
+        "ready_for_broader_trial",
+    }
+    assert manifest["statistical_validity"] in {
+        "limited_sample",
+        "diagnostic_only",
+    }
+    assert "not a recommendation trial" in manifest["safety_notice"]
+
+    for record in manifest["date_batch_records"]:
+        assert record["status"] == "completed"
+        assert record["completed_tickers"] == [
+            "MSFT",
+            "AAPL",
+            "NVDA",
+            "COST",
+        ]
+        assert record["failed_tickers"] == []
+        assert record["total_completed"] == 4
+        assert record["total_failed"] == 0
+        assert Path(record["batch_manifest"]).is_file()
+        assert Path(record["batch_summary"]).is_file()
+
+    folder = (
+        outputs_root
+        / "historical_readiness_multidate_runs"
+        / manifest["multidate_run_id"]
+    )
+    summary_path = folder / "historical_readiness_multidate_summary.md"
+    results_path = folder / "historical_readiness_multidate_results.csv"
+    assert (
+        folder / "historical_readiness_multidate_manifest.json"
+    ).is_file()
+    assert summary_path.is_file()
+    assert results_path.is_file()
+    summary = summary_path.read_text(encoding="utf-8")
+    assert "Total Completed Runs: 12" in summary
+    assert "Sample Size After Dedupe: 12" in summary
+    assert "Missing metadata and readiness-only sections remain visible" in summary
+    assert "not a recommendation trial" in summary
+    with results_path.open(encoding="utf-8", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    assert [row["as_of_date"] for row in rows] == [
+        "2021-06-30",
+        "2022-06-30",
+        "2023-06-30",
+    ]
+    assert trial_ledger.is_file()
+    assert Path(manifest["readiness_backtest_manifest"]).is_file()
+    assert Path(manifest["readiness_backtest_decision_report"]).is_file()
+
+
+def test_failed_date_does_not_stop_other_dates(tmp_path: Path) -> None:
+    result, outputs_root, _ = _run_multidate(
+        tmp_path,
+        tickers="MSFT",
+        as_of_dates="2023-06-30,2023/06/30",
+        full_pipeline=False,
+    )
+
+    assert result.exit_code == 0, result.output
+    manifest = _latest_manifest(outputs_root)
+    assert manifest["total_expected_runs"] == 2
+    assert manifest["total_completed_runs"] == 1
+    assert manifest["total_failed_runs"] == 1
+    assert manifest["completed_dates"] == ["2023-06-30"]
+    assert manifest["failed_dates"] == ["2023/06/30"]
+    records = {
+        record["as_of_date"]: record
+        for record in manifest["date_batch_records"]
+    }
+    assert records["2023-06-30"]["status"] == "completed"
+    assert records["2023/06/30"]["status"] == "failed"
+    assert records["2023/06/30"]["error"]
+
+
+def test_failed_ticker_is_isolated_inside_each_date(tmp_path: Path) -> None:
+    result, outputs_root, _ = _run_multidate(
+        tmp_path,
+        tickers="MSFT,NOTREAL",
+        as_of_dates="2022-06-30,2023-06-30",
+        full_pipeline=False,
+    )
+
+    assert result.exit_code == 0, result.output
+    manifest = _latest_manifest(outputs_root)
+    assert manifest["total_expected_runs"] == 4
+    assert manifest["total_completed_runs"] == 2
+    assert manifest["total_failed_runs"] == 2
+    assert manifest["completed_dates"] == ["2022-06-30", "2023-06-30"]
+    assert manifest["failed_dates"] == []
+    for record in manifest["date_batch_records"]:
+        assert record["status"] == "completed"
+        assert record["completed_tickers"] == ["MSFT"]
+        assert record["failed_tickers"] == ["NOTREAL"]
+        assert record["total_completed"] == 1
+        assert record["total_failed"] == 1
+
+
+def test_task88_documentation_and_demo_runner_remain() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8").lower()
+    for text in (
+        "multi-date historical readiness trial",
+        "run-historical-readiness-multidate",
+        "2021-06-30,2022-06-30,2023-06-30",
+        "approximately 12 readiness events",
+        "--export-trial-ledger",
+        "--validate-trial-ledger",
+        "--run-readiness-backtest",
+        "dedupe remains important",
+        "readiness-only sections",
+    ):
+        assert text in readme
+
+    demo = (ROOT / "scripts" / "run_first_demo.ps1").read_text(
+        encoding="utf-8"
+    )
+    assert "python -m ruff check ." in demo
+    assert "python -m pytest --basetemp=.pytest_tmp_demo" in demo
+    assert "python -m broker_agents.cli" in demo

@@ -789,6 +789,28 @@ because repeated historical runs can inflate raw record counts. The batch
 creates no recommendation, ranking, allocation instruction, rebalancing
 instruction, trade signal, or execution instruction.
 
+### Multi-Date Historical Readiness Trial
+
+Run the existing multi-ticker readiness batch across several as-of dates, then
+optionally export, validate, and backtest the aggregate readiness sample:
+
+```powershell
+python -m broker_agents.cli run-historical-readiness-multidate --tickers MSFT,AAPL,NVDA,COST --as-of-dates 2021-06-30,2022-06-30,2023-06-30 --examples-root examples --outputs-root data/outputs --fixtures-root tests/fixtures --portfolio-context examples/portfolio_context.yaml --financials-provider historical_csv --financials-root tests/fixtures/historical_financials --export-trial-ledger --validate-trial-ledger --run-readiness-backtest
+```
+
+This research-only workflow attempts every ticker for every date and continues
+after isolated ticker or date failures. Four tickers across three dates target
+approximately 12 readiness events before repeated-run dedupe. The multi-date
+manifest, summary, and results CSV are written under
+`data/outputs/historical_readiness_multidate_runs/{MULTIDATE_RUN_ID}/`.
+
+The goal is sample expansion before interpretation, not strategy validation.
+Dedupe remains important because repeated runs may inflate raw records.
+Results remain diagnostic until sample size and data quality are sufficient;
+missing metadata and readiness-only sections remain visible. No recommendation,
+ranking, allocation instruction, rebalancing instruction, trade signal, or
+execution instruction is produced.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from

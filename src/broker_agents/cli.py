@@ -81,6 +81,9 @@ from broker_agents.deals.batch_analyze import (
 from broker_agents.deals.historical_readiness_batch import (
     run_historical_readiness_batch,
 )
+from broker_agents.deals.historical_readiness_multidate import (
+    run_historical_readiness_multidate,
+)
 from broker_agents.deals.deal_intake import build_deal_intake_status
 from broker_agents.fetchers.sec_financials_fetcher import (
     load_sec_fixture,
@@ -2664,6 +2667,213 @@ def validate_readiness_trial_ledger_command(
         console.print(f"warning={warning}")
     if result.invalid_rows:
         raise typer.Exit(code=1)
+
+
+@app.command("run-historical-readiness-multidate")
+def run_historical_readiness_multidate_command(
+    tickers: Annotated[
+        str,
+        typer.Option(
+            "--tickers",
+            help="Comma-separated ticker symbols for each historical date.",
+        ),
+    ] = "MSFT,AAPL,NVDA,COST",
+    as_of_dates: Annotated[
+        str,
+        typer.Option(
+            "--as-of-dates",
+            help="Comma-separated historical readiness dates.",
+        ),
+    ] = "2021-06-30,2022-06-30,2023-06-30",
+    examples_root: Annotated[
+        Path,
+        typer.Option(
+            "--examples-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            help="Directory containing manual input packs.",
+        ),
+    ] = Path("examples"),
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            file_okay=False,
+            dir_okay=True,
+            writable=True,
+            help="Root directory for ticker, multidate, and backtest outputs.",
+        ),
+    ] = Path("data/outputs"),
+    fixtures_root: Annotated[
+        Path,
+        typer.Option(
+            "--fixtures-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            help="Directory containing offline enrichment fixtures.",
+        ),
+    ] = Path("tests/fixtures"),
+    portfolio_context_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--portfolio-context",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Optional portfolio context for independent Bogle analysis.",
+        ),
+    ] = None,
+    financials_provider: Annotated[
+        str,
+        typer.Option(
+            "--financials-provider",
+            help="Historical financials provider; currently historical_csv.",
+        ),
+    ] = "historical_csv",
+    financials_root: Annotated[
+        Path,
+        typer.Option(
+            "--financials-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            help="Directory containing point-in-time financials CSV files.",
+        ),
+    ] = Path("tests/fixtures/historical_financials"),
+    export_trial_ledger: Annotated[
+        bool,
+        typer.Option(
+            "--export-trial-ledger",
+            help="Export the aggregate readiness-only trial ledger.",
+        ),
+    ] = False,
+    validate_trial_ledger: Annotated[
+        bool,
+        typer.Option(
+            "--validate-trial-ledger",
+            help="Validate the aggregate readiness-only trial ledger.",
+        ),
+    ] = False,
+    run_readiness_backtest: Annotated[
+        bool,
+        typer.Option(
+            "--run-readiness-backtest",
+            help="Run one readiness-only backtest after all dates finish.",
+        ),
+    ] = False,
+    trial_ledger_path: Annotated[
+        Path,
+        typer.Option(
+            "--trial-ledger",
+            help="Output path for the aggregate readiness trial ledger.",
+        ),
+    ] = Path(
+        "data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv"
+    ),
+    price_fixtures_path: Annotated[
+        Path,
+        typer.Option(
+            "--price-fixtures",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            help="Historical local CSV prices for the optional backtest.",
+        ),
+    ] = Path("tests/fixtures/historical_price_history"),
+) -> None:
+    """Expand readiness research across multiple tickers and dates."""
+    try:
+        result = run_historical_readiness_multidate(
+            tickers=tickers,
+            as_of_dates=as_of_dates,
+            examples_root=examples_root,
+            outputs_root=outputs_root,
+            fixtures_root=fixtures_root,
+            portfolio_context=portfolio_context_path,
+            financials_provider=financials_provider,
+            financials_root=financials_root,
+            export_trial_ledger=export_trial_ledger,
+            validate_trial_ledger=validate_trial_ledger,
+            run_readiness_backtest=run_readiness_backtest,
+            trial_ledger_path=trial_ledger_path,
+            price_fixtures_path=price_fixtures_path,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Historical readiness multi-date trial failed: {exc}"
+        ) from exc
+
+    table = Table(title="Historical Readiness Multi-Date Trial")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Multi-Date Run ID", result.multidate_run_id),
+        ("As-Of Dates", as_of_dates),
+        ("Tickers Requested", tickers),
+        ("Expected Runs", str(result.total_expected_runs)),
+        ("Completed Runs", str(result.total_completed_runs)),
+        ("Failed Runs", str(result.total_failed_runs)),
+        (
+            "Export Trial Ledger",
+            str(result.trial_ledger_exported).lower(),
+        ),
+        ("Validate Trial Ledger", result.trial_ledger_validation_status),
+        (
+            "Run Readiness Backtest",
+            str(result.readiness_backtest_run).lower(),
+        ),
+        (
+            "Sample Size After Dedupe",
+            (
+                str(result.sample_size_after_dedupe)
+                if result.sample_size_after_dedupe is not None
+                else "Not run"
+            ),
+        ),
+        ("Decision Status", result.decision_status or "Not run"),
+        (
+            "Statistical Validity",
+            result.statistical_validity or "Not run",
+        ),
+        ("Multidate Manifest", str(result.manifest_path)),
+        ("Multidate Summary", str(result.summary_path)),
+        ("Multidate Results", str(result.results_path)),
+        ("Status", "completed"),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(f"multidate_run_id={result.multidate_run_id}")
+    console.print(f"as_of_dates={as_of_dates}")
+    console.print(f"tickers={tickers}")
+    console.print(f"total_expected_runs={result.total_expected_runs}")
+    console.print(f"total_completed_runs={result.total_completed_runs}")
+    console.print(f"total_failed_runs={result.total_failed_runs}")
+    console.print(
+        "trial_ledger_exported="
+        f"{str(result.trial_ledger_exported).lower()}"
+    )
+    console.print(
+        "readiness_backtest_run="
+        f"{str(result.readiness_backtest_run).lower()}"
+    )
+    console.print(
+        "sample_size_after_dedupe="
+        f"{result.sample_size_after_dedupe or 0}"
+    )
+    console.print(f"decision_status={result.decision_status or 'not_run'}")
+    console.print(
+        "statistical_validity="
+        f"{result.statistical_validity or 'not_run'}"
+    )
+    console.print("status=completed")
 
 
 @app.command("run-historical-readiness-batch")
