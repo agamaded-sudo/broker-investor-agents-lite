@@ -9,8 +9,16 @@ from broker_agents.backtesting.backtest_metrics import (
     calculate_backtest_metrics,
 )
 
+READINESS_TRIAL_WALK_FORWARD_NOTICE = (
+    "This readiness trial walk-forward backtest evaluates readiness-only "
+    "research artifacts by time period. It is not a recommendation backtest, "
+    "ranking backtest, allocation backtest, rebalancing backtest, trade signal "
+    "backtest, or execution instruction."
+)
 WALK_FORWARD_FIELDS = (
     "period",
+    "period_start",
+    "period_end",
     "period_start_date",
     "period_end_date",
     "sample_size",
@@ -87,6 +95,8 @@ def _period_row(
     ]
     result = {
         "period": period,
+        "period_start": f"{period}-01-01",
+        "period_end": f"{period}-12-31",
         "period_start_date": f"{period}-01-01",
         "period_end_date": f"{period}-12-31",
         "sample_size": metrics["sample_size"],
@@ -160,15 +170,38 @@ def _render_summary(context: dict, metrics: dict) -> str:
         "- Forward Windows: 3 months, 6 months, 12 months",
         f"- Benchmark: {context['benchmark']}",
         "",
-        "## 2. Period Results",
-        "",
-        (
-            "| Period | Records | Median 12M Return | "
-            "Median 12M Relative Return | Hit Rate vs Benchmark 12M | "
-            "Small Sample Warning |"
-        ),
-        "|---|---:|---:|---:|---:|---|",
     ]
+    if context.get("backtest_run_type") == "readiness_trial":
+        lines.extend(
+            [
+                "## Readiness Trial Walk-Forward Notice",
+                "",
+                "- Backtest Run Type: readiness_trial",
+                "- Readiness Only: Yes",
+                "- Not Trade Signal: Yes",
+                "- Not Recommendation: Yes",
+                "- Not Allocation Instruction: Yes",
+                f"- Safety Notice: {READINESS_TRIAL_WALK_FORWARD_NOTICE}",
+                "",
+                (
+                    "These walk-forward results must not be interpreted as "
+                    "investment recommendations or trading signals."
+                ),
+                "",
+            ]
+        )
+    lines.extend(
+        [
+            "## 2. Period Results",
+            "",
+            (
+                "| Period | Records | Median 12M Return | "
+                "Median 12M Relative Return | Hit Rate vs Benchmark 12M | "
+                "Small Sample Warning |"
+            ),
+            "|---|---:|---:|---:|---:|---|",
+        ]
+    )
     for period in metrics["periods"]:
         lines.append(
             f"| {period['period']} | {period['sample_size']} | "

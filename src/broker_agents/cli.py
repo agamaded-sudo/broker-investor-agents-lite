@@ -3224,6 +3224,13 @@ def backtest_signals(
                 ),
             ]
         )
+        if result.backtest_run_type == "readiness_trial":
+            rows.append(
+                (
+                    "Walk-Forward Stability",
+                    result.walk_forward_stability or "Not available",
+                )
+            )
     if result.backtest_run_type == "readiness_trial":
         rows.extend(
             [

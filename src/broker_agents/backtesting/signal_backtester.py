@@ -121,6 +121,7 @@ class BacktestRunResult:
     decision_report_json_path: Path | None = None
     decision_status: str | None = None
     statistical_validity: str | None = None
+    walk_forward_stability: str | None = None
     walk_forward_summary_path: Path | None = None
     walk_forward_results_path: Path | None = None
     walk_forward_metrics_path: Path | None = None
@@ -864,6 +865,9 @@ def run_signal_backtest(
                 ),
                 "price_data_type": provider.data_type,
                 "benchmark": benchmark_label,
+                "backtest_run_type": (
+                    "readiness_trial" if readiness_trial else "standard"
+                ),
             },
             frequency=walk_forward_frequency,
             minimum_group_size=minimum_group_size,
@@ -945,6 +949,20 @@ def run_signal_backtest(
             if walk_forward_result
             else 0
         ),
+        "readiness_trial_walk_forward": (
+            readiness_trial and walk_forward_result is not None
+        ),
+        "readiness_trial_walk_forward_notice": (
+            (
+                "This readiness trial walk-forward backtest evaluates "
+                "readiness-only research artifacts by time period. It is not "
+                "a recommendation backtest, ranking backtest, allocation "
+                "backtest, rebalancing backtest, trade signal backtest, or "
+                "execution instruction."
+            )
+            if readiness_trial and walk_forward_result
+            else None
+        ),
         "results_path": str(results_path),
         "summary_path": str(backtest_folder / "backtest_summary.md"),
         "metrics_summary_path": str(metrics_summary_path),
@@ -979,6 +997,9 @@ def run_signal_backtest(
                 "next_required_action": (
                     decision_report_files.report.next_required_action
                 ),
+                "walk_forward_stability_judgment": (
+                    decision_report_files.report.walk_forward_stability_judgment
+                ),
             }
         )
     else:
@@ -989,6 +1010,7 @@ def run_signal_backtest(
                 "decision_status": None,
                 "statistical_validity": None,
                 "next_required_action": None,
+                "walk_forward_stability_judgment": None,
             }
         )
     manifest_text = json.dumps(manifest, indent=2)
@@ -1026,6 +1048,11 @@ def run_signal_backtest(
         ),
         decision_status=manifest["decision_status"],
         statistical_validity=manifest["statistical_validity"],
+        walk_forward_stability=(
+            decision_report_files.report.walk_forward_stability_judgment
+            if decision_report_files
+            else None
+        ),
         walk_forward_summary_path=(
             walk_forward_result.summary_path
             if walk_forward_result

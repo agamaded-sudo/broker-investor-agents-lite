@@ -811,6 +811,25 @@ missing metadata and readiness-only sections remain visible. No recommendation,
 ranking, allocation instruction, rebalancing instruction, trade signal, or
 execution instruction is produced.
 
+### Readiness Trial Walk-Forward Backtest
+
+After multi-date sample generation, run the readiness-only backtest by yearly
+cohort:
+
+```powershell
+python -m broker_agents.cli backtest-signals --ledger data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv --price-provider csv --price-fixtures tests/fixtures/historical_price_history --outputs-root data/outputs --lookback-years 5 --dedupe-mode latest_per_ticker_per_day --walk-forward --walk-forward-frequency yearly
+```
+
+This evaluates readiness-only artifacts by time period and helps diagnose
+whether aggregate results are stable or driven by a single year. It creates
+yearly walk-forward results, metrics, and a readiness notice, then extends the
+decision report with a conservative stability judgment.
+
+The workflow is research-only and does not produce recommendations or trading
+instructions. Results remain diagnostic until sample size and data quality are
+sufficient. Missing metadata and readiness-only sections remain visible, and
+dedupe remains important because repeated runs may inflate raw records.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from

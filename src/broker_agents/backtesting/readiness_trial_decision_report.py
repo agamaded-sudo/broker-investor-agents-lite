@@ -47,6 +47,12 @@ class ReadinessTrialDecisionReport:
     next_required_action: str
     warnings: list[str]
     results_snapshot: dict
+    walk_forward_enabled: bool
+    walk_forward_periods_evaluated: int
+    walk_forward_stability_judgment: str
+    best_period: str | None
+    weakest_period: str | None
+    period_summaries: list[dict]
     safety_notice: str = SAFETY_NOTICE
 
     def to_dict(self) -> dict:
@@ -79,6 +85,63 @@ def _display_metric(value: object) -> str:
     if isinstance(value, float):
         return f"{value:.4f}"
     return str(value)
+
+
+def _walk_forward_metrics(manifest: dict) -> dict:
+    """Load optional walk-forward metrics from the completed run."""
+    path_value = manifest.get("walk_forward_metrics_path")
+    if not manifest.get("walk_forward_enabled") or not path_value:
+        return {}
+    path = Path(path_value)
+    if not path.is_file():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _walk_forward_stability(periods: list[dict]) -> str:
+    """Judge period stability conservatively without strategy claims."""
+    valid = [
+        period
+        for period in periods
+        if period.get("median_relative_return_12m") is not None
+    ]
+    if len(valid) < 3:
+        return "insufficient_periods"
+    relative = [
+        float(period["median_relative_return_12m"]) for period in valid
+    ]
+    forward = [
+        float(period["median_forward_return_12m"])
+        for period in valid
+        if period.get("median_forward_return_12m") is not None
+    ]
+    hit_rates = [
+        float(period["hit_rate_vs_benchmark_12m"])
+        for period in valid
+        if period.get("hit_rate_vs_benchmark_12m") is not None
+    ]
+    concentrated = any(
+        bool(period.get("concentration_warning")) for period in valid
+    )
+    sign_disagreement = (
+        any(value < 0 for value in relative)
+        and any(value > 0 for value in relative)
+    ) or (
+        any(value < 0 for value in forward)
+        and any(value > 0 for value in forward)
+    )
+    material_hit_rate_variation = (
+        len(hit_rates) > 1 and max(hit_rates) - min(hit_rates) >= 0.50
+    )
+    if sign_disagreement:
+        return "unstable"
+    if concentrated or material_hit_rate_variation:
+        return "mixed"
+    if all(value > 0 for value in relative):
+        return "stable_positive"
+    if all(value < 0 for value in relative):
+        return "stable_negative"
+    return "mixed"
 
 
 def build_readiness_trial_decision_report(
@@ -164,6 +227,45 @@ def build_readiness_trial_decision_report(
             "hit_rate_vs_benchmark_12m"
         ),
     }
+    walk_forward_metrics = _walk_forward_metrics(manifest)
+    period_summaries = list(walk_forward_metrics.get("periods") or [])
+    periods_with_relative = [
+        period
+        for period in period_summaries
+        if period.get("median_relative_return_12m") is not None
+    ]
+    best_period = (
+        str(
+            max(
+                periods_with_relative,
+                key=lambda period: float(
+                    period["median_relative_return_12m"]
+                ),
+            )["period"]
+        )
+        if periods_with_relative
+        else None
+    )
+    weakest_period = (
+        str(
+            min(
+                periods_with_relative,
+                key=lambda period: float(
+                    period["median_relative_return_12m"]
+                ),
+            )["period"]
+        )
+        if periods_with_relative
+        else None
+    )
+    walk_forward_enabled = bool(
+        manifest.get("walk_forward_enabled") and period_summaries
+    )
+    walk_forward_stability = (
+        _walk_forward_stability(period_summaries)
+        if walk_forward_enabled
+        else "not_enabled"
+    )
     return ReadinessTrialDecisionReport(
         backtest_run_id=str(manifest.get("backtest_run_id") or ""),
         backtest_run_type="readiness_trial",
@@ -203,6 +305,12 @@ def build_readiness_trial_decision_report(
         next_required_action=next_required_action,
         warnings=warnings,
         results_snapshot=results_snapshot,
+        walk_forward_enabled=walk_forward_enabled,
+        walk_forward_periods_evaluated=len(period_summaries),
+        walk_forward_stability_judgment=walk_forward_stability,
+        best_period=best_period,
+        weakest_period=weakest_period,
+        period_summaries=period_summaries,
     )
 
 
@@ -306,6 +414,47 @@ def render_readiness_trial_decision_report(
         )
     else:
         lines.append("- No required grouped metadata fields are wholly missing.")
+    if report.walk_forward_enabled:
+        lines.extend(
+            [
+                "",
+                "## Walk-Forward Stability",
+                "",
+                "- Walk-Forward Enabled: Yes",
+                (
+                    "- Periods Evaluated: "
+                    f"{report.walk_forward_periods_evaluated}"
+                ),
+                (
+                    "- Best Period by median_relative_return_12m: "
+                    f"{report.best_period or 'Missing'}"
+                ),
+                (
+                    "- Weakest Period by median_relative_return_12m: "
+                    f"{report.weakest_period or 'Missing'}"
+                ),
+                (
+                    "- Stability Judgment: "
+                    f"{report.walk_forward_stability_judgment}"
+                ),
+                "",
+                (
+                    "| Period | Sample Size | Tickers | Median 12M Return | "
+                    "Median Relative 12M Return | Hit Rate vs Benchmark 12M | "
+                    "Concentration Warning |"
+                ),
+                "|---|---:|---|---:|---:|---:|---|",
+            ]
+        )
+        for period in report.period_summaries:
+            lines.append(
+                f"| {period['period']} | {period['sample_size']} | "
+                f"{period['tickers']} | "
+                f"{_display_metric(period['median_forward_return_12m'])} | "
+                f"{_display_metric(period['median_relative_return_12m'])} | "
+                f"{_display_metric(period['hit_rate_vs_benchmark_12m'])} | "
+                f"{period['concentration_warning']} |"
+            )
     lines.extend(
         [
             "",
@@ -406,6 +555,9 @@ def regenerate_readiness_trial_decision_report(
             "decision_status": files.report.decision_status,
             "statistical_validity": files.report.statistical_validity,
             "next_required_action": files.report.next_required_action,
+            "walk_forward_stability_judgment": (
+                files.report.walk_forward_stability_judgment
+            ),
         }
     )
     manifest_path.write_text(
