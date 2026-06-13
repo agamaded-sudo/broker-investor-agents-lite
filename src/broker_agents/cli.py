@@ -35,6 +35,10 @@ from broker_agents.agents.lynch_agent import LynchAgent
 from broker_agents.agents.munger_agent import MungerAgent
 from broker_agents.archive.signal_ledger import archive_completed_run
 from broker_agents.backtesting.signal_backtester import run_signal_backtest
+from broker_agents.backtesting.readiness_trial_export import (
+    export_readiness_ledger_to_trial_ledger,
+    validate_readiness_trial_ledger,
+)
 from broker_agents.data_providers.price_csv_validation import (
     validate_price_csvs,
 )
@@ -2520,6 +2524,140 @@ def show_historical_readiness_ledger(
     )
     console.print(f"ledger_jsonl={snapshot.get('ledger_jsonl', 'None')}")
     console.print(f"ledger_csv={snapshot.get('ledger_csv', 'None')}")
+
+
+@app.command("export-readiness-trial-ledger")
+def export_readiness_trial_ledger(
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            help="Output root containing the historical readiness ledger.",
+        ),
+    ] = Path("data/outputs"),
+    output_ledger: Annotated[
+        Path,
+        typer.Option(
+            "--output-ledger",
+            file_okay=True,
+            dir_okay=False,
+            help="Destination trial ledger CSV.",
+        ),
+    ] = Path(
+        "data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv"
+    ),
+    source_ledger: Annotated[
+        Path | None,
+        typer.Option(
+            "--source-ledger",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Optional readiness ledger CSV or JSONL override.",
+        ),
+    ] = None,
+    metadata_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--metadata-file",
+            file_okay=True,
+            dir_okay=False,
+            help="Optional export metadata JSON path.",
+        ),
+    ] = None,
+) -> None:
+    """Export readiness-only records to a research trial ledger."""
+    resolved_source = source_ledger or (
+        outputs_root
+        / "historical_readiness_ledger"
+        / "historical_signal_readiness_ledger.csv"
+    )
+    try:
+        result = export_readiness_ledger_to_trial_ledger(
+            source_ledger=resolved_source,
+            output_ledger=output_ledger,
+            metadata_file=metadata_file,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Readiness trial ledger export failed: {exc}"
+        ) from exc
+
+    table = Table(title="Readiness Ledger Trial Export")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Source Ledger", str(result.source_ledger)),
+        ("Output Ledger", str(result.output_ledger)),
+        ("Metadata File", str(result.metadata_file)),
+        ("Total Input Records", str(result.total_input_records)),
+        ("Total Exported Records", str(result.total_exported_records)),
+        ("Skipped Records", str(result.skipped_records)),
+        ("Status", "completed"),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(f"source_ledger={result.source_ledger}", soft_wrap=True)
+    console.print(f"output_ledger={result.output_ledger}", soft_wrap=True)
+    console.print(
+        f"total_exported_records={result.total_exported_records}"
+    )
+    console.print("status=completed")
+
+
+@app.command("validate-readiness-trial-ledger")
+def validate_readiness_trial_ledger_command(
+    ledger: Annotated[
+        Path,
+        typer.Option(
+            "--ledger",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Readiness-only trial ledger CSV to validate.",
+        ),
+    ],
+) -> None:
+    """Validate research-only trial ledger safety invariants."""
+    try:
+        result = validate_readiness_trial_ledger(ledger)
+    except (OSError, ValueError) as exc:
+        raise typer.BadParameter(
+            f"Readiness trial ledger validation failed: {exc}"
+        ) from exc
+
+    table = Table(title="Readiness Trial Ledger Validation")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Rows", str(result.rows)),
+        ("Readiness-Only Rows", str(result.readiness_only_rows)),
+        ("Not Trade Signal Rows", str(result.not_trade_signal_rows)),
+        ("Not Recommendation Rows", str(result.not_recommendation_rows)),
+        ("Invalid Rows", str(result.invalid_rows)),
+        ("Status", result.status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(f"rows={result.rows}")
+    console.print(f"readiness_only_rows={result.readiness_only_rows}")
+    console.print(f"not_trade_signal_rows={result.not_trade_signal_rows}")
+    console.print(
+        f"not_recommendation_rows={result.not_recommendation_rows}"
+    )
+    console.print(f"invalid_rows={result.invalid_rows}")
+    console.print(f"status={result.status}")
+    for warning in result.warnings:
+        console.print(f"warning={warning}")
+    if result.invalid_rows:
+        raise typer.Exit(code=1)
 
 
 @app.command("backtest-signals")

@@ -693,6 +693,28 @@ No live API is used, and no recommendation, ranking,
 allocation instruction, rebalancing instruction, trade signal, or execution
 instruction is produced.
 
+### Readiness Ledger to Trial Backtest Input Export
+
+The separate historical readiness ledger can be converted into a
+research-only trial input file without changing the main signal ledger:
+
+```powershell
+python -m broker_agents.cli export-readiness-trial-ledger --outputs-root data/outputs --output-ledger data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv
+python -m broker_agents.cli validate-readiness-trial-ledger --ledger data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv
+```
+
+The export maps `signal_date` from `as_of_date` and preserves
+`readiness_only`, `safe_for_historical_signal_generation=false`,
+`not_trade_signal=true`, `not_recommendation=true`, and
+`not_allocation_instruction=true`. It also includes the timestamp and run
+identifiers required by the existing research backtester.
+
+This task prepares `historical_readiness_trial_ledger.csv` and its metadata
+JSON only; it does not run a backtest. The file may be used later to study
+outcomes after readiness events. It remains separate from the main signal
+ledger and produces no recommendation, ranking, allocation instruction,
+rebalancing instruction, trade signal, or execution instruction.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from
