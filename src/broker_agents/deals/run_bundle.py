@@ -23,6 +23,10 @@ from broker_agents.historical.historical_enriched_input import (
     build_historical_enriched_input_assembly,
     write_historical_enriched_input_assembly,
 )
+from broker_agents.historical.historical_signal_readiness import (
+    build_historical_signal_readiness_candidate,
+    write_historical_signal_readiness_candidate,
+)
 from broker_agents.historical.price_windows import (
     build_analysis_price_window,
 )
@@ -155,6 +159,9 @@ def _run_summary(manifest: dict) -> str:
     price_window = manifest.get("historical_price_window") or {}
     historical_assembly = (
         manifest.get("historical_enriched_input_assembly") or {}
+    )
+    historical_candidate = (
+        manifest.get("historical_signal_readiness_candidate") or {}
     )
     capability_lines = [
         (
@@ -412,6 +419,32 @@ def _run_summary(manifest: dict) -> str:
                         for warning in historical_assembly["warnings"]
                     ],
                     "",
+                    "## Historical Signal Readiness Candidate",
+                    "",
+                    "- Signal Generation Status: readiness_only",
+                    "- Safe for Historical Signal Generation: No",
+                    (
+                        "- Candidate File: "
+                        f"{historical_candidate['candidate_file']}"
+                    ),
+                    (
+                        "- Blocking Reasons Count: "
+                        f"{historical_candidate['blocking_reasons_count']}"
+                    ),
+                    (
+                        "- Leakage Risk Sections Count: "
+                        f"{historical_candidate['leakage_risk_sections_count']}"
+                    ),
+                    "",
+                    (
+                        "Historical signal generation remains disabled until "
+                        "sufficient point-in-time inputs are available."
+                    ),
+                    (
+                        "Safety Notice: this candidate is a readiness-only "
+                        "research artifact and is not an actionable signal."
+                    ),
+                    "",
                     "## Historical Analysis Warning",
                     "",
                     manifest["data_cutoff_note"],
@@ -521,6 +554,12 @@ def create_analyze_stock_run_bundle(
     assembly_markdown_path = (
         run_folder / "historical_enriched_input_assembly.md"
     )
+    candidate_json_path = (
+        run_folder / "historical_signal_readiness_candidate.json"
+    )
+    candidate_markdown_path = (
+        run_folder / "historical_signal_readiness_candidate.md"
+    )
     if as_of_context.historical_mode:
         historical_assembly = build_historical_enriched_input_assembly(
             ticker=intake.ticker,
@@ -560,6 +599,17 @@ def create_analyze_stock_run_bundle(
             json_path=assembly_json_path,
             markdown_path=assembly_markdown_path,
         )
+        historical_candidate = (
+            build_historical_signal_readiness_candidate(
+                historical_assembly,
+                input_assembly_file=assembly_json_path,
+            )
+        )
+        write_historical_signal_readiness_candidate(
+            historical_candidate,
+            json_path=candidate_json_path,
+            markdown_path=candidate_markdown_path,
+        )
         historical_assembly_manifest = {
             "enabled": True,
             "assembly_file": str(assembly_json_path),
@@ -576,11 +626,37 @@ def create_analyze_stock_run_bundle(
             ),
             "warnings": historical_assembly.warnings,
         }
+        historical_candidate_manifest = {
+            "enabled": True,
+            "candidate_file": str(candidate_json_path),
+            "candidate_markdown": str(candidate_markdown_path),
+            "signal_generation_status": (
+                historical_candidate.signal_generation_status
+            ),
+            "safe_for_historical_signal_generation": False,
+            "not_trade_signal": True,
+            "not_recommendation": True,
+            "blocking_reasons_count": len(
+                historical_candidate.blocking_reasons
+            ),
+            "leakage_risk_sections_count": len(
+                historical_candidate.leakage_risk_sections
+            ),
+            "warnings": historical_candidate.warnings,
+        }
     else:
         historical_assembly_manifest = {
             "enabled": False,
             "assembly_status": "not_enabled",
             "safe_for_historical_signal_generation": False,
+            "warnings": [],
+        }
+        historical_candidate_manifest = {
+            "enabled": False,
+            "signal_generation_status": "not_enabled",
+            "safe_for_historical_signal_generation": False,
+            "not_trade_signal": True,
+            "not_recommendation": True,
             "warnings": [],
         }
     manifest = {
@@ -601,6 +677,9 @@ def create_analyze_stock_run_bundle(
         "historical_price_window": historical_price_window,
         "historical_enriched_input_assembly": (
             historical_assembly_manifest
+        ),
+        "historical_signal_readiness_candidate": (
+            historical_candidate_manifest
         ),
         "market_price_window_enforcement": (
             analysis_window.enforcement_status if analysis_window else None

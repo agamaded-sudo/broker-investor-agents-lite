@@ -55,6 +55,9 @@ from broker_agents.historical.historical_financials import (
     load_historical_financials_csv,
     validate_historical_financials_csv,
 )
+from broker_agents.historical.historical_signal_readiness import (
+    HistoricalSignalReadinessCandidate,
+)
 from broker_agents.historical.price_windows import (
     build_analysis_price_window,
 )
@@ -2353,6 +2356,79 @@ def validate_price_window(
     )
     console.print(f"max_date_after_filter={max_date or 'None'}")
     console.print(f"status={result.status}")
+
+
+@app.command("validate-historical-signal-candidate")
+def validate_historical_signal_candidate(
+    candidate_file: Annotated[
+        Path,
+        typer.Option(
+            "--candidate-file",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Run-local historical signal readiness candidate JSON.",
+        ),
+    ],
+) -> None:
+    """Validate a readiness-only candidate without running analysis."""
+    try:
+        payload = json.loads(candidate_file.read_text(encoding="utf-8"))
+        candidate = HistoricalSignalReadinessCandidate(**payload)
+    except (OSError, json.JSONDecodeError, TypeError) as exc:
+        raise typer.BadParameter(
+            f"Historical signal candidate validation failed: {exc}"
+        ) from exc
+    valid = (
+        candidate.historical_signal_candidate
+        and candidate.signal_generation_status == "readiness_only"
+        and not candidate.safe_for_historical_signal_generation
+        and candidate.not_trade_signal
+        and candidate.not_recommendation
+        and candidate.not_allocation_instruction
+    )
+    if not valid:
+        raise typer.BadParameter(
+            "Candidate does not satisfy readiness-only safety invariants."
+        )
+
+    table = Table(title="Historical Signal Readiness Candidate")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Ticker", candidate.ticker),
+        ("As-Of Date", candidate.as_of_date),
+        ("Signal Generation Status", candidate.signal_generation_status),
+        (
+            "Safe for Historical Signal Generation",
+            str(candidate.safe_for_historical_signal_generation).lower(),
+        ),
+        ("Not Trade Signal", str(candidate.not_trade_signal).lower()),
+        ("Not Recommendation", str(candidate.not_recommendation).lower()),
+        ("Blocking Reasons Count", str(len(candidate.blocking_reasons))),
+        ("Status", "valid_readiness_candidate"),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(f"ticker={candidate.ticker}")
+    console.print(f"as_of_date={candidate.as_of_date}")
+    console.print(
+        f"signal_generation_status={candidate.signal_generation_status}"
+    )
+    console.print(
+        "safe_for_historical_signal_generation="
+        f"{str(candidate.safe_for_historical_signal_generation).lower()}"
+    )
+    console.print(
+        f"not_trade_signal={str(candidate.not_trade_signal).lower()}"
+    )
+    console.print(
+        f"not_recommendation={str(candidate.not_recommendation).lower()}"
+    )
+    console.print(f"blocking_reasons_count={len(candidate.blocking_reasons)}")
+    console.print("status=valid_readiness_candidate")
 
 
 @app.command("backtest-signals")

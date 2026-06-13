@@ -641,6 +641,32 @@ It does not generate signals. It does not alter investor decisions.
 point-in-time inputs are available. No live API is used. No recommendation,
 ranking, allocation instruction, or trade signal is produced.
 
+### Historical Signal Generation Readiness Trial
+
+Historical `analyze-stock` runs now create a readiness-only research candidate
+beside the enriched input assembly:
+
+```powershell
+python -m broker_agents.cli analyze-stock --ticker COST --examples-root examples --outputs-root data/outputs --fixtures-root tests/fixtures --portfolio-context examples/portfolio_context.yaml --as-of-date 2023-06-30 --financials-provider historical_csv --financials-root tests/fixtures/historical_financials
+```
+
+Inspect `historical_enriched_input_assembly.json`,
+`historical_signal_readiness_candidate.json`, `run_manifest.json`, and
+`run_summary.md` under the generated run folder. Validate an existing
+candidate without rerunning analysis:
+
+```powershell
+python -m broker_agents.cli validate-historical-signal-candidate --candidate-file data/outputs/COST/runs/{RUN_ID}/historical_signal_readiness_candidate.json
+```
+
+The candidate is not full historical signal generation.
+It is not written to the main signal ledger.
+It is not used for portfolio allocation. It remains
+blocked while key inputs are readiness-only. The artifact exists to prepare
+future historical research while preserving methodological honesty. It is not
+a recommendation, ranking, vote, consensus, allocation instruction,
+rebalancing instruction, trade signal, or execution instruction.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from
