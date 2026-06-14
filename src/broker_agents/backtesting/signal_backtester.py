@@ -15,6 +15,9 @@ from broker_agents.backtesting.backtest_metrics import (
 from broker_agents.backtesting.coverage_sensitivity_report import (
     write_clean_coverage_sensitivity_report,
 )
+from broker_agents.backtesting.delayed_anchor_impact_report import (
+    write_delayed_anchor_impact_report,
+)
 from broker_agents.backtesting.price_history import (
     forward_return,
     forward_return_observation,
@@ -157,6 +160,13 @@ class BacktestRunResult:
     sensitivity_report_json_path: Path | None = None
     sensitivity_status: str | None = None
     clean_only_available: bool = False
+    delayed_anchor_impact_report_path: Path | None = None
+    delayed_anchor_impact_report_json_path: Path | None = None
+    delayed_anchor_impact_status: str | None = None
+    delayed_anchor_record_count: int = 0
+    no_delayed_anchor_record_count: int = 0
+    delayed_anchor_materially_stronger: bool = False
+    no_delayed_anchor_positive: bool = False
     walk_forward_stability: str | None = None
     walk_forward_summary_path: Path | None = None
     walk_forward_results_path: Path | None = None
@@ -1018,6 +1028,7 @@ def run_signal_backtest(
     decision_report_files = None
     diagnostic_report_files = None
     sensitivity_report_files = None
+    delayed_anchor_report_files = None
     if readiness_trial:
         sensitivity_report_files = write_clean_coverage_sensitivity_report(
             output_dir=backtest_folder,
@@ -1048,6 +1059,40 @@ def run_signal_backtest(
                     "warning_heavy_record_count",
                     0,
                 ),
+            }
+        )
+        delayed_anchor_report_files = write_delayed_anchor_impact_report(
+            output_dir=backtest_folder,
+            manifest=manifest,
+            rows=rows,
+        )
+        impact = delayed_anchor_report_files.report.impact_assessment
+        manifest.update(
+            {
+                "delayed_anchor_impact_report_path": str(
+                    delayed_anchor_report_files.markdown_path
+                ),
+                "delayed_anchor_impact_report_json_path": str(
+                    delayed_anchor_report_files.json_path
+                ),
+                "delayed_anchor_impact_status": (
+                    delayed_anchor_report_files.report.impact_status
+                ),
+                "delayed_anchor_present": (
+                    delayed_anchor_report_files.report.delayed_anchor_present
+                ),
+                "delayed_anchor_record_count": impact[
+                    "delayed_anchor_sample_size"
+                ],
+                "no_delayed_anchor_record_count": impact[
+                    "no_delayed_anchor_sample_size"
+                ],
+                "delayed_anchor_materially_stronger": impact[
+                    "delayed_anchor_materially_stronger"
+                ],
+                "no_delayed_anchor_positive": impact[
+                    "no_delayed_anchor_positive"
+                ],
             }
         )
         decision_report_files = write_readiness_trial_decision_report(
@@ -1120,6 +1165,14 @@ def run_signal_backtest(
                 "clean_record_count": 0,
                 "warning_record_count": 0,
                 "warning_heavy_record_count": 0,
+                "delayed_anchor_impact_report_path": None,
+                "delayed_anchor_impact_report_json_path": None,
+                "delayed_anchor_impact_status": None,
+                "delayed_anchor_present": False,
+                "delayed_anchor_record_count": 0,
+                "no_delayed_anchor_record_count": 0,
+                "delayed_anchor_materially_stronger": False,
+                "no_delayed_anchor_positive": False,
             }
         )
     manifest_text = json.dumps(manifest, indent=2)
@@ -1182,6 +1235,31 @@ def run_signal_backtest(
             "clean_coverage_sensitivity_status"
         ],
         clean_only_available=bool(manifest["clean_only_available"]),
+        delayed_anchor_impact_report_path=(
+            delayed_anchor_report_files.markdown_path
+            if delayed_anchor_report_files
+            else None
+        ),
+        delayed_anchor_impact_report_json_path=(
+            delayed_anchor_report_files.json_path
+            if delayed_anchor_report_files
+            else None
+        ),
+        delayed_anchor_impact_status=manifest[
+            "delayed_anchor_impact_status"
+        ],
+        delayed_anchor_record_count=int(
+            manifest["delayed_anchor_record_count"]
+        ),
+        no_delayed_anchor_record_count=int(
+            manifest["no_delayed_anchor_record_count"]
+        ),
+        delayed_anchor_materially_stronger=bool(
+            manifest["delayed_anchor_materially_stronger"]
+        ),
+        no_delayed_anchor_positive=bool(
+            manifest["no_delayed_anchor_positive"]
+        ),
         walk_forward_stability=(
             decision_report_files.report.walk_forward_stability_judgment
             if decision_report_files

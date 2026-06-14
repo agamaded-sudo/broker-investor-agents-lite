@@ -892,6 +892,29 @@ This is a research-only diagnostic. It does not prove a strategy or produce a
 recommendation, ranking, allocation instruction, rebalancing instruction,
 trade signal, or execution instruction.
 
+### Delayed Anchor Impact Report
+
+Readiness trial backtests now create a focused delayed-anchor impact report.
+Delayed anchors occur when the nearest usable price observation falls after the
+requested as-of or forward date. The report compares delayed-anchor rows with
+non-delayed rows to show whether stronger aggregate outcomes depend materially
+on delayed timing.
+
+```powershell
+python -m broker_agents.cli backtest-signals --ledger data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv --price-provider csv --price-fixtures tests/fixtures/historical_price_history --outputs-root data/outputs --lookback-years 5 --dedupe-mode latest_per_ticker_per_day --walk-forward --walk-forward-frequency yearly
+```
+
+Each readiness trial writes `delayed_anchor_impact_report.md` and
+`delayed_anchor_impact_report.json`. The report also separates delayed,
+non-delayed, delayed-and-warning-heavy, and non-delayed-but-limited-financials
+records. Non-delayed records can still carry other warnings, so positive
+non-delayed results are not clean-only evidence.
+
+This report complements clean-coverage sensitivity and remains readiness-only.
+It does not simulate exact historical execution or produce recommendations,
+rankings, allocation instructions, rebalancing instructions, trade signals, or
+execution instructions.
+
 ### Readiness Trial Walk-Forward Backtest
 
 After multi-date sample generation, run the readiness-only backtest by yearly

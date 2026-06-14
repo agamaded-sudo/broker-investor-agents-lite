@@ -306,6 +306,9 @@ def test_readiness_backtest_writes_links_and_regenerates_diagnostic(
     assert "Clean-Coverage Sensitivity" in result.output
     assert "Sensitivity Status" in result.output
     assert "Clean-Only Available" in result.output
+    assert "Delayed Anchor Impact" in result.output
+    assert "Delayed Anchor Materially Stronger" in result.output
+    assert "No-Delayed-Anchor Positive" in result.output
     manifest = json.loads(
         (
             outputs_root / "backtests" / "latest_backtest_manifest.json"
@@ -335,6 +338,14 @@ def test_readiness_backtest_writes_links_and_regenerates_diagnostic(
         "clean_not_available"
     )
     assert manifest["clean_only_available"] is False
+    impact_path = Path(manifest["delayed_anchor_impact_report_path"])
+    impact_json_path = Path(
+        manifest["delayed_anchor_impact_report_json_path"]
+    )
+    assert impact_path.is_file()
+    assert impact_json_path.is_file()
+    assert manifest["delayed_anchor_record_count"] == 0
+    assert manifest["no_delayed_anchor_record_count"] == 12
     payload = json.loads(json_path.read_text(encoding="utf-8"))
     assert payload["sample_size"] == 12
     assert len(payload["period_diagnostics"]) == 3
@@ -344,6 +355,7 @@ def test_readiness_backtest_writes_links_and_regenerates_diagnostic(
     assert payload["horizon_diagnostics"]["twelve_month_materially_stronger"]
     assert "coverage_quality_diagnostics" in payload
     assert "clean_coverage_sensitivity" in payload
+    assert "delayed_anchor_impact" in payload
     assert payload["clean_coverage_sensitivity"][
         "sensitivity_status"
     ] == "clean_not_available"
@@ -366,11 +378,15 @@ def test_readiness_backtest_writes_links_and_regenerates_diagnostic(
     assert "Clean-Coverage Sensitivity" in report_path.read_text(
         encoding="utf-8"
     )
+    assert "Delayed Anchor Impact" in report_path.read_text(
+        encoding="utf-8"
+    )
     decision = Path(
         manifest["readiness_trial_decision_report_path"]
     ).read_text(encoding="utf-8")
     assert "Clean-Coverage Sensitivity Status" in decision
     assert "Clean-Only Available: No" in decision
+    assert "Delayed Anchor Impact Status" in decision
 
     regenerate = CliRunner().invoke(
         app,

@@ -61,6 +61,10 @@ class ReadinessTrialDecisionReport:
     clean_coverage_sensitivity_status: str
     clean_only_available: bool
     clean_coverage_sensitivity_interpretation: str
+    delayed_anchor_impact_status: str
+    delayed_anchor_materially_stronger: bool
+    no_delayed_anchor_positive: bool
+    delayed_anchor_impact_interpretation: str
     safety_notice: str = SAFETY_NOTICE
 
     def to_dict(self) -> dict:
@@ -115,6 +119,14 @@ def _coverage_sensitivity(manifest: dict) -> dict:
     path_value = manifest.get(
         "clean_coverage_sensitivity_report_json_path"
     )
+    if not path_value or not Path(path_value).is_file():
+        return {}
+    return json.loads(Path(path_value).read_text(encoding="utf-8"))
+
+
+def _delayed_anchor_impact(manifest: dict) -> dict:
+    """Load optional delayed-anchor impact diagnostics."""
+    path_value = manifest.get("delayed_anchor_impact_report_json_path")
     if not path_value or not Path(path_value).is_file():
         return {}
     return json.loads(Path(path_value).read_text(encoding="utf-8"))
@@ -255,6 +267,15 @@ def build_readiness_trial_decision_report(
         next(iter(sensitivity.get("key_findings") or []), "")
         or "Clean-coverage sensitivity is not available for this run."
     )
+    anchor_impact = _delayed_anchor_impact(manifest)
+    impact_assessment = anchor_impact.get("impact_assessment", {})
+    anchor_materially_stronger = bool(
+        impact_assessment.get("delayed_anchor_materially_stronger")
+    )
+    anchor_interpretation = str(
+        impact_assessment.get("interpretation")
+        or "Delayed-anchor impact is not available for this run."
+    )
 
     if sample_size < 5:
         statistical_validity = "insufficient_sample"
@@ -265,6 +286,7 @@ def build_readiness_trial_decision_report(
         or missing_metadata_fields
         or warning_heavy_record_count >= max(1, sample_size // 2)
         or sensitivity_status == "clean_not_available"
+        or anchor_materially_stronger
     ):
         statistical_validity = "limited_sample"
         decision_status = "needs_more_samples"
@@ -393,6 +415,14 @@ def build_readiness_trial_decision_report(
         clean_coverage_sensitivity_interpretation=(
             sensitivity_interpretation
         ),
+        delayed_anchor_impact_status=str(
+            anchor_impact.get("impact_status") or "not_available"
+        ),
+        delayed_anchor_materially_stronger=anchor_materially_stronger,
+        no_delayed_anchor_positive=bool(
+            impact_assessment.get("no_delayed_anchor_positive")
+        ),
+        delayed_anchor_impact_interpretation=anchor_interpretation,
     )
 
 
@@ -523,6 +553,25 @@ def render_readiness_trial_decision_report(
             (
                 "- Sensitivity Interpretation: "
                 f"{report.clean_coverage_sensitivity_interpretation}"
+            ),
+            "",
+            "### Delayed Anchor Impact",
+            "",
+            (
+                "- Delayed Anchor Impact Status: "
+                f"{report.delayed_anchor_impact_status}"
+            ),
+            (
+                "- Delayed Anchor Materially Stronger: "
+                f"{report.delayed_anchor_materially_stronger}"
+            ),
+            (
+                "- No-Delayed-Anchor Positive: "
+                f"{report.no_delayed_anchor_positive}"
+            ),
+            (
+                "- Interpretation: "
+                f"{report.delayed_anchor_impact_interpretation}"
             ),
         ]
     )

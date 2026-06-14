@@ -51,6 +51,7 @@ class ReadinessTrialDiagnosticReport:
     stability_diagnostics: dict
     coverage_quality_diagnostics: dict
     clean_coverage_sensitivity: dict
+    delayed_anchor_impact: dict
     metadata_attribution_diagnostics: dict
     missing_metadata_fields: list[str]
     key_findings: list[str]
@@ -480,6 +481,43 @@ def _clean_coverage_sensitivity(manifest: dict) -> dict:
     }
 
 
+def _delayed_anchor_impact(manifest: dict) -> dict:
+    """Load the run-local delayed-anchor impact report."""
+    path_value = manifest.get("delayed_anchor_impact_report_json_path")
+    if not path_value or not Path(path_value).is_file():
+        return {
+            "impact_status": "not_available",
+            "delayed_anchor_sample_size": 0,
+            "no_delayed_anchor_sample_size": 0,
+            "delayed_anchor_materially_stronger": False,
+            "no_delayed_anchor_positive": False,
+            "interpretation": (
+                "Delayed-anchor impact is not available for this run."
+            ),
+        }
+    payload = json.loads(Path(path_value).read_text(encoding="utf-8"))
+    assessment = payload.get("impact_assessment", {})
+    return {
+        "impact_status": payload.get("impact_status", "not_available"),
+        "delayed_anchor_sample_size": int(
+            assessment.get("delayed_anchor_sample_size") or 0
+        ),
+        "no_delayed_anchor_sample_size": int(
+            assessment.get("no_delayed_anchor_sample_size") or 0
+        ),
+        "delayed_anchor_materially_stronger": bool(
+            assessment.get("delayed_anchor_materially_stronger")
+        ),
+        "no_delayed_anchor_positive": bool(
+            assessment.get("no_delayed_anchor_positive")
+        ),
+        "interpretation": str(
+            assessment.get("interpretation")
+            or "Delayed-anchor impact produced no interpretation."
+        ),
+    }
+
+
 def _ticker_interpretation(ticker: str, diagnostic: dict) -> str:
     """Describe ticker contribution using only calculated evidence."""
     average_12m = diagnostic["average_forward_return_12m"]
@@ -756,6 +794,7 @@ def build_readiness_trial_diagnostic_report(
         ],
     }
     clean_coverage_sensitivity = _clean_coverage_sensitivity(manifest)
+    delayed_anchor_impact = _delayed_anchor_impact(manifest)
     complete_tickers = [
         item
         for item in tickers
@@ -917,6 +956,7 @@ def build_readiness_trial_diagnostic_report(
         stability_diagnostics=stability,
         coverage_quality_diagnostics=coverage_quality,
         clean_coverage_sensitivity=clean_coverage_sensitivity,
+        delayed_anchor_impact=delayed_anchor_impact,
         metadata_attribution_diagnostics=metadata_attribution,
         missing_metadata_fields=missing,
         key_findings=key_findings,
@@ -1267,6 +1307,33 @@ def render_readiness_trial_diagnostic_report(
             (
                 "- Interpretation: "
                 f"{report.clean_coverage_sensitivity['interpretation']}"
+            ),
+            "",
+            "## Delayed Anchor Impact",
+            "",
+            (
+                "- Impact Status: "
+                f"{report.delayed_anchor_impact['impact_status']}"
+            ),
+            (
+                "- Delayed Anchor Sample: "
+                f"{report.delayed_anchor_impact['delayed_anchor_sample_size']}"
+            ),
+            (
+                "- No Delayed Anchor Sample: "
+                f"{report.delayed_anchor_impact['no_delayed_anchor_sample_size']}"
+            ),
+            (
+                "- Delayed Anchor Materially Stronger: "
+                f"{report.delayed_anchor_impact['delayed_anchor_materially_stronger']}"
+            ),
+            (
+                "- No-Delayed-Anchor Positive: "
+                f"{report.delayed_anchor_impact['no_delayed_anchor_positive']}"
+            ),
+            (
+                "- Interpretation: "
+                f"{report.delayed_anchor_impact['interpretation']}"
             ),
             "",
             "## Metadata Attribution Review",

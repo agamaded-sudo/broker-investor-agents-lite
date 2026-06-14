@@ -3354,6 +3354,33 @@ def backtest_signals(
                     "Sensitivity Report",
                     str(result.sensitivity_report_path),
                 ),
+                ("Delayed Anchor Impact", "available"),
+                (
+                    "Impact Status",
+                    str(result.delayed_anchor_impact_status),
+                ),
+                (
+                    "Delayed Anchor Records",
+                    str(result.delayed_anchor_record_count),
+                ),
+                (
+                    "No-Delayed-Anchor Records",
+                    str(result.no_delayed_anchor_record_count),
+                ),
+                (
+                    "Delayed Anchor Materially Stronger",
+                    str(
+                        result.delayed_anchor_materially_stronger
+                    ).lower(),
+                ),
+                (
+                    "No-Delayed-Anchor Positive",
+                    str(result.no_delayed_anchor_positive).lower(),
+                ),
+                (
+                    "Impact Report",
+                    str(result.delayed_anchor_impact_report_path),
+                ),
                 ("Decision Report", str(result.decision_report_path)),
                 ("Decision Status", str(result.decision_status)),
                 (
