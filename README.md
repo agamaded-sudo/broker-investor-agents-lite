@@ -845,6 +845,31 @@ readiness-only and diagnostic; no recommendation, ranking, allocation
 instruction, rebalancing instruction, trade signal, or execution instruction
 is produced.
 
+### Expanded Date Coverage Quality Guardrails
+
+Expanded historical dates may be usable without being equally clean. Coverage
+validation now classifies each date and ticker-date record as `clean`,
+`usable_with_warnings`, `delayed_price_anchor`, `limited_financials`,
+`delayed_anchor_and_limited_financials`, or `unsupported`. Severity and stable
+guardrail status fields distinguish clean evidence from delayed price anchors,
+limited filing availability, and warning-heavy combinations.
+
+```powershell
+python -m broker_agents.cli run-historical-readiness-multidate --tickers MSFT,AAPL,NVDA,COST --date-preset semiannual_6 --examples-root examples --outputs-root data/outputs --fixtures-root tests/fixtures --portfolio-context examples/portfolio_context.yaml --financials-provider historical_csv --financials-root tests/fixtures/historical_financials --export-trial-ledger --validate-trial-ledger
+
+python -m broker_agents.cli backtest-signals --ledger data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv --price-provider csv --price-fixtures tests/fixtures/historical_price_history --outputs-root data/outputs --lookback-years 5 --dedupe-mode latest_per_ticker_per_day --walk-forward --walk-forward-frequency yearly
+```
+
+Quality fields flow through the separate historical readiness ledger, trial
+ledger, backtest results, grouped metrics, decision report, and diagnostic
+report. Unsupported dates are excluded rather than fabricated. Warning records
+remain available for research unless explicitly excluded, and delayed anchors
+must not be interpreted as clean historical execution simulation.
+
+These guardrails remain readiness-only and diagnostic. They do not produce
+recommendations, rankings, allocation instructions, rebalancing instructions,
+trade signals, or execution instructions.
+
 ### Readiness Trial Walk-Forward Backtest
 
 After multi-date sample generation, run the readiness-only backtest by yearly

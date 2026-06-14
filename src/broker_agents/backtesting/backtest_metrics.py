@@ -15,6 +15,9 @@ GROUP_FIELDS = (
     "readiness_label",
     "source_verification_status",
     "promotion_blocking_bucket",
+    "coverage_quality_label",
+    "coverage_quality_severity",
+    "coverage_guardrail_status",
     *INTEREST_GROUP_FIELDS,
 )
 
@@ -206,6 +209,43 @@ def calculate_backtest_metrics(
             ).items()
         )
     )
+    coverage_quality_counts = dict(
+        sorted(
+            Counter(
+                str(row.get("coverage_quality_label") or "not_available")
+                for row in evaluated_rows
+            ).items()
+        )
+    )
+    coverage_severity_counts = dict(
+        sorted(
+            Counter(
+                str(
+                    row.get("coverage_quality_severity")
+                    or "not_available"
+                )
+                for row in evaluated_rows
+            ).items()
+        )
+    )
+    guardrail_status_counts = dict(
+        sorted(
+            Counter(
+                str(
+                    row.get("coverage_guardrail_status")
+                    or "not_available"
+                )
+                for row in evaluated_rows
+            ).items()
+        )
+    )
+    unsupported_dates_excluded = max(
+        (
+            int(float(row.get("unsupported_dates_excluded_count") or 0))
+            for row in evaluated_rows
+        ),
+        default=0,
+    )
     missing_metadata_fields = [
         field
         for field in GROUP_FIELDS
@@ -234,6 +274,25 @@ def calculate_backtest_metrics(
             "concentration_details": concentration_details,
             "synthetic_data_warning": price_data_type == "synthetic_fixture",
             "metadata_enrichment_status_counts": metadata_status_counts,
+            "coverage_quality_counts": coverage_quality_counts,
+            "coverage_severity_counts": coverage_severity_counts,
+            "coverage_guardrail_status_counts": guardrail_status_counts,
+            "clean_record_count": guardrail_status_counts.get("clean", 0),
+            "warning_record_count": sum(
+                count
+                for status, count in guardrail_status_counts.items()
+                if status in {
+                    "research_usable_with_warnings",
+                    "warning_heavy",
+                }
+            ),
+            "warning_heavy_record_count": guardrail_status_counts.get(
+                "warning_heavy",
+                0,
+            ),
+            "unsupported_dates_excluded_count": (
+                unsupported_dates_excluded
+            ),
             "missing_metadata_fields": missing_metadata_fields,
             "grouped_metrics": {
                 field: _group_metrics(evaluated_rows, field)
@@ -296,6 +355,9 @@ def render_backtest_metrics_summary(metrics: dict) -> str:
         "readiness_label",
         "source_verification_status",
         "promotion_blocking_bucket",
+        "coverage_quality_label",
+        "coverage_quality_severity",
+        "coverage_guardrail_status",
     ):
         lines.extend(
             [

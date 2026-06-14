@@ -11,10 +11,31 @@ from broker_agents.backtesting.price_history import (
     load_price_history,
     max_drawdown,
 )
+from broker_agents.backtesting.signal_backtester import _dedupe_records
 from broker_agents.cli import app
 
 ROOT = Path(__file__).resolve().parents[1]
 PRICE_FIXTURES = ROOT / "tests" / "fixtures" / "price_history"
+
+
+def test_latest_dedupe_uses_later_row_when_signal_timestamps_tie() -> None:
+    records = [
+        {
+            "ticker": "COST",
+            "generated_at": "2023-06-30T00:00:00+00:00",
+            "coverage_quality_label": "not_available",
+        },
+        {
+            "ticker": "COST",
+            "generated_at": "2023-06-30T00:00:00+00:00",
+            "coverage_quality_label": "limited_financials",
+        },
+    ]
+
+    selected = _dedupe_records(records, "latest_per_ticker_per_day")
+
+    assert len(selected) == 1
+    assert selected[0]["coverage_quality_label"] == "limited_financials"
 
 
 def _write_test_ledger(path: Path) -> None:

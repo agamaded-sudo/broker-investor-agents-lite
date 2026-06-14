@@ -49,6 +49,7 @@ class ReadinessTrialDiagnosticReport:
     outlier_diagnostics: dict
     concentration_diagnostics: dict
     stability_diagnostics: dict
+    coverage_quality_diagnostics: dict
     metadata_attribution_diagnostics: dict
     missing_metadata_fields: list[str]
     key_findings: list[str]
@@ -641,6 +642,74 @@ def build_readiness_trial_diagnostic_report(
             metrics.get("concentration_details") or []
         ),
     )
+    guardrail_counts = dict(
+        metrics.get("coverage_guardrail_status_counts") or {}
+    )
+    clean_records = int(metrics.get("clean_record_count") or 0)
+    warning_records = int(metrics.get("warning_record_count") or 0)
+    warning_heavy_records = int(
+        metrics.get("warning_heavy_record_count") or 0
+    )
+    delayed_count = sum(
+        str(row.get("has_delayed_price_anchor") or "").lower()
+        in {"true", "1", "yes"}
+        for row in evaluated
+    )
+    if warning_heavy_records:
+        coverage_interpretation = (
+            "Warning-heavy records are present, so outcome diagnostics "
+            "require additional caution."
+        )
+    elif delayed_count:
+        coverage_interpretation = (
+            "Delayed anchors are present. The sample remains useful for "
+            "readiness research but is not a clean historical execution "
+            "simulation."
+        )
+    elif clean_records < 5:
+        coverage_interpretation = (
+            "Too few clean records are available for a clean-only "
+            "interpretation."
+        )
+    else:
+        coverage_interpretation = (
+            "Clean records are available, while all results remain "
+            "readiness-only diagnostics."
+        )
+    coverage_quality = {
+        "coverage_quality_counts": dict(
+            metrics.get("coverage_quality_counts") or {}
+        ),
+        "coverage_severity_counts": dict(
+            metrics.get("coverage_severity_counts") or {}
+        ),
+        "coverage_guardrail_status_counts": guardrail_counts,
+        "grouped_coverage_metrics": {
+            field: list(
+                metrics.get("grouped_metrics", {}).get(field, [])
+            )
+            for field in (
+                "coverage_quality_label",
+                "coverage_quality_severity",
+                "coverage_guardrail_status",
+            )
+        },
+        "clean_record_count": clean_records,
+        "warning_record_count": warning_records,
+        "warning_heavy_record_count": warning_heavy_records,
+        "unsupported_dates_excluded": int(
+            metrics.get("unsupported_dates_excluded_count")
+            or guardrail_counts.get("unsupported_excluded", 0)
+        ),
+        "delayed_anchor_record_count": delayed_count,
+        "interpretation": coverage_interpretation,
+        "limitations": [
+            "Coverage labels describe data quality, not outcome validity.",
+            "Delayed anchors do not simulate exact historical execution.",
+            "Limited financial coverage remains readiness-only.",
+            "Warning records are retained unless explicitly excluded.",
+        ],
+    }
     complete_tickers = [
         item
         for item in tickers
@@ -775,6 +844,7 @@ def build_readiness_trial_diagnostic_report(
     key_findings.extend(
         metadata_attribution["attribution_findings"]
     )
+    key_findings.append(coverage_interpretation)
     aggregate_fields = (
         "median_forward_return_3m",
         "median_forward_return_6m",
@@ -799,6 +869,7 @@ def build_readiness_trial_diagnostic_report(
         outlier_diagnostics=outliers,
         concentration_diagnostics=concentration,
         stability_diagnostics=stability,
+        coverage_quality_diagnostics=coverage_quality,
         metadata_attribution_diagnostics=metadata_attribution,
         missing_metadata_fields=missing,
         key_findings=key_findings,
@@ -1072,6 +1143,61 @@ def render_readiness_trial_diagnostic_report(
                 "- The period variation indicates that aggregate results "
                 "should not be treated as stable evidence."
             ),
+            "",
+            "## Coverage Quality Guardrails",
+            "",
+            (
+                "- Coverage Quality Counts: "
+                f"{report.coverage_quality_diagnostics['coverage_quality_counts']}"
+            ),
+            (
+                "- Coverage Severity Counts: "
+                f"{report.coverage_quality_diagnostics['coverage_severity_counts']}"
+            ),
+            (
+                "- Clean Records: "
+                f"{report.coverage_quality_diagnostics['clean_record_count']}"
+            ),
+            (
+                "- Warning Records: "
+                f"{report.coverage_quality_diagnostics['warning_record_count']}"
+            ),
+            (
+                "- Warning-Heavy Records: "
+                f"{report.coverage_quality_diagnostics['warning_heavy_record_count']}"
+            ),
+            (
+                "- Unsupported Dates Excluded: "
+                f"{report.coverage_quality_diagnostics['unsupported_dates_excluded']}"
+            ),
+            (
+                "- Interpretation: "
+                f"{report.coverage_quality_diagnostics['interpretation']}"
+            ),
+            "",
+            "| Guardrail Group | Sample Size | Median 12M | "
+            "Median Relative 12M | Hit Rate 12M |",
+            "|---|---:|---:|---:|---:|",
+        ]
+    )
+    for group in report.coverage_quality_diagnostics[
+        "grouped_coverage_metrics"
+    ]["coverage_guardrail_status"]:
+        lines.append(
+            f"| {group['group_name']} | {group['sample_size']} | "
+            f"{_display(group['median_forward_return_12m'])} | "
+            f"{_display(group['median_relative_return_12m'])} | "
+            f"{_display(group['hit_rate_vs_benchmark_12m'])} |"
+        )
+    lines.extend(
+        [
+            "",
+            *[
+                f"- Limitation: {limitation}"
+                for limitation in report.coverage_quality_diagnostics[
+                    "limitations"
+                ]
+            ],
             "",
             "## Metadata Attribution Review",
             "",

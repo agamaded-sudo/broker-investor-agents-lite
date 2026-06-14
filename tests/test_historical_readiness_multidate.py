@@ -251,6 +251,9 @@ def test_semiannual_preset_expands_sample_and_records_coverage(
     assert manifest["total_completed_runs"] == 20
     assert manifest["sample_size_after_dedupe"] == 20
     assert manifest["date_coverage_status"] == "valid_with_warnings"
+    assert manifest["coverage_quality_counts"]
+    assert manifest["coverage_severity_counts"]
+    assert manifest["unsupported_date_count"] == 1
     assert Path(manifest["date_coverage_report_path"]).is_file()
     assert Path(manifest["date_coverage_report_json_path"]).is_file()
     assert trial_ledger.is_file()
@@ -265,6 +268,70 @@ def test_semiannual_preset_expands_sample_and_records_coverage(
     assert "Usable Dates:" in summary
     assert "Skipped Dates: 2023-12-31" in summary
     assert "Metadata Enrichment Status:" in summary
+    assert "Coverage Quality Summary" in summary
+    assert "Unsupported Dates Skipped: 1" in summary
+
+    with (
+        folder / "historical_readiness_multidate_results.csv"
+    ).open(encoding="utf-8", newline="") as handle:
+        result_rows = list(csv.DictReader(handle))
+    for field in (
+        "date_coverage_status",
+        "coverage_quality_label",
+        "coverage_quality_severity",
+        "has_delayed_price_anchor",
+        "has_limited_financials",
+        "warning_count",
+    ):
+        assert field in result_rows[0]
+
+    with trial_ledger.open(encoding="utf-8", newline="") as handle:
+        trial_rows = list(csv.DictReader(handle))
+    assert len(trial_rows) == 20
+    assert all(row["coverage_quality_label"] for row in trial_rows)
+    assert all(row["coverage_quality_severity"] for row in trial_rows)
+    assert all(row["coverage_guardrail_status"] for row in trial_rows)
+    assert not any(
+        row["coverage_guardrail_status"] == "unsupported_excluded"
+        for row in trial_rows
+    )
+
+    backtest_manifest = json.loads(
+        Path(manifest["readiness_backtest_manifest"]).read_text(
+            encoding="utf-8"
+        )
+    )
+    metrics = json.loads(
+        Path(backtest_manifest["metrics_summary_path"]).read_text(
+            encoding="utf-8"
+        )
+    )
+    for field in (
+        "coverage_quality_label",
+        "coverage_quality_severity",
+        "coverage_guardrail_status",
+    ):
+        assert field in metrics["grouped_metrics"]
+    decision = Path(
+        backtest_manifest["readiness_trial_decision_report_path"]
+    ).read_text(encoding="utf-8")
+    diagnostic = Path(
+        backtest_manifest["readiness_trial_diagnostic_report_path"]
+    ).read_text(encoding="utf-8")
+    diagnostic_json = json.loads(
+        Path(
+            backtest_manifest[
+                "readiness_trial_diagnostic_report_json_path"
+            ]
+        ).read_text(encoding="utf-8")
+    )
+    assert "Coverage Quality" in decision
+    assert "Coverage Quality Guardrails" in diagnostic
+    assert "coverage_quality_diagnostics" in diagnostic_json
+    assert diagnostic_json["coverage_quality_diagnostics"][
+        "unsupported_dates_excluded"
+    ] == 1
+    assert "Coverage Quality" in result.output
 
 
 def test_explicit_dates_take_precedence_over_date_preset(

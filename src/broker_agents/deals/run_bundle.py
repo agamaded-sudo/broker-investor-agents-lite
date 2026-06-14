@@ -11,6 +11,9 @@ from broker_agents.archive.historical_readiness_ledger import (
 )
 from broker_agents.deals.analyze_stock_intake import AnalyzeStockIntake
 from broker_agents.deals.broker_deal_workflow import BrokerDealWorkflowResult
+from broker_agents.deals.historical_date_coverage import (
+    validate_historical_date_coverage,
+)
 from broker_agents.historical.as_of_context import build_as_of_context
 from broker_agents.historical.financials_as_of_contract import (
     build_financials_as_of_contract,
@@ -672,6 +675,16 @@ def create_analyze_stock_run_bundle(
                 )
             ],
         )
+        coverage_report = validate_historical_date_coverage(
+            requested_dates=[str(intake.as_of_date)],
+            tickers=[intake.ticker],
+            price_root=intake.fixtures_root / "historical_price_history",
+            financials_root=intake.financials_root,
+        )
+        coverage_quality = coverage_report.date_records[
+            0
+        ].ticker_coverage_quality[intake.ticker]
+        readiness_metadata.update(coverage_quality)
         readiness_archive = append_historical_readiness_candidate(
             outputs_root=intake.outputs_root,
             candidate=historical_candidate,
@@ -694,6 +707,15 @@ def create_analyze_stock_run_bundle(
             "not_recommendation": readiness_archive.record.not_recommendation,
             "not_allocation_instruction": (
                 readiness_archive.record.not_allocation_instruction
+            ),
+            "coverage_quality_label": (
+                readiness_archive.record.coverage_quality_label
+            ),
+            "coverage_quality_severity": (
+                readiness_archive.record.coverage_quality_severity
+            ),
+            "coverage_guardrail_status": (
+                readiness_archive.record.coverage_guardrail_status
             ),
         }
     else:

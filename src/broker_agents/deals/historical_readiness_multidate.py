@@ -37,6 +37,12 @@ RESULT_FIELDS = (
     "failed_tickers",
     "total_completed",
     "total_failed",
+    "date_coverage_status",
+    "coverage_quality_label",
+    "coverage_quality_severity",
+    "has_delayed_price_anchor",
+    "has_limited_financials",
+    "warning_count",
     "warnings",
     "error",
 )
@@ -56,6 +62,12 @@ class HistoricalReadinessDateBatchRecord:
     failed_tickers: list[str] = field(default_factory=list)
     total_completed: int = 0
     total_failed: int = 0
+    date_coverage_status: str = "not_validated"
+    coverage_quality_label: str = "unsupported"
+    coverage_quality_severity: str = "unsupported"
+    has_delayed_price_anchor: bool = False
+    has_limited_financials: bool = False
+    warning_count: int = 0
     warnings: list[str] = field(default_factory=list)
     error: str | None = None
 
@@ -89,6 +101,8 @@ class HistoricalReadinessMultidateResult:
     skipped_dates: list[str] = field(default_factory=list)
     date_coverage_status: str = "not_run"
     date_coverage_report_path: Path | None = None
+    coverage_quality_counts: dict[str, int] = field(default_factory=dict)
+    coverage_severity_counts: dict[str, int] = field(default_factory=dict)
 
 
 def _normalize_values(value: str | list[str], *, uppercase: bool) -> list[str]:
@@ -121,6 +135,7 @@ def _date_record(
     batch_folder: Path,
     batch_summary_path: Path,
     batch_run_id: str,
+    coverage_record: object,
 ) -> HistoricalReadinessDateBatchRecord:
     """Build a date record from one completed Task 87 batch manifest."""
     manifest = json.loads(
@@ -145,6 +160,14 @@ def _date_record(
         failed_tickers=list(manifest.get("failed_tickers") or []),
         total_completed=total_completed,
         total_failed=total_failed,
+        date_coverage_status=coverage_record.status,
+        coverage_quality_label=coverage_record.coverage_quality_label,
+        coverage_quality_severity=coverage_record.coverage_quality_severity,
+        has_delayed_price_anchor=(
+            coverage_record.has_delayed_price_anchor
+        ),
+        has_limited_financials=coverage_record.has_limited_financials,
+        warning_count=coverage_record.warning_count,
         warnings=list(manifest.get("pipeline_warnings") or []),
         error=error,
     )
@@ -181,21 +204,40 @@ def _render_summary(manifest: dict) -> str:
         f"- Total Failed Runs: {manifest['total_failed_runs']}",
         f"- Point-in-Time Enforcement: {manifest['point_in_time_enforcement']}",
         "",
+        "## Coverage Quality Summary",
+        "",
+        (
+            "- Coverage Quality Counts: "
+            f"{manifest['coverage_quality_counts']}"
+        ),
+        (
+            "- Coverage Severity Counts: "
+            f"{manifest['coverage_severity_counts']}"
+        ),
+        f"- Clean Dates: {manifest['clean_date_count']}",
+        f"- Warning-Heavy Dates: {manifest['warning_date_count']}",
+        f"- Unsupported Dates Skipped: {manifest['unsupported_date_count']}",
+        "",
         "## Date Batch Results",
         "",
         (
-            "| As-Of Date | Status | Batch Run ID | Completed Tickers | "
-            "Failed Tickers | Completed Runs | Failed Runs | Error |"
+            "| As-Of Date | Status | Quality | Severity | Delayed Anchor | "
+            "Limited Financials | Completed Tickers | Failed Tickers | "
+            "Completed Runs | Failed Runs | Error |"
         ),
-        "|---|---|---|---|---|---:|---:|---|",
+        "|---|---|---|---|---|---|---|---|---:|---:|---|",
     ]
     for record in manifest["date_batch_records"]:
         lines.append(
-            "| {date} | {status} | {batch_run_id} | {completed} | "
-            "{failed} | {total_completed} | {total_failed} | {error} |".format(
+            "| {date} | {status} | {quality} | {severity} | {delayed} | "
+            "{limited} | {completed} | {failed} | {total_completed} | "
+            "{total_failed} | {error} |".format(
                 date=record["as_of_date"],
                 status=record["status"],
-                batch_run_id=record["batch_run_id"] or "Not generated",
+                quality=record["coverage_quality_label"],
+                severity=record["coverage_quality_severity"],
+                delayed=record["has_delayed_price_anchor"],
+                limited=record["has_limited_financials"],
                 completed=", ".join(record["completed_tickers"]) or "None",
                 failed=", ".join(record["failed_tickers"]) or "None",
                 total_completed=record["total_completed"],
@@ -314,7 +356,11 @@ def run_historical_readiness_multidate(
     )
 
     date_records = []
+    coverage_by_date = {
+        record.as_of_date: record for record in coverage_report.date_records
+    }
     for as_of_date in execution_dates:
+        coverage_record = coverage_by_date[as_of_date]
         try:
             batch_result = run_historical_readiness_batch(
                 tickers=requested_tickers,
@@ -334,6 +380,7 @@ def run_historical_readiness_multidate(
                     batch_folder=batch_result.batch_folder,
                     batch_summary_path=batch_result.summary_path,
                     batch_run_id=batch_result.batch_run_id,
+                    coverage_record=coverage_record,
                 )
             )
         except (OSError, ValueError, json.JSONDecodeError) as exc:
@@ -343,6 +390,20 @@ def run_historical_readiness_multidate(
                     status="failed",
                     total_failed=len(requested_tickers),
                     failed_tickers=list(requested_tickers),
+                    date_coverage_status=coverage_record.status,
+                    coverage_quality_label=(
+                        coverage_record.coverage_quality_label
+                    ),
+                    coverage_quality_severity=(
+                        coverage_record.coverage_quality_severity
+                    ),
+                    has_delayed_price_anchor=(
+                        coverage_record.has_delayed_price_anchor
+                    ),
+                    has_limited_financials=(
+                        coverage_record.has_limited_financials
+                    ),
+                    warning_count=coverage_record.warning_count,
                     error=str(exc),
                 )
             )
@@ -378,6 +439,9 @@ def run_historical_readiness_multidate(
                     / "historical_signal_readiness_ledger.csv"
                 ),
                 output_ledger=trial_ledger_path,
+                unsupported_dates_excluded_count=(
+                    coverage_report.unsupported_date_count
+                ),
             )
         except (OSError, ValueError, json.JSONDecodeError) as exc:
             pipeline_warnings.append(f"Trial ledger export failed: {exc}")
@@ -424,6 +488,11 @@ def run_historical_readiness_multidate(
         "date_coverage_report_json_path": str(coverage_json_path),
         "usable_dates": coverage_report.usable_dates,
         "skipped_dates": coverage_report.skipped_dates,
+        "coverage_quality_counts": coverage_report.coverage_quality_counts,
+        "coverage_severity_counts": coverage_report.coverage_severity_counts,
+        "clean_date_count": coverage_report.clean_date_count,
+        "warning_date_count": coverage_report.warning_date_count,
+        "unsupported_date_count": coverage_report.unsupported_date_count,
         "total_expected_runs": (
             len(requested_tickers) * len(execution_dates)
         ),
@@ -542,4 +611,6 @@ def run_historical_readiness_multidate(
         skipped_dates=coverage_report.skipped_dates,
         date_coverage_status=coverage_report.validation_status,
         date_coverage_report_path=coverage_markdown_path,
+        coverage_quality_counts=coverage_report.coverage_quality_counts,
+        coverage_severity_counts=coverage_report.coverage_severity_counts,
     )

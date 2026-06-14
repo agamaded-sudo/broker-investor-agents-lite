@@ -42,6 +42,13 @@ def _source_record(**overrides) -> dict:
         "leakage_risk_sections_count": "10",
         "blocking_reasons_count": "10",
         "warnings_count": "3",
+        "coverage_quality_label": "limited_financials",
+        "coverage_quality_severity": "moderate",
+        "date_coverage_status": "usable_with_warnings",
+        "has_delayed_price_anchor": "False",
+        "has_limited_financials": "True",
+        "warning_count": "2",
+        "coverage_guardrail_status": "research_usable_with_warnings",
         "created_at": "2026-06-13T00:00:00+00:00",
         "source": "analyze_stock_historical_mode",
     }
@@ -96,6 +103,9 @@ def test_converter_exports_safe_backtester_compatible_trial_rows(
         "trial_backtest_label",
         "trial_backtest_allowed",
         "safety_notice",
+        "coverage_quality_label",
+        "coverage_quality_severity",
+        "coverage_guardrail_status",
     ):
         assert field in row
     assert row["signal_date"] == row["as_of_date"] == "2023-06-30"
@@ -107,6 +117,11 @@ def test_converter_exports_safe_backtester_compatible_trial_rows(
     assert row["not_allocation_instruction"] == "True"
     assert row["trial_backtest_label"] == "readiness_only_trial"
     assert row["trial_backtest_allowed"] == "True"
+    assert row["coverage_quality_label"] == "limited_financials"
+    assert row["coverage_quality_severity"] == "moderate"
+    assert row["coverage_guardrail_status"] == (
+        "research_usable_with_warnings"
+    )
     assert FORBIDDEN_COLUMNS.isdisjoint(reader.fieldnames or ())
 
     payload = json.loads(metadata.read_text(encoding="utf-8"))
@@ -115,6 +130,7 @@ def test_converter_exports_safe_backtester_compatible_trial_rows(
     assert payload["total_input_records"] == 1
     assert payload["total_exported_records"] == 1
     assert payload["skipped_records"] == 0
+    assert payload["unsupported_dates_excluded_count"] == 0
     assert "readiness-only research artifacts" in payload["safety_notice"]
 
 
@@ -141,6 +157,34 @@ def test_converter_skips_invalid_source_records(tmp_path: Path) -> None:
     assert result.total_exported_records == 1
     assert result.skipped_records == 1
     assert result.warnings
+
+
+def test_converter_excludes_explicitly_unsupported_coverage(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "readiness.csv"
+    output = tmp_path / "trial.csv"
+    _write_source(
+        source,
+        [
+            _source_record(),
+            _source_record(
+                ticker="AAPL",
+                coverage_quality_label="unsupported",
+                coverage_quality_severity="unsupported",
+                coverage_guardrail_status="unsupported_excluded",
+            ),
+        ],
+    )
+
+    result = export_readiness_ledger_to_trial_ledger(
+        source_ledger=source,
+        output_ledger=output,
+    )
+
+    assert result.total_exported_records == 1
+    assert result.skipped_records == 1
+    assert any("unsupported coverage" in item for item in result.warnings)
 
 
 def test_validator_flags_weakened_safety_and_forbidden_columns(

@@ -13,6 +13,15 @@ from broker_agents.deals.readiness_metadata_enrichment import (
 )
 
 RECORD_TYPE = "historical_signal_readiness_candidate"
+COVERAGE_QUALITY_FIELDS = (
+    "coverage_quality_label",
+    "coverage_quality_severity",
+    "date_coverage_status",
+    "has_delayed_price_anchor",
+    "has_limited_financials",
+    "warning_count",
+    "coverage_guardrail_status",
+)
 LEDGER_FIELDS = (
     "record_type",
     "ticker",
@@ -32,6 +41,7 @@ LEDGER_FIELDS = (
     "leakage_risk_sections_count",
     "blocking_reasons_count",
     "warnings_count",
+    *COVERAGE_QUALITY_FIELDS,
     *CORE_METADATA_FIELDS,
     "metadata_enrichment_status",
     "missing_metadata_fields",
@@ -69,6 +79,13 @@ class HistoricalReadinessLedgerRecord:
     leakage_risk_sections_count: int
     blocking_reasons_count: int
     warnings_count: int
+    coverage_quality_label: str
+    coverage_quality_severity: str
+    date_coverage_status: str
+    has_delayed_price_anchor: bool
+    has_limited_financials: bool
+    warning_count: int
+    coverage_guardrail_status: str
     readiness_label: object
     readiness_status: object
     readiness_score: object
@@ -155,6 +172,25 @@ def build_historical_readiness_ledger_record(
         leakage_risk_sections_count=len(candidate.leakage_risk_sections),
         blocking_reasons_count=len(candidate.blocking_reasons),
         warnings_count=len(candidate.warnings),
+        coverage_quality_label=str(
+            metadata.get("coverage_quality_label") or "not_available"
+        ),
+        coverage_quality_severity=str(
+            metadata.get("coverage_quality_severity") or "not_available"
+        ),
+        date_coverage_status=str(
+            metadata.get("date_coverage_status") or "not_available"
+        ),
+        has_delayed_price_anchor=bool(
+            metadata.get("has_delayed_price_anchor", False)
+        ),
+        has_limited_financials=bool(
+            metadata.get("has_limited_financials", False)
+        ),
+        warning_count=int(metadata.get("warning_count") or 0),
+        coverage_guardrail_status=str(
+            metadata.get("coverage_guardrail_status") or "not_available"
+        ),
         **{
             field: metadata.get(field, "Missing")
             for field in CORE_METADATA_FIELDS

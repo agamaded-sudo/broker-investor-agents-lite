@@ -6,7 +6,10 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 
-from broker_agents.archive.historical_readiness_ledger import RECORD_TYPE
+from broker_agents.archive.historical_readiness_ledger import (
+    COVERAGE_QUALITY_FIELDS,
+    RECORD_TYPE,
+)
 from broker_agents.deals.readiness_metadata_enrichment import (
     CORE_METADATA_FIELDS,
     ENRICHMENT_FIELDS,
@@ -58,6 +61,8 @@ TRIAL_LEDGER_FIELDS = (
     "leakage_risk_sections_count",
     "blocking_reasons_count",
     "warnings_count",
+    *COVERAGE_QUALITY_FIELDS,
+    "unsupported_dates_excluded_count",
     *CORE_METADATA_FIELDS,
     "metadata_enrichment_status",
     "missing_metadata_fields",
@@ -96,6 +101,14 @@ class ReadinessTrialLedgerRecord:
     leakage_risk_sections_count: int
     blocking_reasons_count: int
     warnings_count: int
+    coverage_quality_label: str
+    coverage_quality_severity: str
+    date_coverage_status: str
+    has_delayed_price_anchor: bool
+    has_limited_financials: bool
+    warning_count: int
+    coverage_guardrail_status: str
+    unsupported_dates_excluded_count: int
     readiness_label: object
     readiness_status: object
     readiness_score: object
@@ -200,6 +213,11 @@ def _valid_source_record(record: dict) -> tuple[bool, str | None]:
         bool(str(record.get("run_id") or "").strip()),
     )
     if all(checks):
+        if record.get("coverage_guardrail_status") == "unsupported_excluded":
+            return False, (
+                f"Skipped unsupported coverage record for "
+                f"{record.get('ticker') or 'unknown ticker'}."
+            )
         return True, None
     return False, (
         f"Skipped invalid readiness record for "
@@ -207,7 +225,11 @@ def _valid_source_record(record: dict) -> tuple[bool, str | None]:
     )
 
 
-def _trial_record(record: dict) -> ReadinessTrialLedgerRecord:
+def _trial_record(
+    record: dict,
+    *,
+    unsupported_dates_excluded_count: int,
+) -> ReadinessTrialLedgerRecord:
     """Map one validated readiness record into trial-backtest format."""
     ticker = str(record["ticker"]).upper()
     as_of_date = str(record["as_of_date"])
@@ -241,6 +263,26 @@ def _trial_record(record: dict) -> ReadinessTrialLedgerRecord:
         ),
         blocking_reasons_count=_as_int(record.get("blocking_reasons_count")),
         warnings_count=_as_int(record.get("warnings_count")),
+        coverage_quality_label=str(
+            record.get("coverage_quality_label") or "not_available"
+        ),
+        coverage_quality_severity=str(
+            record.get("coverage_quality_severity") or "not_available"
+        ),
+        date_coverage_status=str(
+            record.get("date_coverage_status") or "not_available"
+        ),
+        has_delayed_price_anchor=_as_bool(
+            record.get("has_delayed_price_anchor")
+        ),
+        has_limited_financials=_as_bool(
+            record.get("has_limited_financials")
+        ),
+        warning_count=_as_int(record.get("warning_count")),
+        coverage_guardrail_status=str(
+            record.get("coverage_guardrail_status") or "not_available"
+        ),
+        unsupported_dates_excluded_count=unsupported_dates_excluded_count,
         **{
             field: record.get(field, "Missing")
             for field in CORE_METADATA_FIELDS
@@ -266,6 +308,7 @@ def export_readiness_ledger_to_trial_ledger(
     output_ledger: Path,
     metadata_file: Path | None = None,
     generated_at: datetime | None = None,
+    unsupported_dates_excluded_count: int = 0,
 ) -> ReadinessTrialExportResult:
     """Export validated readiness records into a separate trial CSV."""
     source_ledger = Path(source_ledger)
@@ -284,7 +327,12 @@ def export_readiness_ledger_to_trial_ledger(
         valid, warning = _valid_source_record(record)
         if valid:
             exported.append(
-                _trial_record(enrich_historical_readiness_record(record))
+                _trial_record(
+                    enrich_historical_readiness_record(record),
+                    unsupported_dates_excluded_count=(
+                        unsupported_dates_excluded_count
+                    ),
+                )
             )
         elif warning:
             warnings.append(warning)
@@ -313,6 +361,9 @@ def export_readiness_ledger_to_trial_ledger(
         "metadata_fields_added": list(ENRICHMENT_FIELDS),
         "metadata_enrichment_status_counts": status_counts,
         "missing_metadata_field_counts": missing_counts,
+        "unsupported_dates_excluded_count": (
+            unsupported_dates_excluded_count
+        ),
         "warnings": warnings,
     }
     metadata_file.write_text(

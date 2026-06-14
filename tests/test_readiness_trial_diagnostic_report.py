@@ -51,6 +51,13 @@ def _trial_row(ticker: str, as_of_date: str) -> dict:
             "leakage_risk_sections_count": "10",
             "blocking_reasons_count": "10",
             "warnings_count": "4",
+            "coverage_quality_label": "limited_financials",
+            "coverage_quality_severity": "moderate",
+            "date_coverage_status": "usable_with_warnings",
+            "has_delayed_price_anchor": "False",
+            "has_limited_financials": "True",
+            "warning_count": "2",
+            "coverage_guardrail_status": "research_usable_with_warnings",
             "trial_backtest_label": "readiness_only_trial",
             "trial_backtest_allowed": "True",
             "safety_notice": SAFETY_NOTICE,
@@ -186,6 +193,27 @@ def test_diagnostic_builder_detects_outliers_horizon_and_nvda(
         "worst_max_drawdown_12m": -0.49,
         "concentration_warning": True,
         "concentration_details": ["readiness_label:Missing=1.000"],
+        "coverage_quality_counts": {"limited_financials": 12},
+        "coverage_severity_counts": {"moderate": 12},
+        "coverage_guardrail_status_counts": {
+            "research_usable_with_warnings": 12
+        },
+        "clean_record_count": 0,
+        "warning_record_count": 12,
+        "warning_heavy_record_count": 0,
+        "grouped_metrics": {
+            "coverage_quality_label": [],
+            "coverage_quality_severity": [],
+            "coverage_guardrail_status": [
+                {
+                    "group_name": "research_usable_with_warnings",
+                    "sample_size": 12,
+                    "median_forward_return_12m": 0.27,
+                    "median_relative_return_12m": 0.13,
+                    "hit_rate_vs_benchmark_12m": 0.75,
+                }
+            ],
+        },
     }
 
     report = build_readiness_trial_diagnostic_report(
@@ -211,6 +239,12 @@ def test_diagnostic_builder_detects_outliers_horizon_and_nvda(
         == "NVDA"
     )
     assert report.horizon_diagnostics["twelve_month_materially_stronger"]
+    assert report.coverage_quality_diagnostics[
+        "warning_record_count"
+    ] == 12
+    assert report.coverage_quality_diagnostics[
+        "clean_record_count"
+    ] == 0
     assert (
         report.stability_diagnostics[
             "strongest_period_by_median_relative_12m"
@@ -233,6 +267,7 @@ def test_diagnostic_builder_detects_outliers_horizon_and_nvda(
         "Outlier Review",
         "Horizon Review",
         "Stability Review",
+        "Coverage Quality Guardrails",
         "Data Quality / Metadata Gaps",
         "What This Suggests",
         "What This Does Not Suggest",
@@ -245,6 +280,7 @@ def test_diagnostic_builder_detects_outliers_horizon_and_nvda(
     assert "Weakest Period by Median Relative 12M: 2021" in markdown
     assert "Duplicate Records Removed: 7" in markdown
     assert "Concentration Warning: True" in markdown
+    assert "Warning Records: 12" in markdown
     assert "It does not prove a strategy." in markdown
     assert (
         "not a recommendation, ranking, vote, average score, consensus, "
@@ -265,6 +301,8 @@ def test_readiness_backtest_writes_links_and_regenerates_diagnostic(
     assert result.exit_code == 0, result.output
     assert "Diagnostic Report" in result.output
     assert "Diagnostic Status" in result.output
+    assert "Coverage Quality" in result.output
+    assert "Warning Records" in result.output
     manifest = json.loads(
         (
             outputs_root / "backtests" / "latest_backtest_manifest.json"
@@ -289,6 +327,23 @@ def test_readiness_backtest_writes_links_and_regenerates_diagnostic(
     assert payload["outlier_diagnostics"]["material_outlier_influence"]
     assert payload["concentration_diagnostics"]["nvda_major_driver"]
     assert payload["horizon_diagnostics"]["twelve_month_materially_stronger"]
+    assert "coverage_quality_diagnostics" in payload
+    metrics = json.loads(
+        Path(manifest["metrics_summary_path"]).read_text(encoding="utf-8")
+    )
+    assert metrics["grouped_metrics"]["coverage_quality_label"]
+    assert metrics["grouped_metrics"]["coverage_quality_severity"]
+    assert metrics["grouped_metrics"]["coverage_guardrail_status"]
+    with Path(manifest["results_path"]).open(
+        encoding="utf-8",
+        newline="",
+    ) as handle:
+        rows = list(csv.DictReader(handle))
+    assert rows[0]["coverage_quality_label"] == "limited_financials"
+    assert rows[0]["coverage_quality_severity"] == "moderate"
+    assert rows[0]["coverage_guardrail_status"] == (
+        "research_usable_with_warnings"
+    )
 
     regenerate = CliRunner().invoke(
         app,

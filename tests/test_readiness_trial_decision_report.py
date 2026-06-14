@@ -48,6 +48,13 @@ def _trial_row(run_id: str, generated_at: str) -> dict:
             "leakage_risk_sections_count": "10",
             "blocking_reasons_count": "10",
             "warnings_count": "4",
+            "coverage_quality_label": "limited_financials",
+            "coverage_quality_severity": "moderate",
+            "date_coverage_status": "usable_with_warnings",
+            "has_delayed_price_anchor": "False",
+            "has_limited_financials": "True",
+            "warning_count": "2",
+            "coverage_guardrail_status": "research_usable_with_warnings",
             "trial_backtest_label": "readiness_only_trial",
             "trial_backtest_allowed": "True",
             "safety_notice": SAFETY_NOTICE,
@@ -111,6 +118,12 @@ def test_build_report_is_not_decision_grade_for_tiny_sample() -> None:
         "median_forward_return_12m": 0.3,
         "median_relative_return_12m": 0.1,
         "hit_rate_vs_benchmark_12m": 1.0,
+        "coverage_guardrail_status_counts": {
+            "research_usable_with_warnings": 1
+        },
+        "clean_record_count": 0,
+        "warning_record_count": 1,
+        "warning_heavy_record_count": 0,
     }
 
     report = build_readiness_trial_decision_report(
@@ -137,6 +150,7 @@ def test_build_report_is_not_decision_grade_for_tiny_sample() -> None:
     for text in (
         "Executive Decision",
         "Statistical Validity",
+        "Coverage Quality",
         "Dedupe Impact",
         "What This Means",
         "What This Does Not Mean",

@@ -53,6 +53,11 @@ class ReadinessTrialDecisionReport:
     best_period: str | None
     weakest_period: str | None
     period_summaries: list[dict]
+    coverage_guardrail_status_counts: dict[str, int]
+    clean_record_count: int
+    warning_record_count: int
+    warning_heavy_record_count: int
+    coverage_interpretation: str
     safety_notice: str = SAFETY_NOTICE
 
     def to_dict(self) -> dict:
@@ -194,12 +199,47 @@ def build_readiness_trial_decision_report(
     warnings.append(
         "This evaluates readiness-only artifacts, not investment signals."
     )
+    guardrail_counts = dict(
+        metrics.get("coverage_guardrail_status_counts") or {}
+    )
+    clean_record_count = int(metrics.get("clean_record_count") or 0)
+    warning_record_count = int(metrics.get("warning_record_count") or 0)
+    warning_heavy_record_count = int(
+        metrics.get("warning_heavy_record_count") or 0
+    )
+    if warning_heavy_record_count:
+        warnings.append(
+            "Warning-heavy coverage records require additional caution."
+        )
+        coverage_interpretation = (
+            "Warning-heavy records are present; coverage quality limits "
+            "interpretation."
+        )
+    elif warning_record_count:
+        coverage_interpretation = (
+            "Usable records include coverage warnings that remain visible "
+            "in grouped diagnostics."
+        )
+    elif clean_record_count:
+        coverage_interpretation = (
+            "Evaluated records are classified as clean, while the trial "
+            "remains diagnostic."
+        )
+    else:
+        coverage_interpretation = (
+            "Coverage guardrail metadata is not available for this older "
+            "trial input."
+        )
 
     if sample_size < 5:
         statistical_validity = "insufficient_sample"
         decision_status = "not_decision_grade"
         next_required_action = "expand_sample_before_interpretation"
-    elif concentration_warning or missing_metadata_fields:
+    elif (
+        concentration_warning
+        or missing_metadata_fields
+        or warning_heavy_record_count >= max(1, sample_size // 2)
+    ):
         statistical_validity = "limited_sample"
         decision_status = "needs_more_samples"
         next_required_action = "expand_sample_before_interpretation"
@@ -315,6 +355,11 @@ def build_readiness_trial_decision_report(
         best_period=best_period,
         weakest_period=weakest_period,
         period_summaries=period_summaries,
+        coverage_guardrail_status_counts=guardrail_counts,
+        clean_record_count=clean_record_count,
+        warning_record_count=warning_record_count,
+        warning_heavy_record_count=warning_heavy_record_count,
+        coverage_interpretation=coverage_interpretation,
     )
 
 
@@ -418,6 +463,24 @@ def render_readiness_trial_decision_report(
         )
     else:
         lines.append("- No required grouped metadata fields are wholly missing.")
+    lines.extend(
+        [
+            "",
+            "## Coverage Quality",
+            "",
+            (
+                "- Coverage Guardrail Status Counts: "
+                f"{report.coverage_guardrail_status_counts}"
+            ),
+            f"- Clean Record Count: {report.clean_record_count}",
+            f"- Warning Record Count: {report.warning_record_count}",
+            (
+                "- Warning-Heavy Record Count: "
+                f"{report.warning_heavy_record_count}"
+            ),
+            f"- Coverage Interpretation: {report.coverage_interpretation}",
+        ]
+    )
     if report.walk_forward_enabled:
         lines.extend(
             [

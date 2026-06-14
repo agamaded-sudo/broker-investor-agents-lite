@@ -75,6 +75,14 @@ READINESS_TRIAL_FIELDS = (
     "metadata_enrichment_status",
     "missing_metadata_fields",
     "metadata_source_paths",
+    "coverage_quality_label",
+    "coverage_quality_severity",
+    "date_coverage_status",
+    "has_delayed_price_anchor",
+    "has_limited_financials",
+    "warning_count",
+    "coverage_guardrail_status",
+    "unsupported_dates_excluded_count",
 )
 READINESS_RECORD_TYPE = "historical_signal_readiness_candidate"
 READINESS_TRIAL_SAFETY_NOTICE = (
@@ -273,7 +281,14 @@ def _dedupe_records(records: list[dict], mode: str) -> list[dict]:
         else:
             replace = (
                 generated_at is not None
-                and (existing_time is None or generated_at > existing_time)
+                and (
+                    existing_time is None
+                    or generated_at > existing_time
+                    or (
+                        generated_at == existing_time
+                        and index > existing_index
+                    )
+                )
             )
         if replace:
             selected[key] = (index, record)

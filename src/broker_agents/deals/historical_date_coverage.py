@@ -55,6 +55,14 @@ class HistoricalDateCoverageRecord:
     financials_coverage_by_ticker: dict[str, dict] = field(
         default_factory=dict
     )
+    ticker_coverage_quality: dict[str, dict] = field(default_factory=dict)
+    coverage_quality_label: str = "unsupported"
+    coverage_quality_severity: str = "unsupported"
+    has_delayed_price_anchor: bool = False
+    has_limited_financials: bool = False
+    has_unsupported_outcome_anchor: bool = False
+    warning_count: int = 0
+    reason_count: int = 0
     warnings: list[str] = field(default_factory=list)
     reasons: list[str] = field(default_factory=list)
 
@@ -74,6 +82,11 @@ class HistoricalDateCoverageReport:
     skipped_dates: list[str]
     validation_status: str
     date_records: list[HistoricalDateCoverageRecord]
+    coverage_quality_counts: dict[str, int] = field(default_factory=dict)
+    coverage_severity_counts: dict[str, int] = field(default_factory=dict)
+    clean_date_count: int = 0
+    warning_date_count: int = 0
+    unsupported_date_count: int = 0
     warnings: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -96,6 +109,38 @@ def resolve_historical_date_preset(name: str) -> list[str]:
             f"Supported presets: {allowed}."
         )
     return list(DATE_PRESETS[normalized])
+
+
+def classify_coverage_quality(
+    *,
+    has_delayed_price_anchor: bool,
+    has_limited_financials: bool,
+    has_unsupported_outcome_anchor: bool,
+    has_other_warnings: bool = False,
+) -> tuple[str, str]:
+    """Classify one date or ticker-date using conservative guardrails."""
+    if has_unsupported_outcome_anchor:
+        return "unsupported", "unsupported"
+    if has_delayed_price_anchor and has_limited_financials:
+        return "delayed_anchor_and_limited_financials", "high"
+    if has_delayed_price_anchor:
+        return "delayed_price_anchor", "moderate"
+    if has_limited_financials:
+        return "limited_financials", "moderate"
+    if has_other_warnings:
+        return "usable_with_warnings", "low"
+    return "clean", "none"
+
+
+def coverage_guardrail_status(severity: str) -> str:
+    """Map quality severity to a stable trial guardrail status."""
+    if severity == "none":
+        return "clean"
+    if severity in {"low", "moderate"}:
+        return "research_usable_with_warnings"
+    if severity == "high":
+        return "warning_heavy"
+    return "unsupported_excluded"
 
 
 def _price_coverage(
@@ -175,7 +220,7 @@ def _financials_coverage(
             f"{ticker}: no financial rows were available by {as_of_date}; "
             "the run remains readiness-only."
         )
-    warnings.extend(filtered.warnings)
+    warnings.extend(f"{ticker}: {warning}" for warning in filtered.warnings)
     return (
         {
             "file_found": True,
@@ -185,11 +230,78 @@ def _financials_coverage(
             "future_rows_excluded_count": (
                 filtered.future_rows_excluded_count
             ),
+            "rows_missing_availability_date_count": (
+                filtered.rows_missing_availability_date_count
+            ),
             "status": filtered.status,
         },
         warnings,
         reasons,
     )
+
+
+def _ticker_quality(
+    *,
+    ticker: str,
+    benchmark_ticker: str,
+    price_coverage: dict[str, dict],
+    financials_coverage: dict[str, dict],
+    warnings: list[str],
+    reasons: list[str],
+) -> dict:
+    """Build ticker-level quality metadata from local coverage evidence."""
+    relevant_prefixes = (f"{ticker}:", f"{benchmark_ticker}:")
+    ticker_warnings = [
+        warning
+        for warning in warnings
+        if warning.startswith(relevant_prefixes)
+    ]
+    ticker_reasons = [
+        reason for reason in reasons if reason.startswith(relevant_prefixes)
+    ]
+    ticker_price = price_coverage.get(ticker, {})
+    benchmark_price = price_coverage.get(benchmark_ticker, {})
+    financials = financials_coverage.get(ticker, {})
+    delayed = any(
+        (
+            coverage.get("start_anchor")
+            and coverage.get("start_anchor") != coverage.get("as_of_date")
+        )
+        or (
+            coverage.get("end_anchor_12m")
+            and coverage.get("end_anchor_12m")
+            != coverage.get("target_end_date")
+        )
+        for coverage in (ticker_price, benchmark_price)
+    )
+    limited_financials = (
+        int(financials.get("rows_available_as_of") or 0) == 0
+        or int(financials.get("rows_missing_availability_date_count") or 0) > 0
+    )
+    unsupported = bool(ticker_reasons) or not ticker_price.get(
+        "end_anchor_12m"
+    ) or not benchmark_price.get("end_anchor_12m")
+    label, severity = classify_coverage_quality(
+        has_delayed_price_anchor=delayed,
+        has_limited_financials=limited_financials,
+        has_unsupported_outcome_anchor=unsupported,
+        has_other_warnings=bool(ticker_warnings),
+    )
+    return {
+        "coverage_quality_label": label,
+        "coverage_quality_severity": severity,
+        "date_coverage_status": (
+            "unsupported" if unsupported else "usable_with_warnings"
+            if ticker_warnings
+            else "usable"
+        ),
+        "has_delayed_price_anchor": delayed,
+        "has_limited_financials": limited_financials,
+        "has_unsupported_outcome_anchor": unsupported,
+        "warning_count": len(ticker_warnings),
+        "reason_count": len(ticker_reasons),
+        "coverage_guardrail_status": coverage_guardrail_status(severity),
+    }
 
 
 def validate_historical_date_coverage(
@@ -214,6 +326,10 @@ def validate_historical_date_coverage(
                     as_of_date=value,
                     usable=False,
                     status="unsupported",
+                    coverage_quality_label="unsupported",
+                    coverage_quality_severity="unsupported",
+                    has_unsupported_outcome_anchor=True,
+                    reason_count=1,
                     reasons=[f"Invalid ISO date: {value}."],
                 )
             )
@@ -229,6 +345,7 @@ def validate_historical_date_coverage(
                 as_of_date=parsed_date,
             )
             price_coverage[ticker] = coverage
+            coverage["as_of_date"] = value
             warnings.extend(ticker_warnings)
             reasons.extend(ticker_reasons)
         for ticker in tickers:
@@ -241,12 +358,34 @@ def validate_historical_date_coverage(
             warnings.extend(ticker_warnings)
             reasons.extend(ticker_reasons)
         usable = not reasons
-        status = (
-            "usable_with_warnings"
-            if usable and warnings
-            else "usable"
-            if usable
-            else "unsupported"
+        ticker_quality = {
+            ticker: _ticker_quality(
+                ticker=ticker,
+                benchmark_ticker=benchmark_ticker,
+                price_coverage=price_coverage,
+                financials_coverage=financials_coverage,
+                warnings=warnings,
+                reasons=reasons,
+            )
+            for ticker in tickers
+        }
+        delayed = any(
+            item["has_delayed_price_anchor"]
+            for item in ticker_quality.values()
+        )
+        limited = any(
+            item["has_limited_financials"]
+            for item in ticker_quality.values()
+        )
+        unsupported = not usable
+        label, severity = classify_coverage_quality(
+            has_delayed_price_anchor=delayed,
+            has_limited_financials=limited,
+            has_unsupported_outcome_anchor=unsupported,
+            has_other_warnings=bool(warnings),
+        )
+        status = "unsupported" if unsupported else (
+            "usable_with_warnings" if warnings else "usable"
         )
         date_records.append(
             HistoricalDateCoverageRecord(
@@ -255,6 +394,14 @@ def validate_historical_date_coverage(
                 status=status,
                 price_coverage_by_ticker=price_coverage,
                 financials_coverage_by_ticker=financials_coverage,
+                ticker_coverage_quality=ticker_quality,
+                coverage_quality_label=label,
+                coverage_quality_severity=severity,
+                has_delayed_price_anchor=delayed,
+                has_limited_financials=limited,
+                has_unsupported_outcome_anchor=unsupported,
+                warning_count=len(warnings),
+                reason_count=len(reasons),
                 warnings=warnings,
                 reasons=reasons,
             )
@@ -275,6 +422,15 @@ def validate_historical_date_coverage(
         validation_status = "valid_with_warnings"
     else:
         validation_status = "valid"
+    quality_counts: dict[str, int] = {}
+    severity_counts: dict[str, int] = {}
+    for record in date_records:
+        quality_counts[record.coverage_quality_label] = (
+            quality_counts.get(record.coverage_quality_label, 0) + 1
+        )
+        severity_counts[record.coverage_quality_severity] = (
+            severity_counts.get(record.coverage_quality_severity, 0) + 1
+        )
     return HistoricalDateCoverageReport(
         date_preset=date_preset,
         requested_dates=list(requested_dates),
@@ -283,6 +439,15 @@ def validate_historical_date_coverage(
         skipped_dates=skipped_dates,
         validation_status=validation_status,
         date_records=date_records,
+        coverage_quality_counts=dict(sorted(quality_counts.items())),
+        coverage_severity_counts=dict(sorted(severity_counts.items())),
+        clean_date_count=quality_counts.get("clean", 0),
+        warning_date_count=sum(
+            count
+            for label, count in quality_counts.items()
+            if label not in {"clean", "unsupported"}
+        ),
+        unsupported_date_count=quality_counts.get("unsupported", 0),
         warnings=all_warnings,
     )
 
@@ -300,24 +465,44 @@ def render_historical_date_coverage_report(
         f"- Skipped Dates: {', '.join(report.skipped_dates) or 'None'}",
         f"- Validation Status: {report.validation_status}",
         "",
-        "| As-Of Date | Usable | Status | Warnings | Reasons |",
-        "|---|---|---|---|---|",
+        "## Quality Summary",
+        "",
+        f"- Coverage Quality Counts: {report.coverage_quality_counts}",
+        f"- Coverage Severity Counts: {report.coverage_severity_counts}",
+        f"- Clean Date Count: {report.clean_date_count}",
+        f"- Warning Date Count: {report.warning_date_count}",
+        f"- Unsupported Date Count: {report.unsupported_date_count}",
+        "",
+        (
+            "| As-Of Date | Usable | Status | Quality | Severity | Delayed "
+            "Anchor | Limited Financials | Unsupported Outcome | Warnings | "
+            "Reasons |"
+        ),
+        "|---|---|---|---|---|---|---|---|---:|---:|",
     ]
     for record in report.date_records:
         lines.append(
             f"| {record.as_of_date} | {'Yes' if record.usable else 'No'} | "
-            f"{record.status} | {'; '.join(record.warnings)} | "
-            f"{'; '.join(record.reasons)} |"
+            f"{record.status} | {record.coverage_quality_label} | "
+            f"{record.coverage_quality_severity} | "
+            f"{record.has_delayed_price_anchor} | "
+            f"{record.has_limited_financials} | "
+            f"{record.has_unsupported_outcome_anchor} | "
+            f"{record.warning_count} | {record.reason_count} |"
         )
     lines.extend(
         [
             "",
+            "Quality labels distinguish clean dates, generic warnings, "
+            "delayed price anchors, limited financial coverage, combined "
+            "high-severity warnings, and unsupported dates.",
+            "",
             "Coverage uses local CSV fixtures only. Delayed price anchors are "
             "reported explicitly and unsupported dates are not fabricated.",
             "",
-            "This coverage report is for readiness-only research and does not "
-            "produce recommendations, rankings, allocation instructions, or "
-            "trade signals.",
+            "Warning-heavy records remain readiness-only research artifacts. "
+            "This coverage report does not produce recommendations, rankings, "
+            "allocation instructions, or trade signals.",
             "",
         ]
     )

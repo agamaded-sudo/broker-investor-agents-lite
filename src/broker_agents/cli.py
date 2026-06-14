@@ -2844,6 +2844,14 @@ def run_historical_readiness_multidate_command(
         ("Skipped Dates", ",".join(result.skipped_dates) or "None"),
         ("Date Coverage", result.date_coverage_status),
         ("Date Coverage Report", str(result.date_coverage_report_path)),
+        (
+            "Coverage Quality Counts",
+            json.dumps(result.coverage_quality_counts, sort_keys=True),
+        ),
+        (
+            "Coverage Severity Counts",
+            json.dumps(result.coverage_severity_counts, sort_keys=True),
+        ),
         ("Tickers Requested", tickers),
         ("Expected Runs", str(result.total_expected_runs)),
         ("Completed Runs", str(result.total_completed_runs)),
@@ -2886,6 +2894,14 @@ def run_historical_readiness_multidate_command(
     console.print(f"usable_dates={','.join(result.usable_dates)}")
     console.print(f"skipped_dates={','.join(result.skipped_dates)}")
     console.print(f"date_coverage_status={result.date_coverage_status}")
+    console.print(
+        "coverage_quality_counts="
+        f"{json.dumps(result.coverage_quality_counts, sort_keys=True)}"
+    )
+    console.print(
+        "coverage_severity_counts="
+        f"{json.dumps(result.coverage_severity_counts, sort_keys=True)}"
+    )
     console.print(f"tickers={tickers}")
     console.print(f"total_expected_runs={result.total_expected_runs}")
     console.print(f"total_completed_runs={result.total_completed_runs}")
@@ -3295,6 +3311,34 @@ def backtest_signals(
                         "available"
                         if result.metrics.get("grouped_metrics")
                         else "not available"
+                    ),
+                ),
+                (
+                    "Coverage Quality",
+                    (
+                        "detected"
+                        if any(
+                            key != "not_available"
+                            for key in result.metrics.get(
+                                "coverage_quality_counts",
+                                {},
+                            )
+                        )
+                        else "not available"
+                    ),
+                ),
+                (
+                    "Clean Records",
+                    str(result.metrics.get("clean_record_count") or 0),
+                ),
+                (
+                    "Warning Records",
+                    str(result.metrics.get("warning_record_count") or 0),
+                ),
+                (
+                    "Warning-Heavy Records",
+                    str(
+                        result.metrics.get("warning_heavy_record_count") or 0
                     ),
                 ),
                 ("Decision Report", str(result.decision_report_path)),

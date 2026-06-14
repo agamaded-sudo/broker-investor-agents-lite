@@ -119,6 +119,8 @@ def test_append_historical_readiness_candidate_writes_separate_ledgers(
     assert len(rows) == 1
     assert rows[0]["ticker"] == "COST"
     assert rows[0]["metadata_enrichment_status"] == "not_available"
+    assert rows[0]["coverage_quality_label"] == "not_available"
+    assert rows[0]["coverage_guardrail_status"] == "not_available"
 
     snapshot = json.loads(
         result.snapshot_path.read_text(encoding="utf-8")
@@ -165,6 +167,14 @@ def test_historical_analyze_stock_archives_readiness_separately(
     assert readiness_records[0]["readiness_label"]
     assert readiness_records[0]["source_verification_status"]
     assert readiness_records[0]["buffett_interest_level"]
+    assert readiness_records[0]["coverage_quality_label"]
+    assert readiness_records[0]["coverage_quality_severity"]
+    assert readiness_records[0]["coverage_guardrail_status"]
+    assert isinstance(
+        readiness_records[0]["has_delayed_price_anchor"],
+        bool,
+    )
+    assert isinstance(readiness_records[0]["has_limited_financials"], bool)
     assert "record_type" not in main_records[0]
 
     latest_manifest = json.loads(
