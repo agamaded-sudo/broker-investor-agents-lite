@@ -267,7 +267,19 @@ def build_clean_coverage_sensitivity_report(
                 "The current promising result is based on warning-bearing "
                 "records, not clean historical evidence."
             )
-    elif all_positive:
+    elif clean["sample_size"] < 5:
+        status = "clean_sample_too_small"
+        next_action = "add_clean_historical_fixture_coverage"
+        findings.append(
+            "Clean-only sensitivity is available but remains small-sample "
+            "limited."
+        )
+    elif all_positive and (
+        clean["median_forward_return_12m"] is not None
+        and clean["median_forward_return_12m"] > 0
+        and clean["median_relative_return_12m"] is not None
+        and clean["median_relative_return_12m"] > 0
+    ):
         status = "clean_supported_preliminary"
         next_action = "expand_ticker_universe_with_coverage_validation"
         findings.append(
@@ -289,10 +301,16 @@ def build_clean_coverage_sensitivity_report(
     if no_delayed["available"] and (
         no_delayed["median_forward_return_12m"] or 0
     ) > 0:
-        findings.append(
-            "Non-delayed-anchor records remain positive in this sample, but "
-            "coverage still includes limited financial warnings."
-        )
+        if subsets["limited_financials"]["available"]:
+            findings.append(
+                "Non-delayed-anchor records remain positive in this sample, "
+                "but some coverage still includes limited financial warnings."
+            )
+        else:
+            findings.append(
+                "Non-delayed-anchor records remain positive and the current "
+                "evaluated sample has no limited-financials records."
+            )
     if _materially_stronger(delayed, no_delayed):
         findings.append(
             "Delayed-anchor records may be contributing to the stronger "

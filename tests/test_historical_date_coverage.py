@@ -112,7 +112,30 @@ def test_semiannual_coverage_skips_unsupported_date_and_writes_reports(
     assert report.skipped_dates == ["2023-12-31"]
     assert report.coverage_quality_counts
     assert report.coverage_severity_counts
+    assert report.clean_record_count_estimate == 12
+    assert report.warning_record_count_estimate == 8
     assert report.unsupported_date_count == 1
+    records = {record.as_of_date: record for record in report.date_records}
+    for value in ("2021-06-30", "2022-06-30", "2023-06-30"):
+        assert records[value].clean_record_count_estimate == 4
+        assert all(
+            quality["coverage_guardrail_status"] == "clean"
+            for quality in records[value].ticker_coverage_quality.values()
+        )
+    delayed = records["2021-12-31"]
+    assert delayed.clean_record_count_estimate == 0
+    assert delayed.delayed_anchor_record_count == 4
+    assert delayed.limited_financials_record_count == 0
+    financials = records["2023-06-30"].financials_coverage_by_ticker[
+        "MSFT"
+    ]
+    assert financials["rows_available_as_of"] == 4
+    assert financials["financials_rows_available_by_asof"] == 4
+    assert financials["rows_excluded_after_asof"] == 2
+    assert financials["clean_financials_available"] is True
+    assert financials["limited_financials_reason"] is None
+    assert financials["missing_filing_date_count"] == 1
+    assert financials["missing_accepted_date_count"] == 1
     skipped = report.date_records[-1]
     assert skipped.usable is False
     assert skipped.coverage_quality_label == "unsupported"
@@ -133,6 +156,10 @@ def test_semiannual_coverage_skips_unsupported_date_and_writes_reports(
     assert "Skipped Dates: 2023-12-31" in markdown
     assert "Quality Summary" in markdown
     assert "Coverage Quality Counts" in markdown
+    assert "Clean Record Count Estimate: 12" in markdown
+    assert "Date-level warnings may coexist with clean ticker-date records" in (
+        markdown
+    )
     assert "unsupported dates are not fabricated" in markdown
 
 

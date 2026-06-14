@@ -43,6 +43,9 @@ RESULT_FIELDS = (
     "has_delayed_price_anchor",
     "has_limited_financials",
     "warning_count",
+    "clean_record_count_estimate",
+    "limited_financials_record_count",
+    "delayed_anchor_record_count",
     "warnings",
     "error",
 )
@@ -68,6 +71,9 @@ class HistoricalReadinessDateBatchRecord:
     has_delayed_price_anchor: bool = False
     has_limited_financials: bool = False
     warning_count: int = 0
+    clean_record_count_estimate: int = 0
+    limited_financials_record_count: int = 0
+    delayed_anchor_record_count: int = 0
     warnings: list[str] = field(default_factory=list)
     error: str | None = None
 
@@ -168,6 +174,15 @@ def _date_record(
         ),
         has_limited_financials=coverage_record.has_limited_financials,
         warning_count=coverage_record.warning_count,
+        clean_record_count_estimate=(
+            coverage_record.clean_record_count_estimate
+        ),
+        limited_financials_record_count=(
+            coverage_record.limited_financials_record_count
+        ),
+        delayed_anchor_record_count=(
+            coverage_record.delayed_anchor_record_count
+        ),
         warnings=list(manifest.get("pipeline_warnings") or []),
         error=error,
     )
@@ -217,6 +232,18 @@ def _render_summary(manifest: dict) -> str:
         f"- Clean Dates: {manifest['clean_date_count']}",
         f"- Warning-Heavy Dates: {manifest['warning_date_count']}",
         f"- Unsupported Dates Skipped: {manifest['unsupported_date_count']}",
+        (
+            "- Clean Record Estimate: "
+            f"{manifest['clean_record_count_estimate']}"
+        ),
+        (
+            "- Warning Record Estimate: "
+            f"{manifest['warning_record_count_estimate']}"
+        ),
+        (
+            "- Date-level warnings may coexist with clean ticker-date "
+            "records."
+        ),
         "",
         "## Date Batch Results",
         "",
@@ -404,6 +431,15 @@ def run_historical_readiness_multidate(
                         coverage_record.has_limited_financials
                     ),
                     warning_count=coverage_record.warning_count,
+                    clean_record_count_estimate=(
+                        coverage_record.clean_record_count_estimate
+                    ),
+                    limited_financials_record_count=(
+                        coverage_record.limited_financials_record_count
+                    ),
+                    delayed_anchor_record_count=(
+                        coverage_record.delayed_anchor_record_count
+                    ),
                     error=str(exc),
                 )
             )
@@ -493,6 +529,12 @@ def run_historical_readiness_multidate(
         "clean_date_count": coverage_report.clean_date_count,
         "warning_date_count": coverage_report.warning_date_count,
         "unsupported_date_count": coverage_report.unsupported_date_count,
+        "clean_record_count_estimate": (
+            coverage_report.clean_record_count_estimate
+        ),
+        "warning_record_count_estimate": (
+            coverage_report.warning_record_count_estimate
+        ),
         "total_expected_runs": (
             len(requested_tickers) * len(execution_dates)
         ),

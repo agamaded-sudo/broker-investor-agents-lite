@@ -223,6 +223,9 @@ def compare_delayed_vs_non_delayed(subsets: dict[str, dict]) -> dict:
     delayed_stronger = (
         relative_gap is not None and relative_gap >= MATERIAL_RELATIVE_GAP
     )
+    non_delayed_limited = subsets[
+        "no_delayed_anchor_but_limited_financials"
+    ]["available"]
     no_delayed_positive = (
         not_delayed_relative is not None
         and float(not_delayed_relative) > 0
@@ -242,12 +245,20 @@ def compare_delayed_vs_non_delayed(subsets: dict[str, dict]) -> dict:
     else:
         status = "delayed_anchor_present_no_delayed_positive"
     if delayed_stronger and no_delayed_positive:
-        interpretation = (
-            "Delayed-anchor records appear stronger and may be lifting "
-            "aggregate results, but non-delayed-anchor records remain "
-            "positive. Interpretation remains research-only because "
-            "non-delayed records may still include limited financial warnings."
-        )
+        if non_delayed_limited:
+            interpretation = (
+                "Delayed-anchor records appear stronger and may be lifting "
+                "aggregate results, but non-delayed-anchor records remain "
+                "positive. Interpretation remains research-only because "
+                "non-delayed records may still include limited financial "
+                "warnings."
+            )
+        else:
+            interpretation = (
+                "Delayed-anchor records appear stronger and may be lifting "
+                "aggregate results, but non-delayed-anchor records remain "
+                "positive and have no limited-financials flag in this sample."
+            )
     elif delayed_stronger:
         interpretation = (
             "Delayed-anchor records appear materially stronger while "
@@ -408,8 +419,8 @@ def render_delayed_anchor_impact_report(
             "",
             f"- Sample Size: {not_delayed['sample_size']}",
             (
-                "- Non-delayed records may remain positive while still "
-                "carrying limited financial coverage warnings."
+                "- Limited Financials Records: "
+                f"{report.subset_diagnostics['no_delayed_anchor_but_limited_financials']['sample_size']}"
             ),
             "",
             "## Delayed Anchor Caution",

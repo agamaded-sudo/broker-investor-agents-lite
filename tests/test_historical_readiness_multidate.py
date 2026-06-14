@@ -253,6 +253,8 @@ def test_semiannual_preset_expands_sample_and_records_coverage(
     assert manifest["date_coverage_status"] == "valid_with_warnings"
     assert manifest["coverage_quality_counts"]
     assert manifest["coverage_severity_counts"]
+    assert manifest["clean_record_count_estimate"] == 12
+    assert manifest["warning_record_count_estimate"] == 8
     assert manifest["unsupported_date_count"] == 1
     assert Path(manifest["date_coverage_report_path"]).is_file()
     assert Path(manifest["date_coverage_report_json_path"]).is_file()
@@ -269,6 +271,8 @@ def test_semiannual_preset_expands_sample_and_records_coverage(
     assert "Skipped Dates: 2023-12-31" in summary
     assert "Metadata Enrichment Status:" in summary
     assert "Coverage Quality Summary" in summary
+    assert "Clean Record Estimate: 12" in summary
+    assert "Warning Record Estimate: 8" in summary
     assert "Unsupported Dates Skipped: 1" in summary
 
     with (
@@ -295,6 +299,14 @@ def test_semiannual_preset_expands_sample_and_records_coverage(
         row["coverage_guardrail_status"] == "unsupported_excluded"
         for row in trial_rows
     )
+    clean_rows = [
+        row
+        for row in trial_rows
+        if row["coverage_guardrail_status"] == "clean"
+    ]
+    assert len(clean_rows) == 12
+    assert all(row["has_delayed_price_anchor"] == "False" for row in clean_rows)
+    assert all(row["has_limited_financials"] == "False" for row in clean_rows)
 
     backtest_manifest = json.loads(
         Path(manifest["readiness_backtest_manifest"]).read_text(

@@ -1,5 +1,7 @@
 """Tests for user-supplied historical financials CSV inputs."""
 
+from dataclasses import replace
+from datetime import date
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -50,23 +52,23 @@ def test_load_and_validate_historical_financials_fixture() -> None:
     rows = load_historical_financials_csv(path)
     validation = validate_historical_financials_csv(path)
 
-    assert len(rows) == 5
+    assert len(rows) == 6
     assert rows[0].ticker == "COST"
     assert rows[0].metric == "revenue"
-    assert rows[0].value == 195929.0
+    assert rows[0].value == 166761.0
     assert validation.file_found is True
     assert validation.required_columns_present is True
     assert validation.missing_required_columns == []
-    assert validation.rows_count == 5
-    assert validation.rows_missing_availability_date_count == 1
+    assert validation.rows_count == 6
+    assert validation.rows_missing_availability_date_count == 0
     assert validation.rows_missing_source_traceability_count == 0
-    assert validation.status == "valid_with_warnings"
+    assert validation.status == "valid"
     assert set(REQUIRED_COLUMNS).issubset(
         path.read_text(encoding="utf-8-sig").splitlines()[0].split(",")
     )
 
 
-def test_filter_financials_as_of_excludes_future_and_unsafe_rows() -> None:
+def test_filter_financials_as_of_excludes_future_rows() -> None:
     rows = load_historical_financials_csv(
         FINANCIAL_FIXTURES / "cost_financials_as_of.csv"
     )
@@ -74,20 +76,43 @@ def test_filter_financials_as_of_excludes_future_and_unsafe_rows() -> None:
     result = filter_financials_as_of(rows, "2023-06-30")
 
     assert result.as_of_date == "2023-06-30"
-    assert result.rows_before_filter == 5
-    assert result.rows_after_filter == 3
-    assert result.future_rows_excluded_count == 1
-    assert result.rows_missing_availability_date_count == 1
+    assert result.rows_before_filter == 6
+    assert result.rows_after_filter == 4
+    assert result.future_rows_excluded_count == 2
+    assert result.rows_missing_availability_date_count == 0
     assert result.max_filing_date_after_filter == "2023-05-01"
     assert result.max_accepted_date_after_filter == "2023-05-01"
     assert result.status == "as_of_filter_applied"
     assert all(
+        row.fiscal_period_end_date <= date(2023, 6, 30)
+        and (
         (row.filing_date and row.filing_date.isoformat() <= "2023-06-30")
         or (
             row.accepted_date
             and row.accepted_date.isoformat() <= "2023-06-30"
         )
+        )
         for row in result.rows
+    )
+
+
+def test_filter_financials_as_of_excludes_missing_availability_dates() -> None:
+    rows = load_historical_financials_csv(
+        FINANCIAL_FIXTURES / "cost_financials_as_of.csv"
+    )
+    unsafe = replace(
+        rows[0],
+        filing_date=None,
+        accepted_date=None,
+    )
+
+    result = filter_financials_as_of([unsafe, *rows[1:]], "2023-06-30")
+
+    assert result.rows_after_filter == 3
+    assert result.rows_missing_availability_date_count == 1
+    assert any(
+        "no filing or accepted date" in warning
+        for warning in result.warnings
     )
 
 
@@ -128,12 +153,12 @@ def test_validate_financials_csv_command_reports_all_tickers() -> None:
         assert f"ticker={ticker}" in result.output
     for text in (
         "file_found=true",
-        "rows=5",
+        "rows=6",
         "required_columns_present=true",
-        "rows_before_filter=5",
-        "rows_after_filter=3",
-        "future_rows_excluded_count=1",
-        "rows_missing_availability_date_count=1",
+        "rows_before_filter=6",
+        "rows_after_filter=4",
+        "future_rows_excluded_count=2",
+        "rows_missing_availability_date_count=0",
         "max_filing_date_after_filter=2023-05-01",
         "max_accepted_date_after_filter=2023-05-01",
         "status=as_of_filter_applied",

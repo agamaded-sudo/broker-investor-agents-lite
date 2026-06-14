@@ -870,6 +870,29 @@ These guardrails remain readiness-only and diagnostic. They do not produce
 recommendations, rankings, allocation instructions, rebalancing instructions,
 trade signals, or execution instructions.
 
+### Clean Historical Fixture Coverage
+
+The local historical financial fixtures now include point-in-time rows
+available before the June 2021, June 2022, and June 2023 research cutoffs.
+Fixture filtering requires both a fiscal period end on or before the cutoff and
+at least one filing or accepted date on or before the cutoff. Future-period
+facts and rows missing both availability dates are excluded.
+
+For a ticker-date record, `clean` means the local fixture supplies usable
+point-in-time financials and the price history supplies non-delayed start and
+12-month anchors. Date-level reports may still contain warnings from other
+ticker-date records, so clean classification is propagated at record level
+rather than inferred from the whole date.
+
+```powershell
+python -m broker_agents.cli run-historical-readiness-multidate --tickers MSFT,AAPL,NVDA,COST --date-preset semiannual_6 --examples-root examples --outputs-root data/outputs --fixtures-root tests/fixtures --portfolio-context examples/portfolio_context.yaml --financials-provider historical_csv --financials-root tests/fixtures/historical_financials --export-trial-ledger --validate-trial-ledger
+```
+
+These are deterministic local test fixtures only. Clean coverage improves data
+quality comparison, but it does not produce recommendations, rankings,
+allocation instructions, rebalancing instructions, trade signals, or
+execution instructions. Clean sample thresholds remain conservative.
+
 ### Clean-Coverage Sensitivity Report
 
 Readiness trial backtests now compare aggregate outcomes with coverage-quality

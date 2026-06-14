@@ -111,14 +111,14 @@ def test_historical_csv_mode_writes_filtered_snapshot_and_metadata(
     for payload in (metadata, snapshot):
         assert payload["enabled"] is True
         assert payload["provider"] == "historical_financials_csv"
-        assert payload["rows_before_filter"] == 5
-        assert payload["rows_after_filter"] == 3
-        assert payload["future_rows_excluded_count"] == 1
-        assert payload["rows_missing_availability_date_count"] == 1
+        assert payload["rows_before_filter"] == 6
+        assert payload["rows_after_filter"] == 4
+        assert payload["future_rows_excluded_count"] == 2
+        assert payload["rows_missing_availability_date_count"] == 0
         assert payload["max_filing_date_after_filter"] == "2023-05-01"
         assert payload["max_accepted_date_after_filter"] == "2023-05-01"
         assert payload["status"] == "as_of_filter_applied"
-        assert payload["warnings"]
+        assert payload["warnings"] == []
     assert Path(snapshot["snapshot_file"]) == snapshot_path
     assert Path(snapshot["metadata_file"]) == metadata_path
 
@@ -131,7 +131,7 @@ def test_historical_csv_mode_writes_filtered_snapshot_and_metadata(
 
     with snapshot_path.open(encoding="utf-8", newline="") as handle:
         rows = list(csv.DictReader(handle))
-    assert len(rows) == 3
+    assert len(rows) == 4
     for row in rows:
         filing_date = row["filing_date"]
         accepted_date = row["accepted_date"]
@@ -146,10 +146,10 @@ def test_historical_csv_mode_writes_filtered_snapshot_and_metadata(
     for text in (
         "Official Financials As-Of Snapshot",
         "Historical financials CSV rows are filtered by filing_date or accepted_date.",
-        "Rows Before Filter: 5",
-        "Rows After Filter: 3",
-        "Future Rows Excluded: 1",
-        "Rows Missing Availability Date: 1",
+        "Rows Before Filter: 6",
+        "Rows After Filter: 4",
+        "Future Rows Excluded: 2",
+        "Rows Missing Availability Date: 0",
         "This official financials as-of snapshot is not a recommendation, ranking, vote, average score, consensus, allocation instruction, rebalancing instruction, or trade signal.",
     ):
         assert text in summary

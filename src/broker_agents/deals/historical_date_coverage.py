@@ -63,6 +63,9 @@ class HistoricalDateCoverageRecord:
     has_unsupported_outcome_anchor: bool = False
     warning_count: int = 0
     reason_count: int = 0
+    clean_record_count_estimate: int = 0
+    limited_financials_record_count: int = 0
+    delayed_anchor_record_count: int = 0
     warnings: list[str] = field(default_factory=list)
     reasons: list[str] = field(default_factory=list)
 
@@ -87,6 +90,8 @@ class HistoricalDateCoverageReport:
     clean_date_count: int = 0
     warning_date_count: int = 0
     unsupported_date_count: int = 0
+    clean_record_count_estimate: int = 0
+    warning_record_count_estimate: int = 0
     warnings: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -221,18 +226,41 @@ def _financials_coverage(
             "the run remains readiness-only."
         )
     warnings.extend(f"{ticker}: {warning}" for warning in filtered.warnings)
+    clean_financials = (
+        filtered.rows_after_filter > 0
+        and filtered.rows_missing_availability_date_count == 0
+    )
+    limited_reason = None
+    if filtered.rows_after_filter == 0:
+        limited_reason = "no_financial_rows_available_by_as_of_date"
+    elif filtered.rows_missing_availability_date_count:
+        limited_reason = "rows_missing_filing_and_accepted_date"
     return (
         {
             "file_found": True,
             "path": str(path),
             "rows_before_filter": filtered.rows_before_filter,
             "rows_available_as_of": filtered.rows_after_filter,
+            "financials_rows_available_by_asof": (
+                filtered.rows_after_filter
+            ),
             "future_rows_excluded_count": (
+                filtered.future_rows_excluded_count
+            ),
+            "rows_excluded_after_asof": (
                 filtered.future_rows_excluded_count
             ),
             "rows_missing_availability_date_count": (
                 filtered.rows_missing_availability_date_count
             ),
+            "missing_filing_date_count": (
+                filtered.missing_filing_date_count
+            ),
+            "missing_accepted_date_count": (
+                filtered.missing_accepted_date_count
+            ),
+            "clean_financials_available": clean_financials,
+            "limited_financials_reason": limited_reason,
             "status": filtered.status,
         },
         warnings,
@@ -369,6 +397,18 @@ def validate_historical_date_coverage(
             )
             for ticker in tickers
         }
+        clean_records = sum(
+            item["coverage_guardrail_status"] == "clean"
+            for item in ticker_quality.values()
+        )
+        limited_records = sum(
+            item["has_limited_financials"]
+            for item in ticker_quality.values()
+        )
+        delayed_records = sum(
+            item["has_delayed_price_anchor"]
+            for item in ticker_quality.values()
+        )
         delayed = any(
             item["has_delayed_price_anchor"]
             for item in ticker_quality.values()
@@ -402,6 +442,9 @@ def validate_historical_date_coverage(
                 has_unsupported_outcome_anchor=unsupported,
                 warning_count=len(warnings),
                 reason_count=len(reasons),
+                clean_record_count_estimate=clean_records,
+                limited_financials_record_count=limited_records,
+                delayed_anchor_record_count=delayed_records,
                 warnings=warnings,
                 reasons=reasons,
             )
@@ -448,6 +491,15 @@ def validate_historical_date_coverage(
             if label not in {"clean", "unsupported"}
         ),
         unsupported_date_count=quality_counts.get("unsupported", 0),
+        clean_record_count_estimate=sum(
+            record.clean_record_count_estimate for record in date_records
+        ),
+        warning_record_count_estimate=sum(
+            len(record.ticker_coverage_quality)
+            - record.clean_record_count_estimate
+            for record in date_records
+            if record.usable
+        ),
         warnings=all_warnings,
     )
 
@@ -472,13 +524,22 @@ def render_historical_date_coverage_report(
         f"- Clean Date Count: {report.clean_date_count}",
         f"- Warning Date Count: {report.warning_date_count}",
         f"- Unsupported Date Count: {report.unsupported_date_count}",
+        (
+            "- Clean Record Count Estimate: "
+            f"{report.clean_record_count_estimate}"
+        ),
+        (
+            "- Warning Record Count Estimate: "
+            f"{report.warning_record_count_estimate}"
+        ),
         "",
         (
             "| As-Of Date | Usable | Status | Quality | Severity | Delayed "
             "Anchor | Limited Financials | Unsupported Outcome | Warnings | "
-            "Reasons |"
+            "Reasons | Clean Records | Limited Financials Records | "
+            "Delayed Anchor Records |"
         ),
-        "|---|---|---|---|---|---|---|---|---:|---:|",
+        "|---|---|---|---|---|---|---|---|---:|---:|---:|---:|---:|",
     ]
     for record in report.date_records:
         lines.append(
@@ -488,7 +549,10 @@ def render_historical_date_coverage_report(
             f"{record.has_delayed_price_anchor} | "
             f"{record.has_limited_financials} | "
             f"{record.has_unsupported_outcome_anchor} | "
-            f"{record.warning_count} | {record.reason_count} |"
+            f"{record.warning_count} | {record.reason_count} | "
+            f"{record.clean_record_count_estimate} | "
+            f"{record.limited_financials_record_count} | "
+            f"{record.delayed_anchor_record_count} |"
         )
     lines.extend(
         [
@@ -496,6 +560,10 @@ def render_historical_date_coverage_report(
             "Quality labels distinguish clean dates, generic warnings, "
             "delayed price anchors, limited financial coverage, combined "
             "high-severity warnings, and unsupported dates.",
+            "",
+            "Date-level warnings may coexist with clean ticker-date records. "
+            "Record estimates use each ticker's own financial and price "
+            "coverage.",
             "",
             "Coverage uses local CSV fixtures only. Delayed price anchors are "
             "reported explicitly and unsupported dates are not fabricated.",

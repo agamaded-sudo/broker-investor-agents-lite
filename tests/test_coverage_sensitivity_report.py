@@ -198,6 +198,36 @@ def test_rendered_report_preserves_small_sample_warning() -> None:
     assert report.subset_diagnostics["clean_records"][
         "small_sample_warning"
     ] is True
+    assert report.sensitivity_status == "clean_sample_too_small"
     assert "small-sample limited" in render_clean_coverage_sensitivity_report(
         report
+    )
+
+
+def test_positive_clean_sample_is_supported_preliminary() -> None:
+    rows = [
+        _row(
+            f"CLEAN{index}",
+            guardrail="clean",
+            quality="clean",
+            delayed=False,
+            limited=False,
+            return_12m=0.20 + index / 100,
+        )
+        for index in range(5)
+    ]
+
+    report = build_clean_coverage_sensitivity_report(
+        manifest={
+            "backtest_run_id": "clean-supported",
+            "backtest_run_type": "readiness_trial",
+        },
+        rows=rows,
+    )
+
+    assert report.sensitivity_status == "clean_supported_preliminary"
+    assert report.subset_diagnostics["clean_records"]["sample_size"] == 5
+    assert any(
+        "no limited-financials records" in finding
+        for finding in report.key_findings
     )

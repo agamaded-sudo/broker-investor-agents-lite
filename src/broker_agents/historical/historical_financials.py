@@ -76,6 +76,8 @@ class HistoricalFinancialsFilterResult:
     rows_after_filter: int = 0
     future_rows_excluded_count: int = 0
     rows_missing_availability_date_count: int = 0
+    missing_filing_date_count: int = 0
+    missing_accepted_date_count: int = 0
     max_filing_date_after_filter: str | None = None
     max_accepted_date_after_filter: str | None = None
     status: str = "missing_financials_data"
@@ -272,7 +274,16 @@ def filter_financials_as_of(
     included = []
     future_count = 0
     missing_availability = 0
+    missing_filing = 0
+    missing_accepted = 0
     for row in rows:
+        if row.fiscal_period_end_date > cutoff:
+            future_count += 1
+            continue
+        if row.filing_date is None:
+            missing_filing += 1
+        if row.accepted_date is None:
+            missing_accepted += 1
         availability_dates = [
             value
             for value in (row.filing_date, row.accepted_date)
@@ -302,6 +313,8 @@ def filter_financials_as_of(
         rows_after_filter=len(included),
         future_rows_excluded_count=future_count,
         rows_missing_availability_date_count=missing_availability,
+        missing_filing_date_count=missing_filing,
+        missing_accepted_date_count=missing_accepted,
         max_filing_date_after_filter=(
             max(filing_dates).isoformat() if filing_dates else None
         ),
