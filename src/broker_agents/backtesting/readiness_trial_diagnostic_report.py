@@ -15,6 +15,15 @@ MISSING_METADATA_FIELDS = (
     "lynch_interest_level",
     "bogle_interest_level",
 )
+INTEREST_FIELDS = tuple(
+    field for field in MISSING_METADATA_FIELDS if field.endswith("_interest_level")
+)
+ATTRIBUTION_FIELDS = (
+    "readiness_label",
+    "source_verification_status",
+    "promotion_blocking_bucket",
+    *INTEREST_FIELDS,
+)
 OUTLIER_GAP_THRESHOLD = 0.15
 HORIZON_STRENGTH_THRESHOLD = 0.10
 SAFETY_NOTICE = (
@@ -40,6 +49,7 @@ class ReadinessTrialDiagnosticReport:
     outlier_diagnostics: dict
     concentration_diagnostics: dict
     stability_diagnostics: dict
+    metadata_attribution_diagnostics: dict
     missing_metadata_fields: list[str]
     key_findings: list[str]
     diagnostic_status: str
@@ -135,6 +145,232 @@ def _grouped_metadata_availability(rows: list[dict]) -> dict[str, bool]:
     return {
         field: bool(_metadata_values(rows, field))
         for field in MISSING_METADATA_FIELDS
+    }
+
+
+def assess_group_diversity(groups: list[dict]) -> dict:
+    """Assess whether grouped metadata permits a useful comparison."""
+    populated = [
+        group
+        for group in groups
+        if str(group.get("group_name") or "").strip().lower()
+        not in {"", "missing", "null", "none"}
+    ]
+    total_records = sum(int(group.get("sample_size") or 0) for group in populated)
+    group_count = len(populated)
+    sample_sizes = [int(group.get("sample_size") or 0) for group in populated]
+    max_group_share = (
+        round(max(sample_sizes) / total_records, 6)
+        if sample_sizes and total_records
+        else None
+    )
+    groups_at_least_five = sum(size >= 5 for size in sample_sizes)
+    has_useful_diversity = (
+        group_count >= 2
+        and groups_at_least_five >= 2
+        and max_group_share is not None
+        and max_group_share < 0.90
+    )
+    small_sample_limited = (
+        group_count >= 2 and any(size < 5 for size in sample_sizes)
+    )
+    if group_count == 0:
+        status = "metadata_missing"
+        interpretation = "No populated groups are available for attribution."
+    elif group_count == 1 or (
+        max_group_share is not None and max_group_share >= 0.90
+    ):
+        status = "low_diversity"
+        interpretation = (
+            "Metadata is present, but one group dominates the evaluated rows, "
+            "so it cannot explain performance differences."
+        )
+    elif small_sample_limited:
+        status = "small_sample_limited"
+        interpretation = (
+            "Multiple groups are present, but at least one comparison group "
+            "has fewer than 5 records."
+        )
+    elif has_useful_diversity:
+        status = "comparison_available"
+        interpretation = (
+            "At least two groups have 5 or more records, allowing a "
+            "preliminary non-causal comparison."
+        )
+    else:
+        status = "limited_diversity"
+        interpretation = (
+            "Group coverage exists but remains too limited for useful "
+            "attribution."
+        )
+    return {
+        "group_count": group_count,
+        "total_records": total_records,
+        "max_group_share": max_group_share,
+        "smallest_group_sample_size": min(sample_sizes) if sample_sizes else 0,
+        "groups_with_sample_size_at_least_5": groups_at_least_five,
+        "has_useful_diversity": has_useful_diversity,
+        "small_sample_limited": small_sample_limited,
+        "attribution_status": status,
+        "diversity_interpretation": interpretation,
+    }
+
+
+def compare_grouped_metric(field: str, groups: list[dict]) -> dict:
+    """Build a conservative comparison for one grouped metadata field."""
+    diversity = assess_group_diversity(groups)
+    comparison_groups = [
+        {
+            "group_name": group.get("group_name"),
+            "sample_size": int(group.get("sample_size") or 0),
+            "median_forward_return_12m": group.get(
+                "median_forward_return_12m"
+            ),
+            "median_relative_return_12m": group.get(
+                "median_relative_return_12m"
+            ),
+            "hit_rate_vs_benchmark_12m": group.get(
+                "hit_rate_vs_benchmark_12m"
+            ),
+            "small_sample_warning": bool(group.get("small_sample_warning")),
+        }
+        for group in groups
+        if str(group.get("group_name") or "").strip().lower()
+        not in {"", "missing", "null", "none"}
+    ]
+    complete_groups = [
+        group
+        for group in comparison_groups
+        if group["median_forward_return_12m"] is not None
+        and group["median_relative_return_12m"] is not None
+    ]
+    if len(complete_groups) < 2:
+        interpretation = diversity["diversity_interpretation"]
+    else:
+        higher_absolute = max(
+            complete_groups,
+            key=lambda group: group["median_forward_return_12m"],
+        )
+        higher_relative = max(
+            complete_groups,
+            key=lambda group: group["median_relative_return_12m"],
+        )
+        sample_warning = any(
+            group["small_sample_warning"] for group in complete_groups
+        )
+        interpretation = (
+            f"{higher_absolute['group_name']} has the higher median absolute "
+            f"12M outcome, while {higher_relative['group_name']} has the "
+            "higher median relative 12M outcome in this small sample."
+        )
+        if sample_warning:
+            interpretation += (
+                " At least one group is small-sample limited, so this "
+                "association is preliminary and not decision-grade."
+            )
+        else:
+            interpretation += (
+                " This is an association only and does not establish causal "
+                "or decision-grade evidence."
+            )
+    return {
+        "field": field,
+        "groups": comparison_groups,
+        "group_diversity": diversity,
+        "interpretation": interpretation,
+    }
+
+
+def build_metadata_attribution_diagnostics(
+    *,
+    metrics: dict,
+    missing_metadata_fields: list[str],
+    concentration_details: list[str],
+) -> dict:
+    """Build metadata-aware, non-causal attribution diagnostics."""
+    grouped_metrics = metrics.get("grouped_metrics", {})
+    status_counts = dict(metrics.get("metadata_enrichment_status_counts") or {})
+    availability = {
+        field: bool(
+            [
+                group
+                for group in grouped_metrics.get(field, [])
+                if str(group.get("group_name") or "").strip().lower()
+                not in {"", "missing", "null", "none"}
+            ]
+        )
+        for field in ATTRIBUTION_FIELDS
+    }
+    comparisons = {
+        field: compare_grouped_metric(
+            field,
+            list(grouped_metrics.get(field, [])),
+        )
+        for field in ATTRIBUTION_FIELDS
+    }
+    diversity = {
+        field: comparison["group_diversity"]
+        for field, comparison in comparisons.items()
+    }
+    enrichment_detected = any(
+        status not in {"missing", "not_available"}
+        and int(count or 0) > 0
+        for status, count in status_counts.items()
+    ) or any(availability.values())
+    interest_attribution = {
+        field: comparisons[field] for field in INTEREST_FIELDS
+    }
+    low_diversity_interest = all(
+        item["group_diversity"]["has_useful_diversity"] is False
+        for item in interest_attribution.values()
+    )
+    blocker_attribution = comparisons["promotion_blocking_bucket"]
+    findings = []
+    if enrichment_detected:
+        findings.append("Metadata enrichment is detected.")
+    readiness = comparisons["readiness_label"]
+    if readiness["group_diversity"]["group_count"] >= 2:
+        findings.append(
+            "Readiness label groups show preliminary differences, but at "
+            "least one group may be small-sample limited."
+        )
+    if low_diversity_interest and any(
+        availability[field] for field in INTEREST_FIELDS
+    ):
+        findings.append(
+            "Investor interest metadata is present but has low diversity and "
+            "cannot yet explain outcome differences."
+        )
+    if availability["promotion_blocking_bucket"] and not blocker_attribution[
+        "group_diversity"
+    ]["has_useful_diversity"]:
+        findings.append(
+            "Promotion blocker metadata is present but has low diversity."
+        )
+    findings.append("No causal or decision-grade inference is made.")
+    limitations = [
+        "Groups with fewer than 5 records are small-sample limited.",
+        "Low-diversity fields cannot explain performance differences.",
+        "High-return outliers may influence group averages.",
+        "Dedupe removes repeated runs but reduces the evaluated sample.",
+        "Grouped associations do not establish causal relationships.",
+        "These attribution diagnostics are not decision-grade.",
+    ]
+    return {
+        "metadata_enrichment_detected": enrichment_detected,
+        "metadata_enrichment_status_counts": status_counts,
+        "missing_metadata_fields": list(missing_metadata_fields),
+        "grouped_metadata_availability": availability,
+        "group_diversity": diversity,
+        "attribution_findings": findings,
+        "attribution_limitations": limitations,
+        "readiness_label_attribution": readiness,
+        "source_verification_attribution": comparisons[
+            "source_verification_status"
+        ],
+        "investor_interest_attribution": interest_attribution,
+        "promotion_blocking_attribution": blocker_attribution,
+        "concentration_details": list(concentration_details),
     }
 
 
@@ -398,6 +634,13 @@ def build_readiness_trial_diagnostic_report(
     outliers = _outlier_diagnostics(evaluated, metrics)
     horizon = _horizon_diagnostics(metrics)
     missing = _missing_metadata(evaluated)
+    metadata_attribution = build_metadata_attribution_diagnostics(
+        metrics=metrics,
+        missing_metadata_fields=missing,
+        concentration_details=list(
+            metrics.get("concentration_details") or []
+        ),
+    )
     complete_tickers = [
         item
         for item in tickers
@@ -529,6 +772,9 @@ def build_readiness_trial_diagnostic_report(
             "Missing metadata prevents grouped attribution by readiness "
             "quality or investor interest."
         )
+    key_findings.extend(
+        metadata_attribution["attribution_findings"]
+    )
     aggregate_fields = (
         "median_forward_return_3m",
         "median_forward_return_6m",
@@ -553,6 +799,7 @@ def build_readiness_trial_diagnostic_report(
         outlier_diagnostics=outliers,
         concentration_diagnostics=concentration,
         stability_diagnostics=stability,
+        metadata_attribution_diagnostics=metadata_attribution,
         missing_metadata_fields=missing,
         key_findings=key_findings,
         diagnostic_status=diagnostic_status,
@@ -570,21 +817,100 @@ def _display(value: object) -> str:
     return str(value)
 
 
+def _render_attribution_table(attribution: dict) -> list[str]:
+    """Render one compact grouped metadata comparison table."""
+    lines = [
+        (
+            "| Group | Sample Size | Median 12M | Median Relative 12M | "
+            "Hit Rate 12M | Small Sample Warning | Interpretation |"
+        ),
+        "|---|---:|---:|---:|---:|---|---|",
+    ]
+    groups = attribution.get("groups", [])
+    for group in groups:
+        lines.append(
+            f"| {group['group_name']} | {group['sample_size']} | "
+            f"{_display(group['median_forward_return_12m'])} | "
+            f"{_display(group['median_relative_return_12m'])} | "
+            f"{_display(group['hit_rate_vs_benchmark_12m'])} | "
+            f"{_display(group['small_sample_warning'])} | "
+            f"{attribution['interpretation']} |"
+        )
+    if not groups:
+        lines.append(
+            "| Missing | 0 | Missing | Missing | Missing | True | "
+            "No populated group is available. |"
+        )
+    return lines
+
+
+def _render_interest_attribution(attributions: dict) -> list[str]:
+    """Render compact investor-interest diversity diagnostics."""
+    lines = [
+        "| Investor Field | Available | Groups | Max Group Share | "
+        "Attribution Usefulness | Interpretation |",
+        "|---|---|---:|---:|---|---|",
+    ]
+    for field in INTEREST_FIELDS:
+        attribution = attributions[field]
+        diversity = attribution["group_diversity"]
+        available = bool(attribution["groups"])
+        lines.append(
+            f"| {field} | {'Yes' if available else 'No'} | "
+            f"{diversity['group_count']} | "
+            f"{_display(diversity['max_group_share'])} | "
+            f"{'useful' if diversity['has_useful_diversity'] else 'limited'} | "
+            f"{diversity['diversity_interpretation']} |"
+        )
+    return lines
+
+
+def _render_diversity_summary(diversity_by_field: dict) -> list[str]:
+    """Render compact diversity status for every grouped metadata field."""
+    lines = [
+        "| Field | Groups | Total Records | Max Group Share | "
+        "Smallest Group | Useful Diversity | Status |",
+        "|---|---:|---:|---:|---:|---|---|",
+    ]
+    for field in ATTRIBUTION_FIELDS:
+        diversity = diversity_by_field[field]
+        lines.append(
+            f"| {field} | {diversity['group_count']} | "
+            f"{diversity['total_records']} | "
+            f"{_display(diversity['max_group_share'])} | "
+            f"{diversity['smallest_group_sample_size']} | "
+            f"{_display(diversity['has_useful_diversity'])} | "
+            f"{diversity['attribution_status']} |"
+        )
+    return lines
+
+
 def render_readiness_trial_diagnostic_report(
     report: ReadinessTrialDiagnosticReport,
 ) -> str:
     """Render the standalone readiness trial diagnostic report."""
+    attribution = report.metadata_attribution_diagnostics
     if report.diagnostic_status == "insufficient_data":
         main_finding = (
             "The readiness trial has insufficient data for a reliable "
             "diagnostic interpretation."
         )
     elif report.diagnostic_status == "unstable_needs_deeper_review":
-        main_finding = (
-            "The readiness trial shows useful 12M relative evidence, but "
-            "results remain unstable and sensitive to outliers, limited "
-            "coverage, and missing metadata."
-        )
+        if (
+            attribution["metadata_enrichment_detected"]
+            and not report.missing_metadata_fields
+        ):
+            main_finding = (
+                "The readiness trial shows useful 12M relative evidence, but "
+                "results remain unstable and sensitive to outliers, limited "
+                "coverage, and low metadata diversity."
+            )
+        else:
+            main_finding = (
+                "The readiness trial shows useful 12M relative evidence, but "
+                "results remain unstable and sensitive to outliers, limited "
+                "coverage, and missing metadata."
+            )
     else:
         main_finding = (
             "The readiness trial provides diagnostic evidence that requires "
@@ -747,6 +1073,87 @@ def render_readiness_trial_diagnostic_report(
                 "should not be treated as stable evidence."
             ),
             "",
+            "## Metadata Attribution Review",
+            "",
+            (
+                "- Metadata Enrichment Detected: "
+                f"{'Yes' if attribution['metadata_enrichment_detected'] else 'No'}"
+            ),
+            (
+                "- Metadata Status Counts: "
+                f"{attribution['metadata_enrichment_status_counts']}"
+            ),
+            (
+                "- Missing Metadata Fields: "
+                f"{', '.join(attribution['missing_metadata_fields']) or 'None'}"
+            ),
+            (
+                "- Grouped Metadata Availability: "
+                f"{attribution['grouped_metadata_availability']}"
+            ),
+            "",
+            "### Group Diversity Summary",
+            "",
+            *_render_diversity_summary(attribution["group_diversity"]),
+            "",
+            "### Readiness Label Attribution",
+            "",
+            *_render_attribution_table(
+                attribution["readiness_label_attribution"]
+            ),
+            "",
+            "### Source Verification Attribution",
+            "",
+            *_render_attribution_table(
+                attribution["source_verification_attribution"]
+            ),
+            "",
+            "### Investor Interest Attribution",
+            "",
+            *_render_interest_attribution(
+                attribution["investor_interest_attribution"]
+            ),
+            "",
+            (
+                "Investor interest metadata is present but has low diversity "
+                "and cannot yet explain performance differences."
+                if all(
+                    not item["group_diversity"]["has_useful_diversity"]
+                    for item in attribution[
+                        "investor_interest_attribution"
+                    ].values()
+                )
+                else (
+                    "Some investor interest fields permit preliminary "
+                    "non-causal comparisons; small groups remain limited."
+                )
+            ),
+            "",
+            "### Promotion Blocking Attribution",
+            "",
+            *_render_attribution_table(
+                attribution["promotion_blocking_attribution"]
+            ),
+            "",
+            (
+                "Promotion blocker metadata is present, but the current trial "
+                "set lacks useful diversity."
+                if not attribution["promotion_blocking_attribution"][
+                    "group_diversity"
+                ]["has_useful_diversity"]
+                else (
+                    "Promotion blocker groups permit a preliminary non-causal "
+                    "comparison."
+                )
+            ),
+            "",
+            "### Attribution Limitations",
+            "",
+            *[
+                f"- {limitation}"
+                for limitation in attribution["attribution_limitations"]
+            ],
+            "",
             "## Data Quality / Metadata Gaps",
             "",
             (
@@ -770,16 +1177,6 @@ def render_readiness_trial_diagnostic_report(
                 f"{_display(report.concentration_diagnostics['most_volatile_ticker_by_range_12m'])}"
             ),
             "",
-            "Missing grouped metadata fields:",
-            "",
-        ]
-    )
-    lines.extend(
-        f"- {field}" for field in report.missing_metadata_fields
-    )
-    lines.extend(
-        [
-            "",
             (
                 "Metadata enrichment status counts: "
                 f"{report.concentration_diagnostics['metadata_enrichment_status_counts']}"
@@ -788,6 +1185,10 @@ def render_readiness_trial_diagnostic_report(
                 "Grouped metadata availability: "
                 f"{report.concentration_diagnostics['grouped_metadata_availability']}"
             ),
+        ]
+    )
+    lines.extend(
+        [
             "",
             (
                 "Missing metadata prevents grouped attribution by readiness "
@@ -804,13 +1205,18 @@ def render_readiness_trial_diagnostic_report(
             "- The pipeline is now producing useful diagnostic evidence.",
             "- The readiness concept may deserve broader research testing.",
             (
-                "- The current dataset remains too small and concentrated for "
+            "- The current dataset remains too small and concentrated for "
                 "validation."
             ),
             "- More dates and/or more tickers are needed.",
             (
                 "- Remaining metadata gaps should be reduced to explain why "
                 "cases performed differently."
+                if report.missing_metadata_fields
+                else (
+                    "- More variation within metadata groups is needed to "
+                    "explain why cases performed differently."
+                )
             ),
             "",
             "## What This Does Not Suggest",
@@ -825,7 +1231,11 @@ def render_readiness_trial_diagnostic_report(
             "",
             f"- Action Code: {report.next_research_action}",
             "- Expand historical date coverage or add more tickers.",
-            "- Enrich remaining readiness metadata fields.",
+            (
+                "- Enrich remaining readiness metadata fields."
+                if report.missing_metadata_fields
+                else "- Expand variation across readiness metadata groups."
+            ),
             "- Preserve dedupe controls.",
             "- Consider ticker/year diagnostic charts in a later task.",
             "",

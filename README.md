@@ -870,6 +870,20 @@ python -m broker_agents.cli backtest-signals --ledger data/inputs/trial_ledgers/
 This enrichment is research-only. It does not convert readiness artifacts into
 recommendations, rankings, allocation instructions, or trade signals.
 
+### Metadata-Aware Diagnostic Attribution
+
+The readiness trial diagnostic report uses enriched grouped metrics to examine
+whether readiness labels, source verification states, promotion blocker
+buckets, or investor interest levels are associated with different outcomes.
+Comparisons are conservative: groups below five records remain small-sample
+limited, and fields dominated by one group are reported as low-diversity rather
+than explanatory.
+
+This attribution does not prove causality, validate an investor philosophy, or
+create recommendations or trade signals. It identifies preliminary associations
+and clearly records when the current metadata cannot explain performance
+differences.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from

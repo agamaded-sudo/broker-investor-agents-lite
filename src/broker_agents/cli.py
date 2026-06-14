@@ -3267,6 +3267,14 @@ def backtest_signals(
                     )
                     or "None",
                 ),
+                (
+                    "Metadata Attribution",
+                    (
+                        "available"
+                        if result.metrics.get("grouped_metrics")
+                        else "not available"
+                    ),
+                ),
                 ("Decision Report", str(result.decision_report_path)),
                 ("Decision Status", str(result.decision_status)),
                 (
