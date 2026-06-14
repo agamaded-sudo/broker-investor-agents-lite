@@ -870,6 +870,28 @@ These guardrails remain readiness-only and diagnostic. They do not produce
 recommendations, rankings, allocation instructions, rebalancing instructions,
 trade signals, or execution instructions.
 
+### Clean-Coverage Sensitivity Report
+
+Readiness trial backtests now compare aggregate outcomes with coverage-quality
+subsets including clean records, warning-bearing records, warning-heavy
+records, delayed and non-delayed anchors, limited financial coverage, and
+non-warning-heavy records.
+
+```powershell
+python -m broker_agents.cli backtest-signals --ledger data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv --price-provider csv --price-fixtures tests/fixtures/historical_price_history --outputs-root data/outputs --lookback-years 5 --dedupe-mode latest_per_ticker_per_day --walk-forward --walk-forward-frequency yearly
+```
+
+Each readiness trial run writes `clean_coverage_sensitivity_report.md` and
+`clean_coverage_sensitivity_report.json`. Warning records are not automatically
+discarded. The report instead shows whether aggregate evidence depends on
+warning-heavy, delayed-anchor, or limited-financials rows. When no clean records
+exist, clean-only sensitivity is explicitly unavailable and no metrics are
+fabricated.
+
+This is a research-only diagnostic. It does not prove a strategy or produce a
+recommendation, ranking, allocation instruction, rebalancing instruction,
+trade signal, or execution instruction.
+
 ### Readiness Trial Walk-Forward Backtest
 
 After multi-date sample generation, run the readiness-only backtest by yearly

@@ -50,6 +50,7 @@ class ReadinessTrialDiagnosticReport:
     concentration_diagnostics: dict
     stability_diagnostics: dict
     coverage_quality_diagnostics: dict
+    clean_coverage_sensitivity: dict
     metadata_attribution_diagnostics: dict
     missing_metadata_fields: list[str]
     key_findings: list[str]
@@ -435,6 +436,50 @@ def _period_diagnostics(manifest: dict) -> list[dict]:
     return diagnostics
 
 
+def _clean_coverage_sensitivity(manifest: dict) -> dict:
+    """Load the run-local clean-coverage sensitivity report."""
+    path_value = manifest.get(
+        "clean_coverage_sensitivity_report_json_path"
+    )
+    if not path_value or not Path(path_value).is_file():
+        return {
+            "sensitivity_status": "not_available",
+            "clean_only_available": False,
+            "warning_heavy_comparison_summary": "Not available.",
+            "delayed_anchor_comparison_summary": "Not available.",
+            "interpretation": (
+                "Clean-coverage sensitivity is not available for this run."
+            ),
+        }
+    payload = json.loads(Path(path_value).read_text(encoding="utf-8"))
+    subsets = payload.get("subset_diagnostics", {})
+    clean = subsets.get("clean_records", {})
+    warning_heavy = subsets.get("warning_heavy", {})
+    non_warning = subsets.get("non_warning_heavy", {})
+    delayed = subsets.get("delayed_anchor", {})
+    no_delayed = subsets.get("no_delayed_anchor", {})
+    findings = list(payload.get("key_findings") or [])
+    return {
+        "sensitivity_status": payload.get(
+            "sensitivity_status",
+            "not_available",
+        ),
+        "clean_only_available": bool(clean.get("available")),
+        "warning_heavy_comparison_summary": (
+            f"warning_heavy sample={warning_heavy.get('sample_size', 0)}; "
+            f"non_warning_heavy sample={non_warning.get('sample_size', 0)}."
+        ),
+        "delayed_anchor_comparison_summary": (
+            f"delayed_anchor sample={delayed.get('sample_size', 0)}; "
+            f"no_delayed_anchor sample={no_delayed.get('sample_size', 0)}."
+        ),
+        "interpretation": (
+            next(iter(findings), "")
+            or "Clean-coverage sensitivity produced no finding."
+        ),
+    }
+
+
 def _ticker_interpretation(ticker: str, diagnostic: dict) -> str:
     """Describe ticker contribution using only calculated evidence."""
     average_12m = diagnostic["average_forward_return_12m"]
@@ -710,6 +755,7 @@ def build_readiness_trial_diagnostic_report(
             "Warning records are retained unless explicitly excluded.",
         ],
     }
+    clean_coverage_sensitivity = _clean_coverage_sensitivity(manifest)
     complete_tickers = [
         item
         for item in tickers
@@ -870,6 +916,7 @@ def build_readiness_trial_diagnostic_report(
         concentration_diagnostics=concentration,
         stability_diagnostics=stability,
         coverage_quality_diagnostics=coverage_quality,
+        clean_coverage_sensitivity=clean_coverage_sensitivity,
         metadata_attribution_diagnostics=metadata_attribution,
         missing_metadata_fields=missing,
         key_findings=key_findings,
@@ -1198,6 +1245,29 @@ def render_readiness_trial_diagnostic_report(
                     "limitations"
                 ]
             ],
+            "",
+            "## Clean-Coverage Sensitivity",
+            "",
+            (
+                "- Sensitivity Status: "
+                f"{report.clean_coverage_sensitivity['sensitivity_status']}"
+            ),
+            (
+                "- Clean-Only Available: "
+                f"{'Yes' if report.clean_coverage_sensitivity['clean_only_available'] else 'No'}"
+            ),
+            (
+                "- Warning-Heavy Comparison: "
+                f"{report.clean_coverage_sensitivity['warning_heavy_comparison_summary']}"
+            ),
+            (
+                "- Delayed-Anchor Comparison: "
+                f"{report.clean_coverage_sensitivity['delayed_anchor_comparison_summary']}"
+            ),
+            (
+                "- Interpretation: "
+                f"{report.clean_coverage_sensitivity['interpretation']}"
+            ),
             "",
             "## Metadata Attribution Review",
             "",

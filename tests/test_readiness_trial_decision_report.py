@@ -168,6 +168,61 @@ def test_build_report_is_not_decision_grade_for_tiny_sample() -> None:
         assert text in markdown
 
 
+def test_zero_clean_sensitivity_keeps_decision_conservative(
+    tmp_path: Path,
+) -> None:
+    sensitivity_path = tmp_path / "sensitivity.json"
+    sensitivity_path.write_text(
+        json.dumps(
+            {
+                "sensitivity_status": "clean_not_available",
+                "subset_diagnostics": {
+                    "clean_records": {"available": False}
+                },
+                "key_findings": [
+                    "Clean-only interpretation is not available yet."
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    rows = [
+        {
+            "ticker": f"TICKER{index}",
+            "readiness_label": "Ready",
+            "source_verification_status": "partial",
+            "buffett_interest_level": "present",
+            "munger_interest_level": "present",
+            "fisher_interest_level": "present",
+            "lynch_interest_level": "present",
+            "bogle_interest_level": "present",
+        }
+        for index in range(10)
+    ]
+    report = build_readiness_trial_decision_report(
+        manifest={
+            "backtest_run_id": "clean-gate",
+            "backtest_run_type": "readiness_trial",
+            "clean_coverage_sensitivity_report_json_path": str(
+                sensitivity_path
+            ),
+        },
+        metrics={
+            "sample_size": 10,
+            "evaluated_tickers": [row["ticker"] for row in rows],
+            "small_sample_warning": False,
+            "concentration_warning": False,
+            "synthetic_data_warning": False,
+            "warning_heavy_record_count": 0,
+        },
+        rows=rows,
+    )
+
+    assert report.decision_status == "needs_more_samples"
+    assert report.statistical_validity == "limited_sample"
+    assert report.clean_only_available is False
+
+
 def test_readiness_backtest_writes_and_links_decision_report(
     tmp_path: Path,
 ) -> None:

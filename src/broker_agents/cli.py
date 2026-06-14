@@ -3341,6 +3341,19 @@ def backtest_signals(
                         result.metrics.get("warning_heavy_record_count") or 0
                     ),
                 ),
+                ("Clean-Coverage Sensitivity", "available"),
+                (
+                    "Sensitivity Status",
+                    str(result.sensitivity_status),
+                ),
+                (
+                    "Clean-Only Available",
+                    str(result.clean_only_available).lower(),
+                ),
+                (
+                    "Sensitivity Report",
+                    str(result.sensitivity_report_path),
+                ),
                 ("Decision Report", str(result.decision_report_path)),
                 ("Decision Status", str(result.decision_status)),
                 (

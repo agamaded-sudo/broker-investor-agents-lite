@@ -58,6 +58,9 @@ class ReadinessTrialDecisionReport:
     warning_record_count: int
     warning_heavy_record_count: int
     coverage_interpretation: str
+    clean_coverage_sensitivity_status: str
+    clean_only_available: bool
+    clean_coverage_sensitivity_interpretation: str
     safety_notice: str = SAFETY_NOTICE
 
     def to_dict(self) -> dict:
@@ -105,6 +108,16 @@ def _walk_forward_metrics(manifest: dict) -> dict:
     if not path.is_file():
         return {}
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _coverage_sensitivity(manifest: dict) -> dict:
+    """Load optional clean-coverage sensitivity diagnostics."""
+    path_value = manifest.get(
+        "clean_coverage_sensitivity_report_json_path"
+    )
+    if not path_value or not Path(path_value).is_file():
+        return {}
+    return json.loads(Path(path_value).read_text(encoding="utf-8"))
 
 
 def _walk_forward_stability(periods: list[dict]) -> str:
@@ -230,6 +243,18 @@ def build_readiness_trial_decision_report(
             "Coverage guardrail metadata is not available for this older "
             "trial input."
         )
+    sensitivity = _coverage_sensitivity(manifest)
+    clean_subset = sensitivity.get("subset_diagnostics", {}).get(
+        "clean_records",
+        {},
+    )
+    sensitivity_status = str(
+        sensitivity.get("sensitivity_status") or "not_available"
+    )
+    sensitivity_interpretation = (
+        next(iter(sensitivity.get("key_findings") or []), "")
+        or "Clean-coverage sensitivity is not available for this run."
+    )
 
     if sample_size < 5:
         statistical_validity = "insufficient_sample"
@@ -239,6 +264,7 @@ def build_readiness_trial_decision_report(
         concentration_warning
         or missing_metadata_fields
         or warning_heavy_record_count >= max(1, sample_size // 2)
+        or sensitivity_status == "clean_not_available"
     ):
         statistical_validity = "limited_sample"
         decision_status = "needs_more_samples"
@@ -360,6 +386,13 @@ def build_readiness_trial_decision_report(
         warning_record_count=warning_record_count,
         warning_heavy_record_count=warning_heavy_record_count,
         coverage_interpretation=coverage_interpretation,
+        clean_coverage_sensitivity_status=str(
+            sensitivity_status
+        ),
+        clean_only_available=bool(clean_subset.get("available")),
+        clean_coverage_sensitivity_interpretation=(
+            sensitivity_interpretation
+        ),
     )
 
 
@@ -479,6 +512,18 @@ def render_readiness_trial_decision_report(
                 f"{report.warning_heavy_record_count}"
             ),
             f"- Coverage Interpretation: {report.coverage_interpretation}",
+            (
+                "- Clean-Coverage Sensitivity Status: "
+                f"{report.clean_coverage_sensitivity_status}"
+            ),
+            (
+                "- Clean-Only Available: "
+                f"{'Yes' if report.clean_only_available else 'No'}"
+            ),
+            (
+                "- Sensitivity Interpretation: "
+                f"{report.clean_coverage_sensitivity_interpretation}"
+            ),
         ]
     )
     if report.walk_forward_enabled:

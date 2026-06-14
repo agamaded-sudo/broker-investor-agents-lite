@@ -303,6 +303,9 @@ def test_readiness_backtest_writes_links_and_regenerates_diagnostic(
     assert "Diagnostic Status" in result.output
     assert "Coverage Quality" in result.output
     assert "Warning Records" in result.output
+    assert "Clean-Coverage Sensitivity" in result.output
+    assert "Sensitivity Status" in result.output
+    assert "Clean-Only Available" in result.output
     manifest = json.loads(
         (
             outputs_root / "backtests" / "latest_backtest_manifest.json"
@@ -320,6 +323,18 @@ def test_readiness_backtest_writes_links_and_regenerates_diagnostic(
     assert manifest["next_research_action"] == (
         "expand_dates_tickers_and_enrich_metadata"
     )
+    sensitivity_path = Path(
+        manifest["clean_coverage_sensitivity_report_path"]
+    )
+    sensitivity_json_path = Path(
+        manifest["clean_coverage_sensitivity_report_json_path"]
+    )
+    assert sensitivity_path.is_file()
+    assert sensitivity_json_path.is_file()
+    assert manifest["clean_coverage_sensitivity_status"] == (
+        "clean_not_available"
+    )
+    assert manifest["clean_only_available"] is False
     payload = json.loads(json_path.read_text(encoding="utf-8"))
     assert payload["sample_size"] == 12
     assert len(payload["period_diagnostics"]) == 3
@@ -328,6 +343,10 @@ def test_readiness_backtest_writes_links_and_regenerates_diagnostic(
     assert payload["concentration_diagnostics"]["nvda_major_driver"]
     assert payload["horizon_diagnostics"]["twelve_month_materially_stronger"]
     assert "coverage_quality_diagnostics" in payload
+    assert "clean_coverage_sensitivity" in payload
+    assert payload["clean_coverage_sensitivity"][
+        "sensitivity_status"
+    ] == "clean_not_available"
     metrics = json.loads(
         Path(manifest["metrics_summary_path"]).read_text(encoding="utf-8")
     )
@@ -344,6 +363,14 @@ def test_readiness_backtest_writes_links_and_regenerates_diagnostic(
     assert rows[0]["coverage_guardrail_status"] == (
         "research_usable_with_warnings"
     )
+    assert "Clean-Coverage Sensitivity" in report_path.read_text(
+        encoding="utf-8"
+    )
+    decision = Path(
+        manifest["readiness_trial_decision_report_path"]
+    ).read_text(encoding="utf-8")
+    assert "Clean-Coverage Sensitivity Status" in decision
+    assert "Clean-Only Available: No" in decision
 
     regenerate = CliRunner().invoke(
         app,

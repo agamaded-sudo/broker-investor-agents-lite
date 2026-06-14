@@ -12,6 +12,9 @@ from broker_agents.backtesting.backtest_metrics import (
     calculate_backtest_metrics,
     render_backtest_metrics_summary,
 )
+from broker_agents.backtesting.coverage_sensitivity_report import (
+    write_clean_coverage_sensitivity_report,
+)
 from broker_agents.backtesting.price_history import (
     forward_return,
     forward_return_observation,
@@ -150,6 +153,10 @@ class BacktestRunResult:
     diagnostic_report_path: Path | None = None
     diagnostic_report_json_path: Path | None = None
     diagnostic_status: str | None = None
+    sensitivity_report_path: Path | None = None
+    sensitivity_report_json_path: Path | None = None
+    sensitivity_status: str | None = None
+    clean_only_available: bool = False
     walk_forward_stability: str | None = None
     walk_forward_summary_path: Path | None = None
     walk_forward_results_path: Path | None = None
@@ -1010,7 +1017,39 @@ def run_signal_backtest(
     }
     decision_report_files = None
     diagnostic_report_files = None
+    sensitivity_report_files = None
     if readiness_trial:
+        sensitivity_report_files = write_clean_coverage_sensitivity_report(
+            output_dir=backtest_folder,
+            manifest=manifest,
+            rows=rows,
+        )
+        clean_subset = sensitivity_report_files.report.subset_diagnostics[
+            "clean_records"
+        ]
+        manifest.update(
+            {
+                "clean_coverage_sensitivity_report_path": str(
+                    sensitivity_report_files.markdown_path
+                ),
+                "clean_coverage_sensitivity_report_json_path": str(
+                    sensitivity_report_files.json_path
+                ),
+                "clean_coverage_sensitivity_status": (
+                    sensitivity_report_files.report.sensitivity_status
+                ),
+                "clean_only_available": clean_subset["available"],
+                "clean_record_count": clean_subset["sample_size"],
+                "warning_record_count": metrics.get(
+                    "warning_record_count",
+                    0,
+                ),
+                "warning_heavy_record_count": metrics.get(
+                    "warning_heavy_record_count",
+                    0,
+                ),
+            }
+        )
         decision_report_files = write_readiness_trial_decision_report(
             output_dir=backtest_folder,
             manifest=manifest,
@@ -1074,6 +1113,13 @@ def run_signal_backtest(
                 "readiness_trial_diagnostic_report_json_path": None,
                 "diagnostic_status": None,
                 "next_research_action": None,
+                "clean_coverage_sensitivity_report_path": None,
+                "clean_coverage_sensitivity_report_json_path": None,
+                "clean_coverage_sensitivity_status": None,
+                "clean_only_available": False,
+                "clean_record_count": 0,
+                "warning_record_count": 0,
+                "warning_heavy_record_count": 0,
             }
         )
     manifest_text = json.dumps(manifest, indent=2)
@@ -1122,6 +1168,20 @@ def run_signal_backtest(
             else None
         ),
         diagnostic_status=manifest["diagnostic_status"],
+        sensitivity_report_path=(
+            sensitivity_report_files.markdown_path
+            if sensitivity_report_files
+            else None
+        ),
+        sensitivity_report_json_path=(
+            sensitivity_report_files.json_path
+            if sensitivity_report_files
+            else None
+        ),
+        sensitivity_status=manifest[
+            "clean_coverage_sensitivity_status"
+        ],
+        clean_only_available=bool(manifest["clean_only_available"]),
         walk_forward_stability=(
             decision_report_files.report.walk_forward_stability_judgment
             if decision_report_files
