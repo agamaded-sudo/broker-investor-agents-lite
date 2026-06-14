@@ -8,6 +8,9 @@ from pathlib import Path
 from broker_agents.historical.historical_signal_readiness import (
     HistoricalSignalReadinessCandidate,
 )
+from broker_agents.deals.readiness_metadata_enrichment import (
+    CORE_METADATA_FIELDS,
+)
 
 RECORD_TYPE = "historical_signal_readiness_candidate"
 LEDGER_FIELDS = (
@@ -29,6 +32,10 @@ LEDGER_FIELDS = (
     "leakage_risk_sections_count",
     "blocking_reasons_count",
     "warnings_count",
+    *CORE_METADATA_FIELDS,
+    "metadata_enrichment_status",
+    "missing_metadata_fields",
+    "metadata_source_paths",
     "created_at",
     "source",
 )
@@ -62,6 +69,29 @@ class HistoricalReadinessLedgerRecord:
     leakage_risk_sections_count: int
     blocking_reasons_count: int
     warnings_count: int
+    readiness_label: object
+    readiness_status: object
+    readiness_score: object
+    source_verification_status: object
+    verified_source_count: object
+    partial_source_count: object
+    missing_source_count: object
+    placeholder_heavy_source_count: object
+    promotion_blocking_count: object
+    promotion_blocking_bucket: object
+    buffett_interest_level: object
+    munger_interest_level: object
+    fisher_interest_level: object
+    lynch_interest_level: object
+    bogle_interest_level: object
+    buffett_decision: object
+    munger_decision: object
+    fisher_decision: object
+    lynch_decision: object
+    bogle_decision: object
+    metadata_enrichment_status: str
+    missing_metadata_fields: str
+    metadata_source_paths: str
     created_at: str
     source: str
 
@@ -88,6 +118,7 @@ def build_historical_readiness_ledger_record(
     candidate_file: Path,
     assembly_file: Path,
     created_at: str,
+    metadata: dict | None = None,
 ) -> HistoricalReadinessLedgerRecord:
     """Build and enforce a readiness-only record."""
     if candidate.signal_generation_status != "readiness_only":
@@ -102,6 +133,7 @@ def build_historical_readiness_ledger_record(
         raise ValueError(
             "Historical readiness records must preserve all safety invariants."
         )
+    metadata = metadata or {}
     return HistoricalReadinessLedgerRecord(
         record_type=RECORD_TYPE,
         ticker=candidate.ticker,
@@ -123,6 +155,19 @@ def build_historical_readiness_ledger_record(
         leakage_risk_sections_count=len(candidate.leakage_risk_sections),
         blocking_reasons_count=len(candidate.blocking_reasons),
         warnings_count=len(candidate.warnings),
+        **{
+            field: metadata.get(field, "Missing")
+            for field in CORE_METADATA_FIELDS
+        },
+        metadata_enrichment_status=str(
+            metadata.get("metadata_enrichment_status") or "not_available"
+        ),
+        missing_metadata_fields=str(
+            metadata.get("missing_metadata_fields") or ""
+        ),
+        metadata_source_paths=str(
+            metadata.get("metadata_source_paths") or ""
+        ),
         created_at=created_at,
         source="analyze_stock_historical_mode",
     )
@@ -146,6 +191,7 @@ def append_historical_readiness_candidate(
     candidate_file: Path,
     assembly_file: Path,
     created_at: str,
+    metadata: dict | None = None,
 ) -> HistoricalReadinessArchiveResult:
     """Append one candidate to the separate readiness research ledger."""
     record = build_historical_readiness_ledger_record(
@@ -154,6 +200,7 @@ def append_historical_readiness_candidate(
         candidate_file=candidate_file,
         assembly_file=assembly_file,
         created_at=created_at,
+        metadata=metadata,
     )
     ledger_dir = Path(outputs_root) / "historical_readiness_ledger"
     ledger_dir.mkdir(parents=True, exist_ok=True)
@@ -165,6 +212,7 @@ def append_historical_readiness_candidate(
 
     with jsonl_path.open("a", encoding="utf-8", newline="\n") as handle:
         handle.write(json.dumps(record.to_dict(), separators=(",", ":")) + "\n")
+    _ensure_csv_schema(csv_path)
     write_header = not csv_path.exists() or csv_path.stat().st_size == 0
     with csv_path.open("a", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=LEDGER_FIELDS)
@@ -192,3 +240,22 @@ def append_historical_readiness_candidate(
         snapshot_path=snapshot_path,
         total_records=total_records,
     )
+
+
+def _ensure_csv_schema(csv_path: Path) -> None:
+    """Upgrade readiness ledger CSV columns while preserving prior rows."""
+    if not csv_path.exists() or csv_path.stat().st_size == 0:
+        return
+    with csv_path.open(encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        existing_fields = tuple(reader.fieldnames or ())
+        rows = list(reader)
+    if existing_fields == LEDGER_FIELDS:
+        return
+    with csv_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=LEDGER_FIELDS)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(
+                {field: row.get(field, "") for field in LEDGER_FIELDS}
+            )

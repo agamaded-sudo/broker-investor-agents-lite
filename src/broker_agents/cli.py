@@ -55,6 +55,9 @@ from broker_agents.deals.analyze_stock_intake import (
     with_as_of_date,
     with_financials_provider,
 )
+from broker_agents.deals.readiness_metadata_enrichment import (
+    ENRICHMENT_FIELDS,
+)
 from broker_agents.historical.as_of_context import build_as_of_context
 from broker_agents.historical.financials_as_of_contract import (
     build_financials_as_of_contract,
@@ -2609,6 +2612,12 @@ def export_readiness_trial_ledger(
         ("Total Input Records", str(result.total_input_records)),
         ("Total Exported Records", str(result.total_exported_records)),
         ("Skipped Records", str(result.skipped_records)),
+        ("Metadata Enrichment", "enabled"),
+        (
+            "Metadata Status Counts",
+            json.dumps(result.metadata_enrichment_status_counts, sort_keys=True),
+        ),
+        ("Metadata Fields Added", str(len(ENRICHMENT_FIELDS))),
         ("Status", "completed"),
     )
     for label, value in rows:
@@ -3237,6 +3246,27 @@ def backtest_signals(
     if result.backtest_run_type == "readiness_trial":
         rows.extend(
             [
+                (
+                    "Metadata Enrichment",
+                    (
+                        "detected"
+                        if any(
+                            key not in {"not_available", "missing"}
+                            for key in result.metrics.get(
+                                "metadata_enrichment_status_counts",
+                                {},
+                            )
+                        )
+                        else "not available"
+                    ),
+                ),
+                (
+                    "Missing Metadata Fields",
+                    ", ".join(
+                        result.metrics.get("missing_metadata_fields", [])
+                    )
+                    or "None",
+                ),
                 ("Decision Report", str(result.decision_report_path)),
                 ("Decision Status", str(result.decision_status)),
                 (

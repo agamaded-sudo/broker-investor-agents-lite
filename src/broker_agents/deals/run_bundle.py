@@ -30,6 +30,9 @@ from broker_agents.historical.historical_signal_readiness import (
     build_historical_signal_readiness_candidate,
     write_historical_signal_readiness_candidate,
 )
+from broker_agents.deals.readiness_metadata_enrichment import (
+    build_readiness_metadata,
+)
 from broker_agents.historical.price_windows import (
     build_analysis_price_window,
 )
@@ -647,6 +650,28 @@ def create_analyze_stock_run_bundle(
             ),
             "warnings": historical_candidate.warnings,
         }
+        readiness_metadata = build_readiness_metadata(
+            manifest={
+                "readiness_label": executive_summary.get(
+                    "backoffice_readiness_label",
+                    "Unknown",
+                ),
+                "readiness_status": historical_assembly.assembly_status,
+                "source_verification_status": (
+                    workflow_result.source_verification_status
+                ),
+                "promotion_blocking_categories": work_order_plan.get(
+                    "promotion_blocking_categories",
+                    [],
+                ),
+            },
+            package_payload=package_payload,
+            source_paths=[
+                Path(workflow_result.broker_deal_package_path).with_suffix(
+                    ".json"
+                )
+            ],
+        )
         readiness_archive = append_historical_readiness_candidate(
             outputs_root=intake.outputs_root,
             candidate=historical_candidate,
@@ -654,6 +679,7 @@ def create_analyze_stock_run_bundle(
             candidate_file=candidate_json_path,
             assembly_file=assembly_json_path,
             created_at=generated_at_text,
+            metadata=readiness_metadata,
         )
         historical_readiness_ledger_record = {
             "archived": True,

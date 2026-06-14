@@ -60,6 +60,21 @@ READINESS_TRIAL_FIELDS = (
     "leakage_risk_sections_count",
     "blocking_reasons_count",
     "trial_backtest_label",
+    "readiness_status",
+    "readiness_score",
+    "verified_source_count",
+    "partial_source_count",
+    "missing_source_count",
+    "placeholder_heavy_source_count",
+    "promotion_blocking_bucket",
+    "buffett_decision",
+    "munger_decision",
+    "fisher_decision",
+    "lynch_decision",
+    "bogle_decision",
+    "metadata_enrichment_status",
+    "missing_metadata_fields",
+    "metadata_source_paths",
 )
 READINESS_RECORD_TYPE = "historical_signal_readiness_candidate"
 READINESS_TRIAL_SAFETY_NOTICE = (

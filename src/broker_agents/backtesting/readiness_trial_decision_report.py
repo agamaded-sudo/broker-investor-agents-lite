@@ -74,7 +74,11 @@ def _missing_metadata(rows: list[dict]) -> list[str]:
     return [
         field
         for field in MISSING_METADATA_FIELDS
-        if not any(str(row.get(field) or "").strip() for row in rows)
+        if not any(
+            str(row.get(field) or "").strip().lower()
+            not in {"", "missing", "null", "none"}
+            for row in rows
+        )
     ]
 
 

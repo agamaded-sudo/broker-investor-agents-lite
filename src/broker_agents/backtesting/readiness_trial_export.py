@@ -7,6 +7,13 @@ import json
 from pathlib import Path
 
 from broker_agents.archive.historical_readiness_ledger import RECORD_TYPE
+from broker_agents.deals.readiness_metadata_enrichment import (
+    CORE_METADATA_FIELDS,
+    ENRICHMENT_FIELDS,
+    enrich_historical_readiness_record,
+    metadata_status_counts,
+    missing_metadata_field_counts,
+)
 
 TRIAL_BACKTEST_LABEL = "readiness_only_trial"
 SAFETY_NOTICE = (
@@ -51,6 +58,10 @@ TRIAL_LEDGER_FIELDS = (
     "leakage_risk_sections_count",
     "blocking_reasons_count",
     "warnings_count",
+    *CORE_METADATA_FIELDS,
+    "metadata_enrichment_status",
+    "missing_metadata_fields",
+    "metadata_source_paths",
     "trial_backtest_label",
     "trial_backtest_allowed",
     "safety_notice",
@@ -85,6 +96,29 @@ class ReadinessTrialLedgerRecord:
     leakage_risk_sections_count: int
     blocking_reasons_count: int
     warnings_count: int
+    readiness_label: object
+    readiness_status: object
+    readiness_score: object
+    source_verification_status: object
+    verified_source_count: object
+    partial_source_count: object
+    missing_source_count: object
+    placeholder_heavy_source_count: object
+    promotion_blocking_count: object
+    promotion_blocking_bucket: object
+    buffett_interest_level: object
+    munger_interest_level: object
+    fisher_interest_level: object
+    lynch_interest_level: object
+    bogle_interest_level: object
+    buffett_decision: object
+    munger_decision: object
+    fisher_decision: object
+    lynch_decision: object
+    bogle_decision: object
+    metadata_enrichment_status: str
+    missing_metadata_fields: str
+    metadata_source_paths: str
     trial_backtest_label: str
     trial_backtest_allowed: bool
     safety_notice: str
@@ -104,6 +138,8 @@ class ReadinessTrialExportResult:
     total_input_records: int
     total_exported_records: int
     skipped_records: int
+    metadata_enrichment_status_counts: dict[str, int]
+    missing_metadata_field_counts: dict[str, int]
     warnings: list[str] = field(default_factory=list)
 
 
@@ -205,6 +241,19 @@ def _trial_record(record: dict) -> ReadinessTrialLedgerRecord:
         ),
         blocking_reasons_count=_as_int(record.get("blocking_reasons_count")),
         warnings_count=_as_int(record.get("warnings_count")),
+        **{
+            field: record.get(field, "Missing")
+            for field in CORE_METADATA_FIELDS
+        },
+        metadata_enrichment_status=str(
+            record.get("metadata_enrichment_status") or "not_available"
+        ),
+        missing_metadata_fields=str(
+            record.get("missing_metadata_fields") or ""
+        ),
+        metadata_source_paths=str(
+            record.get("metadata_source_paths") or ""
+        ),
         trial_backtest_label=TRIAL_BACKTEST_LABEL,
         trial_backtest_allowed=True,
         safety_notice=SAFETY_NOTICE,
@@ -234,9 +283,14 @@ def export_readiness_ledger_to_trial_ledger(
     for record in records:
         valid, warning = _valid_source_record(record)
         if valid:
-            exported.append(_trial_record(record))
+            exported.append(
+                _trial_record(enrich_historical_readiness_record(record))
+            )
         elif warning:
             warnings.append(warning)
+    exported_dicts = [record.to_dict() for record in exported]
+    status_counts = metadata_status_counts(exported_dicts)
+    missing_counts = missing_metadata_field_counts(exported_dicts)
 
     output_ledger.parent.mkdir(parents=True, exist_ok=True)
     with output_ledger.open("w", encoding="utf-8", newline="") as handle:
@@ -255,6 +309,10 @@ def export_readiness_ledger_to_trial_ledger(
         "skipped_records": len(records) - len(exported),
         "generated_at": timestamp.isoformat(),
         "safety_notice": SAFETY_NOTICE,
+        "metadata_enrichment_enabled": True,
+        "metadata_fields_added": list(ENRICHMENT_FIELDS),
+        "metadata_enrichment_status_counts": status_counts,
+        "missing_metadata_field_counts": missing_counts,
         "warnings": warnings,
     }
     metadata_file.write_text(
@@ -268,6 +326,8 @@ def export_readiness_ledger_to_trial_ledger(
         total_input_records=len(records),
         total_exported_records=len(exported),
         skipped_records=len(records) - len(exported),
+        metadata_enrichment_status_counts=status_counts,
+        missing_metadata_field_counts=missing_counts,
         warnings=warnings,
     )
 

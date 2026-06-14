@@ -118,6 +118,7 @@ def test_append_historical_readiness_candidate_writes_separate_ledgers(
     assert tuple(reader.fieldnames or ()) == LEDGER_FIELDS
     assert len(rows) == 1
     assert rows[0]["ticker"] == "COST"
+    assert rows[0]["metadata_enrichment_status"] == "not_available"
 
     snapshot = json.loads(
         result.snapshot_path.read_text(encoding="utf-8")
@@ -160,6 +161,10 @@ def test_historical_analyze_stock_archives_readiness_separately(
     assert readiness_records[0]["record_type"] == (
         "historical_signal_readiness_candidate"
     )
+    assert readiness_records[0]["metadata_enrichment_status"] == "partial"
+    assert readiness_records[0]["readiness_label"]
+    assert readiness_records[0]["source_verification_status"]
+    assert readiness_records[0]["buffett_interest_level"]
     assert "record_type" not in main_records[0]
 
     latest_manifest = json.loads(

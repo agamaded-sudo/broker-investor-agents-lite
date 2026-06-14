@@ -99,8 +99,43 @@ def _missing_metadata(rows: list[dict]) -> list[str]:
     return [
         field
         for field in MISSING_METADATA_FIELDS
-        if not any(str(row.get(field) or "").strip() for row in rows)
+        if not any(
+            str(row.get(field) or "").strip().lower()
+            not in {"", "missing", "null", "none"}
+            for row in rows
+        )
     ]
+
+
+def _metadata_values(rows: list[dict], field: str) -> list[str]:
+    """Return distinct non-missing metadata values."""
+    return sorted(
+        {
+            str(row.get(field)).strip()
+            for row in rows
+            if str(row.get(field) or "").strip().lower()
+            not in {"", "missing", "null", "none"}
+        }
+    )
+
+
+def _metadata_status_counts(rows: list[dict]) -> dict[str, int]:
+    """Count enrichment statuses in evaluated rows."""
+    counts: dict[str, int] = {}
+    for row in rows:
+        status = str(
+            row.get("metadata_enrichment_status") or "not_available"
+        )
+        counts[status] = counts.get(status, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def _grouped_metadata_availability(rows: list[dict]) -> dict[str, bool]:
+    """Report whether grouped metadata has non-missing evidence."""
+    return {
+        field: bool(_metadata_values(rows, field))
+        for field in MISSING_METADATA_FIELDS
+    }
 
 
 def _period_interpretation(period: dict) -> str:
@@ -226,6 +261,17 @@ def _ticker_diagnostics(rows: list[dict]) -> list[dict]:
             "positive_return_rate_12m": _rate(
                 group, "forward_return_12m"
             ),
+            "source_verification_status": _metadata_values(
+                group, "source_verification_status"
+            ),
+            "promotion_blocking_bucket": _metadata_values(
+                group, "promotion_blocking_bucket"
+            ),
+            "investor_interest_levels": {
+                field: _metadata_values(group, field)
+                for field in MISSING_METADATA_FIELDS
+                if field.endswith("_interest_level")
+            },
             "best_12m_record_date": (
                 str(ordered[-1].get("signal_date") or "") if ordered else None
             ),
@@ -403,6 +449,12 @@ def build_readiness_trial_diagnostic_report(
         "weakest_ticker_by_median_12m": weakest_ticker,
         "most_volatile_ticker_by_range_12m": most_volatile,
         "nvda_major_driver": nvda_major_driver,
+        "metadata_enrichment_status_counts": _metadata_status_counts(
+            evaluated
+        ),
+        "grouped_metadata_availability": (
+            _grouped_metadata_availability(evaluated)
+        ),
     }
     stability = {
         "walk_forward_enabled": bool(manifest.get("walk_forward_enabled")),
@@ -729,8 +781,22 @@ def render_readiness_trial_diagnostic_report(
         [
             "",
             (
+                "Metadata enrichment status counts: "
+                f"{report.concentration_diagnostics['metadata_enrichment_status_counts']}"
+            ),
+            (
+                "Grouped metadata availability: "
+                f"{report.concentration_diagnostics['grouped_metadata_availability']}"
+            ),
+            "",
+            (
                 "Missing metadata prevents grouped attribution by readiness "
-                "quality or investor agent interest."
+                "quality or investor agent interest when fields remain absent."
+                if report.missing_metadata_fields
+                else (
+                    "Rows with available metadata can now be grouped "
+                    "separately. This does not imply investor validation."
+                )
             ),
             "",
             "## What This Suggests",
@@ -743,8 +809,8 @@ def render_readiness_trial_diagnostic_report(
             ),
             "- More dates and/or more tickers are needed.",
             (
-                "- Metadata enrichment is needed to explain why cases "
-                "performed differently."
+                "- Remaining metadata gaps should be reduced to explain why "
+                "cases performed differently."
             ),
             "",
             "## What This Does Not Suggest",
@@ -759,7 +825,7 @@ def render_readiness_trial_diagnostic_report(
             "",
             f"- Action Code: {report.next_research_action}",
             "- Expand historical date coverage or add more tickers.",
-            "- Enrich readiness metadata fields.",
+            "- Enrich remaining readiness metadata fields.",
             "- Preserve dedupe controls.",
             "- Consider ticker/year diagnostic charts in a later task.",
             "",

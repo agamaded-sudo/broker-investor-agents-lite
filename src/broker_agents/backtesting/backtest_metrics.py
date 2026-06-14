@@ -1,6 +1,7 @@
 """Descriptive research metrics for deduped backtest result rows."""
 
 from collections.abc import Callable
+from collections import Counter
 from statistics import mean, median
 
 INTEREST_GROUP_FIELDS = (
@@ -52,6 +53,9 @@ def _rate(rows: list[dict], field: str) -> float | None:
 
 def _blocker_bucket(row: dict) -> str:
     """Map the result blocker count to a research grouping."""
+    provided = str(row.get("promotion_blocking_bucket") or "").strip()
+    if provided and provided.lower() != "missing":
+        return provided
     try:
         count = int(row.get("promotion_blocking_count") or 0)
     except (TypeError, ValueError):
@@ -191,6 +195,26 @@ def calculate_backtest_metrics(
     drawdowns = _numeric_values(evaluated_rows, "max_drawdown_12m")
     forward_12m = _numeric_values(evaluated_rows, "forward_return_12m")
     concentration_details = _concentration_details(evaluated_rows)
+    metadata_status_counts = dict(
+        sorted(
+            Counter(
+                str(
+                    row.get("metadata_enrichment_status")
+                    or "not_available"
+                )
+                for row in evaluated_rows
+            ).items()
+        )
+    )
+    missing_metadata_fields = [
+        field
+        for field in GROUP_FIELDS
+        if not any(
+            str(row.get(field) or "").strip().lower()
+            not in {"", "missing", "null", "none"}
+            for row in evaluated_rows
+        )
+    ]
     metrics.update(
         {
             "median_max_drawdown_12m": (
@@ -209,6 +233,8 @@ def calculate_backtest_metrics(
             "concentration_warning": bool(concentration_details),
             "concentration_details": concentration_details,
             "synthetic_data_warning": price_data_type == "synthetic_fixture",
+            "metadata_enrichment_status_counts": metadata_status_counts,
+            "missing_metadata_fields": missing_metadata_fields,
             "grouped_metrics": {
                 field: _group_metrics(evaluated_rows, field)
                 for field in GROUP_FIELDS

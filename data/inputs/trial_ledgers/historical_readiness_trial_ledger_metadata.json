@@ -1,10 +1,42 @@
 {
   "source_ledger": "data\\outputs\\historical_readiness_ledger\\historical_signal_readiness_ledger.csv",
   "output_ledger": "data\\inputs\\trial_ledgers\\historical_readiness_trial_ledger.csv",
-  "total_input_records": 38,
-  "total_exported_records": 38,
+  "total_input_records": 74,
+  "total_exported_records": 74,
   "skipped_records": 0,
-  "generated_at": "2026-06-13T18:15:30.655907+00:00",
+  "generated_at": "2026-06-14T10:51:46.547293+00:00",
   "safety_notice": "This historical readiness trial ledger contains readiness-only research artifacts. It is not a recommendation ledger, ranking ledger, allocation ledger, rebalancing ledger, trade signal ledger, or execution instruction ledger.",
+  "metadata_enrichment_enabled": true,
+  "metadata_fields_added": [
+    "readiness_label",
+    "readiness_status",
+    "readiness_score",
+    "source_verification_status",
+    "verified_source_count",
+    "partial_source_count",
+    "missing_source_count",
+    "placeholder_heavy_source_count",
+    "promotion_blocking_count",
+    "promotion_blocking_bucket",
+    "buffett_interest_level",
+    "munger_interest_level",
+    "fisher_interest_level",
+    "lynch_interest_level",
+    "bogle_interest_level",
+    "buffett_decision",
+    "munger_decision",
+    "fisher_decision",
+    "lynch_decision",
+    "bogle_decision",
+    "metadata_enrichment_status",
+    "missing_metadata_fields",
+    "metadata_source_paths"
+  ],
+  "metadata_enrichment_status_counts": {
+    "partial": 74
+  },
+  "missing_metadata_field_counts": {
+    "readiness_score": 74
+  },
   "warnings": []
 }

@@ -851,6 +851,25 @@ Regenerate diagnostics from an existing readiness backtest folder with:
 python -m broker_agents.cli generate-readiness-trial-diagnostic-report --backtest-folder data/outputs/backtests/{RUN_ID}
 ```
 
+### Readiness Trial Metadata Enrichment
+
+Readiness trial export now enriches research rows from existing structured local
+run manifests and deal-package JSON artifacts. Available metadata includes
+readiness status, source verification counts, promotion blockers, and investor
+interest and existing decision fields. Missing metadata remains explicit, source
+paths are recorded, and no value is fabricated.
+
+```powershell
+python -m broker_agents.cli export-readiness-trial-ledger --outputs-root data/outputs --output-ledger data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv
+
+python -m broker_agents.cli validate-readiness-trial-ledger --ledger data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv
+
+python -m broker_agents.cli backtest-signals --ledger data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv --price-provider csv --price-fixtures tests/fixtures/historical_price_history --outputs-root data/outputs --lookback-years 5 --dedupe-mode latest_per_ticker_per_day --walk-forward --walk-forward-frequency yearly
+```
+
+This enrichment is research-only. It does not convert readiness artifacts into
+recommendations, rankings, allocation instructions, or trade signals.
+
 ### Investor Response Letters
 
 Each broker deal package now includes one broker-facing response letter from
