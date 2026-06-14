@@ -811,6 +811,40 @@ missing metadata and readiness-only sections remain visible. No recommendation,
 ranking, allocation instruction, rebalancing instruction, trade signal, or
 execution instruction is produced.
 
+### Expanded Historical Date Coverage
+
+Historical readiness multi-date runs support reusable local-data presets:
+
+- `annual_3`: the conservative 2021, 2022, and 2023 annual baseline.
+- `semiannual_6`: the first expanded research preset with six requested dates.
+- `quarterly_9`: an experimental preset that may require additional fixture
+  coverage.
+
+Run the semiannual preset with:
+
+```powershell
+python -m broker_agents.cli run-historical-readiness-multidate --tickers MSFT,AAPL,NVDA,COST --date-preset semiannual_6 --examples-root examples --outputs-root data/outputs --fixtures-root tests/fixtures --portfolio-context examples/portfolio_context.yaml --financials-provider historical_csv --financials-root tests/fixtures/historical_financials --export-trial-ledger --validate-trial-ledger
+```
+
+The command validates local price and historical financial CSV coverage before
+running a preset. It writes `historical_date_coverage_report.json` and
+`historical_date_coverage_report.md` in the multi-date run folder. Dates without
+the required local price anchors are listed as skipped and are not fabricated.
+The run fails only when a preset has no usable dates. Explicit
+`--as-of-dates` values take precedence when both explicit dates and
+`--date-preset` are supplied, preserving the existing explicit-date workflow.
+
+After export, the existing readiness walk-forward backtest remains available:
+
+```powershell
+python -m broker_agents.cli backtest-signals --ledger data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv --price-provider csv --price-fixtures tests/fixtures/historical_price_history --outputs-root data/outputs --lookback-years 5 --dedupe-mode latest_per_ticker_per_day --walk-forward --walk-forward-frequency yearly
+```
+
+All coverage checks use local fixtures only. Expanded results remain
+readiness-only and diagnostic; no recommendation, ranking, allocation
+instruction, rebalancing instruction, trade signal, or execution instruction
+is produced.
+
 ### Readiness Trial Walk-Forward Backtest
 
 After multi-date sample generation, run the readiness-only backtest by yearly

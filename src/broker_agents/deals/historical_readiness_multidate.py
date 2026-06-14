@@ -14,6 +14,11 @@ from broker_agents.backtesting.signal_backtester import run_signal_backtest
 from broker_agents.deals.historical_readiness_batch import (
     run_historical_readiness_batch,
 )
+from broker_agents.deals.historical_date_coverage import (
+    build_historical_date_coverage_report,
+    resolve_historical_date_preset,
+    validate_historical_date_coverage,
+)
 
 SAFETY_NOTICE = (
     "This historical readiness multi-date trial produces readiness-only "
@@ -78,6 +83,12 @@ class HistoricalReadinessMultidateResult:
     sample_size_after_dedupe: int | None = None
     decision_status: str | None = None
     statistical_validity: str | None = None
+    date_preset: str | None = None
+    resolved_as_of_dates: list[str] = field(default_factory=list)
+    usable_dates: list[str] = field(default_factory=list)
+    skipped_dates: list[str] = field(default_factory=list)
+    date_coverage_status: str = "not_run"
+    date_coverage_report_path: Path | None = None
 
 
 def _normalize_values(value: str | list[str], *, uppercase: bool) -> list[str]:
@@ -153,6 +164,18 @@ def _render_summary(manifest: dict) -> str:
             "- As-Of Dates Requested: "
             f"{', '.join(manifest['as_of_dates_requested'])}"
         ),
+        f"- Date Preset: {manifest.get('date_preset') or 'explicit'}",
+        (
+            "- Resolved As-Of Dates: "
+            f"{', '.join(manifest['resolved_as_of_dates'])}"
+        ),
+        f"- Usable Dates: {', '.join(manifest['usable_dates']) or 'None'}",
+        f"- Skipped Dates: {', '.join(manifest['skipped_dates']) or 'None'}",
+        f"- Date Coverage Status: {manifest['date_coverage_status']}",
+        (
+            "- Date Coverage Report: "
+            f"{manifest['date_coverage_report_path']}"
+        ),
         f"- Total Expected Runs: {manifest['total_expected_runs']}",
         f"- Total Completed Runs: {manifest['total_completed_runs']}",
         f"- Total Failed Runs: {manifest['total_failed_runs']}",
@@ -194,6 +217,10 @@ def _render_summary(manifest: dict) -> str:
                 f"{manifest['trial_ledger_validation_status']}"
             ),
             (
+                "- Metadata Enrichment Status: "
+                f"{manifest['metadata_enrichment_status']}"
+            ),
+            (
                 "- Readiness Backtest Run: "
                 f"{'Yes' if manifest['readiness_backtest_run'] else 'No'}"
             ),
@@ -223,7 +250,8 @@ def _render_summary(manifest: dict) -> str:
 def run_historical_readiness_multidate(
     *,
     tickers: str | list[str],
-    as_of_dates: str | list[str],
+    as_of_dates: str | list[str] | None,
+    date_preset: str | None = None,
     examples_root: Path,
     outputs_root: Path,
     fixtures_root: Path,
@@ -241,7 +269,12 @@ def run_historical_readiness_multidate(
 ) -> HistoricalReadinessMultidateResult:
     """Run Task 87 batches across multiple historical as-of dates."""
     requested_tickers = _normalize_values(tickers, uppercase=True)
-    requested_dates = _normalize_values(as_of_dates, uppercase=False)
+    if as_of_dates:
+        requested_dates = _normalize_values(as_of_dates, uppercase=False)
+        effective_preset = None
+    else:
+        effective_preset = date_preset or "annual_3"
+        requested_dates = resolve_historical_date_preset(effective_preset)
     if not requested_tickers:
         raise ValueError("Multi-date readiness trial requires at least one ticker.")
     if not requested_dates:
@@ -254,9 +287,34 @@ def run_historical_readiness_multidate(
     multidate_run_id = _allocate_multidate_run_id(root, timestamp)
     multidate_folder = root / multidate_run_id
     multidate_folder.mkdir(parents=True, exist_ok=False)
+    coverage_report = validate_historical_date_coverage(
+        requested_dates=requested_dates,
+        tickers=requested_tickers,
+        price_root=price_fixtures_path,
+        financials_root=financials_root,
+        date_preset=effective_preset,
+    )
+    coverage_json_path = (
+        multidate_folder / "historical_date_coverage_report.json"
+    )
+    coverage_markdown_path = (
+        multidate_folder / "historical_date_coverage_report.md"
+    )
+    build_historical_date_coverage_report(
+        report=coverage_report,
+        json_path=coverage_json_path,
+        markdown_path=coverage_markdown_path,
+    )
+    if effective_preset and not coverage_report.usable_dates:
+        raise ValueError(
+            "Historical date coverage is insufficient: zero usable dates."
+        )
+    execution_dates = (
+        coverage_report.usable_dates if effective_preset else requested_dates
+    )
 
     date_records = []
-    for as_of_date in requested_dates:
+    for as_of_date in execution_dates:
         try:
             batch_result = run_historical_readiness_batch(
                 tickers=requested_tickers,
@@ -309,7 +367,7 @@ def run_historical_readiness_multidate(
     export_result = None
     validation_result = None
     backtest_result = None
-    pipeline_warnings = []
+    pipeline_warnings = list(coverage_report.warnings)
 
     if must_export and total_completed_runs:
         try:
@@ -359,7 +417,16 @@ def run_historical_readiness_multidate(
         "generated_at": timestamp.isoformat(),
         "tickers_requested": requested_tickers,
         "as_of_dates_requested": requested_dates,
-        "total_expected_runs": len(requested_tickers) * len(requested_dates),
+        "date_preset": effective_preset,
+        "resolved_as_of_dates": requested_dates,
+        "date_coverage_status": coverage_report.validation_status,
+        "date_coverage_report_path": str(coverage_markdown_path),
+        "date_coverage_report_json_path": str(coverage_json_path),
+        "usable_dates": coverage_report.usable_dates,
+        "skipped_dates": coverage_report.skipped_dates,
+        "total_expected_runs": (
+            len(requested_tickers) * len(execution_dates)
+        ),
         "total_completed_runs": total_completed_runs,
         "total_failed_runs": total_failed_runs,
         "completed_dates": completed_dates,
@@ -381,6 +448,14 @@ def run_historical_readiness_multidate(
         ),
         "trial_ledger_total_exported_records": (
             export_result.total_exported_records if export_result else 0
+        ),
+        "metadata_enrichment_status": (
+            json.dumps(
+                export_result.metadata_enrichment_status_counts,
+                sort_keys=True,
+            )
+            if export_result
+            else "not_run"
         ),
         "trial_ledger_validation_status": (
             validation_result.status if validation_result else "not_run"
@@ -461,4 +536,10 @@ def run_historical_readiness_multidate(
         sample_size_after_dedupe=manifest["sample_size_after_dedupe"],
         decision_status=manifest["decision_status"],
         statistical_validity=manifest["statistical_validity"],
+        date_preset=effective_preset,
+        resolved_as_of_dates=requested_dates,
+        usable_dates=coverage_report.usable_dates,
+        skipped_dates=coverage_report.skipped_dates,
+        date_coverage_status=coverage_report.validation_status,
+        date_coverage_report_path=coverage_markdown_path,
     )

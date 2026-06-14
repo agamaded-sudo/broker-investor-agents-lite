@@ -2691,12 +2691,22 @@ def run_historical_readiness_multidate_command(
         ),
     ] = "MSFT,AAPL,NVDA,COST",
     as_of_dates: Annotated[
-        str,
+        str | None,
         typer.Option(
             "--as-of-dates",
-            help="Comma-separated historical readiness dates.",
+            help=(
+                "Comma-separated historical readiness dates. Explicit dates "
+                "take precedence over --date-preset."
+            ),
         ),
-    ] = "2021-06-30,2022-06-30,2023-06-30",
+    ] = None,
+    date_preset: Annotated[
+        str | None,
+        typer.Option(
+            "--date-preset",
+            help="Date preset: annual_3, semiannual_6, or quarterly_9.",
+        ),
+    ] = None,
     examples_root: Annotated[
         Path,
         typer.Option(
@@ -2805,6 +2815,7 @@ def run_historical_readiness_multidate_command(
         result = run_historical_readiness_multidate(
             tickers=tickers,
             as_of_dates=as_of_dates,
+            date_preset=date_preset,
             examples_root=examples_root,
             outputs_root=outputs_root,
             fixtures_root=fixtures_root,
@@ -2827,7 +2838,12 @@ def run_historical_readiness_multidate_command(
     table.add_column("Value")
     rows = (
         ("Multi-Date Run ID", result.multidate_run_id),
-        ("As-Of Dates", as_of_dates),
+        ("Date Preset", result.date_preset or "explicit"),
+        ("As-Of Dates", ",".join(result.resolved_as_of_dates)),
+        ("Usable Dates", ",".join(result.usable_dates) or "None"),
+        ("Skipped Dates", ",".join(result.skipped_dates) or "None"),
+        ("Date Coverage", result.date_coverage_status),
+        ("Date Coverage Report", str(result.date_coverage_report_path)),
         ("Tickers Requested", tickers),
         ("Expected Runs", str(result.total_expected_runs)),
         ("Completed Runs", str(result.total_completed_runs)),
@@ -2863,7 +2879,13 @@ def run_historical_readiness_multidate_command(
         table.add_row(label, value)
     console.print(table)
     console.print(f"multidate_run_id={result.multidate_run_id}")
-    console.print(f"as_of_dates={as_of_dates}")
+    console.print(f"date_preset={result.date_preset or 'explicit'}")
+    console.print(
+        f"as_of_dates={','.join(result.resolved_as_of_dates)}"
+    )
+    console.print(f"usable_dates={','.join(result.usable_dates)}")
+    console.print(f"skipped_dates={','.join(result.skipped_dates)}")
+    console.print(f"date_coverage_status={result.date_coverage_status}")
     console.print(f"tickers={tickers}")
     console.print(f"total_expected_runs={result.total_expected_runs}")
     console.print(f"total_completed_runs={result.total_completed_runs}")

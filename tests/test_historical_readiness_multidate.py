@@ -20,7 +20,8 @@ def _run_multidate(
     tmp_path: Path,
     *,
     tickers: str,
-    as_of_dates: str,
+    as_of_dates: str | None = None,
+    date_preset: str | None = None,
     full_pipeline: bool,
 ):
     outputs_root = tmp_path / "outputs"
@@ -29,8 +30,6 @@ def _run_multidate(
         "run-historical-readiness-multidate",
         "--tickers",
         tickers,
-        "--as-of-dates",
-        as_of_dates,
         "--examples-root",
         str(EXAMPLES),
         "--outputs-root",
@@ -48,6 +47,10 @@ def _run_multidate(
         "--price-fixtures",
         str(HISTORICAL_PRICES),
     ]
+    if as_of_dates:
+        args.extend(["--as-of-dates", as_of_dates])
+    if date_preset:
+        args.extend(["--date-preset", date_preset])
     if full_pipeline:
         args.extend(
             [
@@ -213,6 +216,87 @@ def test_failed_ticker_is_isolated_inside_each_date(tmp_path: Path) -> None:
         assert record["failed_tickers"] == ["NOTREAL"]
         assert record["total_completed"] == 1
         assert record["total_failed"] == 1
+
+
+def test_semiannual_preset_expands_sample_and_records_coverage(
+    tmp_path: Path,
+) -> None:
+    result, outputs_root, trial_ledger = _run_multidate(
+        tmp_path,
+        tickers="MSFT,AAPL,NVDA,COST",
+        date_preset="semiannual_6",
+        full_pipeline=True,
+    )
+
+    assert result.exit_code == 0, result.output
+    manifest = _latest_manifest(outputs_root)
+    assert manifest["date_preset"] == "semiannual_6"
+    assert manifest["resolved_as_of_dates"] == [
+        "2021-06-30",
+        "2021-12-31",
+        "2022-06-30",
+        "2022-12-31",
+        "2023-06-30",
+        "2023-12-31",
+    ]
+    assert manifest["usable_dates"] == [
+        "2021-06-30",
+        "2021-12-31",
+        "2022-06-30",
+        "2022-12-31",
+        "2023-06-30",
+    ]
+    assert manifest["skipped_dates"] == ["2023-12-31"]
+    assert manifest["total_expected_runs"] == 20
+    assert manifest["total_completed_runs"] == 20
+    assert manifest["sample_size_after_dedupe"] == 20
+    assert manifest["date_coverage_status"] == "valid_with_warnings"
+    assert Path(manifest["date_coverage_report_path"]).is_file()
+    assert Path(manifest["date_coverage_report_json_path"]).is_file()
+    assert trial_ledger.is_file()
+    assert "date_preset=semiannual_6" in result.output
+    assert "skipped_dates=2023-12-31" in result.output
+
+    folder = Path(manifest["date_coverage_report_path"]).parent
+    summary = (
+        folder / "historical_readiness_multidate_summary.md"
+    ).read_text(encoding="utf-8")
+    assert "Date Preset: semiannual_6" in summary
+    assert "Usable Dates:" in summary
+    assert "Skipped Dates: 2023-12-31" in summary
+    assert "Metadata Enrichment Status:" in summary
+
+
+def test_explicit_dates_take_precedence_over_date_preset(
+    tmp_path: Path,
+) -> None:
+    result, outputs_root, _ = _run_multidate(
+        tmp_path,
+        tickers="MSFT",
+        as_of_dates="2022-06-30",
+        date_preset="semiannual_6",
+        full_pipeline=False,
+    )
+
+    assert result.exit_code == 0, result.output
+    manifest = _latest_manifest(outputs_root)
+    assert manifest["date_preset"] is None
+    assert manifest["resolved_as_of_dates"] == ["2022-06-30"]
+    assert manifest["total_expected_runs"] == 1
+
+
+def test_unknown_date_preset_has_clear_cli_error(tmp_path: Path) -> None:
+    result, _, _ = _run_multidate(
+        tmp_path,
+        tickers="MSFT",
+        date_preset="monthly_12",
+        full_pipeline=False,
+    )
+
+    assert result.exit_code != 0
+    assert "Unknown" in result.output
+    assert "historical date preset" in result.output
+    assert "annual_3" in result.output
 
 
 def test_task88_documentation_and_demo_runner_remain() -> None:
