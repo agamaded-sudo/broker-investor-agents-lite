@@ -18,6 +18,9 @@ from broker_agents.backtesting.coverage_sensitivity_report import (
 from broker_agents.backtesting.delayed_anchor_impact_report import (
     write_delayed_anchor_impact_report,
 )
+from broker_agents.backtesting.outlier_sensitivity_report import (
+    write_outlier_sensitivity_report,
+)
 from broker_agents.backtesting.price_history import (
     forward_return,
     forward_return_observation,
@@ -167,6 +170,12 @@ class BacktestRunResult:
     no_delayed_anchor_record_count: int = 0
     delayed_anchor_materially_stronger: bool = False
     no_delayed_anchor_positive: bool = False
+    outlier_sensitivity_report_path: Path | None = None
+    outlier_sensitivity_report_json_path: Path | None = None
+    outlier_dependence_status: str | None = None
+    nvda_record_count: int = 0
+    ex_nvda_positive: bool = False
+    ex_top_2_positive: bool = False
     walk_forward_stability: str | None = None
     walk_forward_summary_path: Path | None = None
     walk_forward_results_path: Path | None = None
@@ -1029,6 +1038,7 @@ def run_signal_backtest(
     diagnostic_report_files = None
     sensitivity_report_files = None
     delayed_anchor_report_files = None
+    outlier_report_files = None
     if readiness_trial:
         sensitivity_report_files = write_clean_coverage_sensitivity_report(
             output_dir=backtest_folder,
@@ -1092,6 +1102,46 @@ def run_signal_backtest(
                 ],
                 "no_delayed_anchor_positive": impact[
                     "no_delayed_anchor_positive"
+                ],
+            }
+        )
+        outlier_report_files = write_outlier_sensitivity_report(
+            output_dir=backtest_folder,
+            manifest=manifest,
+            rows=rows,
+        )
+        outlier_assessment = (
+            outlier_report_files.report.outlier_impact_assessment
+        )
+        manifest.update(
+            {
+                "outlier_sensitivity_report_path": str(
+                    outlier_report_files.markdown_path
+                ),
+                "outlier_sensitivity_report_json_path": str(
+                    outlier_report_files.json_path
+                ),
+                "outlier_dependence_status": (
+                    outlier_report_files.report.outlier_dependence_status
+                ),
+                "nvda_present": outlier_assessment["nvda_present"],
+                "nvda_record_count": outlier_assessment[
+                    "nvda_record_count"
+                ],
+                "nvda_share_of_total": outlier_assessment[
+                    "nvda_share_of_total"
+                ],
+                "ex_nvda_positive": outlier_assessment[
+                    "ex_nvda_positive"
+                ],
+                "ex_top_1_positive": outlier_assessment[
+                    "ex_top_1_positive"
+                ],
+                "ex_top_2_positive": outlier_assessment[
+                    "ex_top_2_positive"
+                ],
+                "ex_top_3_positive": outlier_assessment[
+                    "ex_top_3_positive"
                 ],
             }
         )
@@ -1173,6 +1223,16 @@ def run_signal_backtest(
                 "no_delayed_anchor_record_count": 0,
                 "delayed_anchor_materially_stronger": False,
                 "no_delayed_anchor_positive": False,
+                "outlier_sensitivity_report_path": None,
+                "outlier_sensitivity_report_json_path": None,
+                "outlier_dependence_status": None,
+                "nvda_present": False,
+                "nvda_record_count": 0,
+                "nvda_share_of_total": 0.0,
+                "ex_nvda_positive": False,
+                "ex_top_1_positive": False,
+                "ex_top_2_positive": False,
+                "ex_top_3_positive": False,
             }
         )
     manifest_text = json.dumps(manifest, indent=2)
@@ -1260,6 +1320,20 @@ def run_signal_backtest(
         no_delayed_anchor_positive=bool(
             manifest["no_delayed_anchor_positive"]
         ),
+        outlier_sensitivity_report_path=(
+            outlier_report_files.markdown_path
+            if outlier_report_files
+            else None
+        ),
+        outlier_sensitivity_report_json_path=(
+            outlier_report_files.json_path if outlier_report_files else None
+        ),
+        outlier_dependence_status=manifest[
+            "outlier_dependence_status"
+        ],
+        nvda_record_count=int(manifest["nvda_record_count"]),
+        ex_nvda_positive=bool(manifest["ex_nvda_positive"]),
+        ex_top_2_positive=bool(manifest["ex_top_2_positive"]),
         walk_forward_stability=(
             decision_report_files.report.walk_forward_stability_judgment
             if decision_report_files

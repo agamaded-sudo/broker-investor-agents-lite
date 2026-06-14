@@ -915,6 +915,29 @@ It does not simulate exact historical execution or produce recommendations,
 rankings, allocation instructions, rebalancing instructions, trade signals, or
 execution instructions.
 
+### Outlier and Ex-NVDA Sensitivity Report
+
+Readiness trial backtests now compare the complete sample with Ex-NVDA,
+NVDA-only, top-1/top-2/top-3 exclusion, capped-return, and non-extreme
+subsets. This identifies whether the average is lifted by extreme winners and
+whether the median, relative median, and benchmark hit rate remain positive
+after conservative exclusions.
+
+```powershell
+python -m broker_agents.cli backtest-signals --ledger data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv --price-provider csv --price-fixtures tests/fixtures/historical_price_history --outputs-root data/outputs --lookback-years 5 --dedupe-mode latest_per_ticker_per_day --walk-forward --walk-forward-frequency yearly
+```
+
+Each readiness trial writes `outlier_sensitivity_report.md` and
+`outlier_sensitivity_report.json`. The capped subset changes only report-local
+copies; original backtest results and return calculations remain unchanged.
+Ex-NVDA and top-outlier exclusions reduce sample size, so surviving positive
+results remain preliminary rather than validated.
+
+This report complements coverage quality, clean-coverage sensitivity, delayed
+anchor impact, and metadata attribution. It remains readiness-only and does
+not produce recommendations, rankings, allocation instructions, rebalancing
+instructions, trade signals, or execution instructions.
+
 ### Readiness Trial Walk-Forward Backtest
 
 After multi-date sample generation, run the readiness-only backtest by yearly

@@ -65,6 +65,10 @@ class ReadinessTrialDecisionReport:
     delayed_anchor_materially_stronger: bool
     no_delayed_anchor_positive: bool
     delayed_anchor_impact_interpretation: str
+    outlier_sensitivity_status: str
+    ex_nvda_positive: bool
+    ex_top_2_positive: bool
+    outlier_sensitivity_interpretation: str
     safety_notice: str = SAFETY_NOTICE
 
     def to_dict(self) -> dict:
@@ -127,6 +131,14 @@ def _coverage_sensitivity(manifest: dict) -> dict:
 def _delayed_anchor_impact(manifest: dict) -> dict:
     """Load optional delayed-anchor impact diagnostics."""
     path_value = manifest.get("delayed_anchor_impact_report_json_path")
+    if not path_value or not Path(path_value).is_file():
+        return {}
+    return json.loads(Path(path_value).read_text(encoding="utf-8"))
+
+
+def _outlier_sensitivity(manifest: dict) -> dict:
+    """Load optional outlier sensitivity diagnostics."""
+    path_value = manifest.get("outlier_sensitivity_report_json_path")
     if not path_value or not Path(path_value).is_file():
         return {}
     return json.loads(Path(path_value).read_text(encoding="utf-8"))
@@ -276,6 +288,25 @@ def build_readiness_trial_decision_report(
         impact_assessment.get("interpretation")
         or "Delayed-anchor impact is not available for this run."
     )
+    outlier_sensitivity = _outlier_sensitivity(manifest)
+    outlier_assessment = outlier_sensitivity.get(
+        "outlier_impact_assessment",
+        {},
+    )
+    outlier_status = str(
+        outlier_sensitivity.get("outlier_dependence_status")
+        or "not_available"
+    )
+    outlier_interpretation = str(
+        outlier_assessment.get("interpretation")
+        or "Outlier sensitivity is not available for this run."
+    )
+    outlier_dependence = outlier_status in {
+        "result_sensitive_to_nvda",
+        "result_sensitive_to_top_outliers",
+        "nvda_lifts_average_but_result_survives",
+        "insufficient_sample",
+    }
 
     if sample_size < 5:
         statistical_validity = "insufficient_sample"
@@ -287,6 +318,7 @@ def build_readiness_trial_decision_report(
         or warning_heavy_record_count >= max(1, sample_size // 2)
         or sensitivity_status == "clean_not_available"
         or anchor_materially_stronger
+        or outlier_dependence
     ):
         statistical_validity = "limited_sample"
         decision_status = "needs_more_samples"
@@ -423,6 +455,14 @@ def build_readiness_trial_decision_report(
             impact_assessment.get("no_delayed_anchor_positive")
         ),
         delayed_anchor_impact_interpretation=anchor_interpretation,
+        outlier_sensitivity_status=outlier_status,
+        ex_nvda_positive=bool(
+            outlier_assessment.get("ex_nvda_positive")
+        ),
+        ex_top_2_positive=bool(
+            outlier_assessment.get("ex_top_2_positive")
+        ),
+        outlier_sensitivity_interpretation=outlier_interpretation,
     )
 
 
@@ -572,6 +612,19 @@ def render_readiness_trial_decision_report(
             (
                 "- Interpretation: "
                 f"{report.delayed_anchor_impact_interpretation}"
+            ),
+            "",
+            "### Outlier Sensitivity",
+            "",
+            (
+                "- Outlier Sensitivity Status: "
+                f"{report.outlier_sensitivity_status}"
+            ),
+            f"- Ex-NVDA Positive: {report.ex_nvda_positive}",
+            f"- Ex-Top-2 Positive: {report.ex_top_2_positive}",
+            (
+                "- Interpretation: "
+                f"{report.outlier_sensitivity_interpretation}"
             ),
         ]
     )

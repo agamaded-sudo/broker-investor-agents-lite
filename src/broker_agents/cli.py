@@ -3381,6 +3381,24 @@ def backtest_signals(
                     "Impact Report",
                     str(result.delayed_anchor_impact_report_path),
                 ),
+                ("Outlier Sensitivity", "available"),
+                (
+                    "Outlier Dependence Status",
+                    str(result.outlier_dependence_status),
+                ),
+                ("NVDA Records", str(result.nvda_record_count)),
+                (
+                    "Ex-NVDA Positive",
+                    str(result.ex_nvda_positive).lower(),
+                ),
+                (
+                    "Ex-Top-2 Positive",
+                    str(result.ex_top_2_positive).lower(),
+                ),
+                (
+                    "Outlier Report",
+                    str(result.outlier_sensitivity_report_path),
+                ),
                 ("Decision Report", str(result.decision_report_path)),
                 ("Decision Status", str(result.decision_status)),
                 (

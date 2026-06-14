@@ -52,6 +52,7 @@ class ReadinessTrialDiagnosticReport:
     coverage_quality_diagnostics: dict
     clean_coverage_sensitivity: dict
     delayed_anchor_impact: dict
+    outlier_sensitivity: dict
     metadata_attribution_diagnostics: dict
     missing_metadata_fields: list[str]
     key_findings: list[str]
@@ -518,6 +519,46 @@ def _delayed_anchor_impact(manifest: dict) -> dict:
     }
 
 
+def _outlier_sensitivity(manifest: dict) -> dict:
+    """Load the run-local outlier sensitivity report."""
+    path_value = manifest.get("outlier_sensitivity_report_json_path")
+    if not path_value or not Path(path_value).is_file():
+        return {
+            "outlier_dependence_status": "not_available",
+            "nvda_record_count": 0,
+            "nvda_share_of_total": 0.0,
+            "ex_nvda_positive": False,
+            "ex_top_2_positive": False,
+            "interpretation": (
+                "Outlier sensitivity is not available for this run."
+            ),
+        }
+    payload = json.loads(Path(path_value).read_text(encoding="utf-8"))
+    assessment = payload.get("outlier_impact_assessment", {})
+    return {
+        "outlier_dependence_status": payload.get(
+            "outlier_dependence_status",
+            "not_available",
+        ),
+        "nvda_record_count": int(
+            assessment.get("nvda_record_count") or 0
+        ),
+        "nvda_share_of_total": float(
+            assessment.get("nvda_share_of_total") or 0.0
+        ),
+        "ex_nvda_positive": bool(
+            assessment.get("ex_nvda_positive")
+        ),
+        "ex_top_2_positive": bool(
+            assessment.get("ex_top_2_positive")
+        ),
+        "interpretation": str(
+            assessment.get("interpretation")
+            or "Outlier sensitivity produced no interpretation."
+        ),
+    }
+
+
 def _ticker_interpretation(ticker: str, diagnostic: dict) -> str:
     """Describe ticker contribution using only calculated evidence."""
     average_12m = diagnostic["average_forward_return_12m"]
@@ -795,6 +836,7 @@ def build_readiness_trial_diagnostic_report(
     }
     clean_coverage_sensitivity = _clean_coverage_sensitivity(manifest)
     delayed_anchor_impact = _delayed_anchor_impact(manifest)
+    outlier_sensitivity = _outlier_sensitivity(manifest)
     complete_tickers = [
         item
         for item in tickers
@@ -930,6 +972,8 @@ def build_readiness_trial_diagnostic_report(
         metadata_attribution["attribution_findings"]
     )
     key_findings.append(coverage_interpretation)
+    if outlier_sensitivity["outlier_dependence_status"] != "not_available":
+        key_findings.append(outlier_sensitivity["interpretation"])
     aggregate_fields = (
         "median_forward_return_3m",
         "median_forward_return_6m",
@@ -957,6 +1001,7 @@ def build_readiness_trial_diagnostic_report(
         coverage_quality_diagnostics=coverage_quality,
         clean_coverage_sensitivity=clean_coverage_sensitivity,
         delayed_anchor_impact=delayed_anchor_impact,
+        outlier_sensitivity=outlier_sensitivity,
         metadata_attribution_diagnostics=metadata_attribution,
         missing_metadata_fields=missing,
         key_findings=key_findings,
@@ -1334,6 +1379,33 @@ def render_readiness_trial_diagnostic_report(
             (
                 "- Interpretation: "
                 f"{report.delayed_anchor_impact['interpretation']}"
+            ),
+            "",
+            "## Outlier Sensitivity",
+            "",
+            (
+                "- Outlier Dependence Status: "
+                f"{report.outlier_sensitivity['outlier_dependence_status']}"
+            ),
+            (
+                "- NVDA Record Count: "
+                f"{report.outlier_sensitivity['nvda_record_count']}"
+            ),
+            (
+                "- NVDA Share of Total: "
+                f"{_display(report.outlier_sensitivity['nvda_share_of_total'])}"
+            ),
+            (
+                "- Ex-NVDA Positive: "
+                f"{report.outlier_sensitivity['ex_nvda_positive']}"
+            ),
+            (
+                "- Ex-Top-2 Positive: "
+                f"{report.outlier_sensitivity['ex_top_2_positive']}"
+            ),
+            (
+                "- Interpretation: "
+                f"{report.outlier_sensitivity['interpretation']}"
             ),
             "",
             "## Metadata Attribution Review",

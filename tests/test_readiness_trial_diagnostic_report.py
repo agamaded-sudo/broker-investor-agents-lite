@@ -309,6 +309,10 @@ def test_readiness_backtest_writes_links_and_regenerates_diagnostic(
     assert "Delayed Anchor Impact" in result.output
     assert "Delayed Anchor Materially Stronger" in result.output
     assert "No-Delayed-Anchor Positive" in result.output
+    assert "Outlier Sensitivity" in result.output
+    assert "Outlier Dependence Status" in result.output
+    assert "Ex-NVDA Positive" in result.output
+    assert "Ex-Top-2 Positive" in result.output
     manifest = json.loads(
         (
             outputs_root / "backtests" / "latest_backtest_manifest.json"
@@ -346,6 +350,17 @@ def test_readiness_backtest_writes_links_and_regenerates_diagnostic(
     assert impact_json_path.is_file()
     assert manifest["delayed_anchor_record_count"] == 0
     assert manifest["no_delayed_anchor_record_count"] == 12
+    outlier_path = Path(manifest["outlier_sensitivity_report_path"])
+    outlier_json_path = Path(
+        manifest["outlier_sensitivity_report_json_path"]
+    )
+    assert outlier_path.is_file()
+    assert outlier_json_path.is_file()
+    assert manifest["nvda_present"] is True
+    assert manifest["nvda_record_count"] == 3
+    assert manifest["nvda_share_of_total"] == 0.25
+    assert isinstance(manifest["ex_nvda_positive"], bool)
+    assert isinstance(manifest["ex_top_2_positive"], bool)
     payload = json.loads(json_path.read_text(encoding="utf-8"))
     assert payload["sample_size"] == 12
     assert len(payload["period_diagnostics"]) == 3
@@ -356,6 +371,7 @@ def test_readiness_backtest_writes_links_and_regenerates_diagnostic(
     assert "coverage_quality_diagnostics" in payload
     assert "clean_coverage_sensitivity" in payload
     assert "delayed_anchor_impact" in payload
+    assert "outlier_sensitivity" in payload
     assert payload["clean_coverage_sensitivity"][
         "sensitivity_status"
     ] == "clean_not_available"
@@ -381,12 +397,18 @@ def test_readiness_backtest_writes_links_and_regenerates_diagnostic(
     assert "Delayed Anchor Impact" in report_path.read_text(
         encoding="utf-8"
     )
+    assert "Outlier Sensitivity" in report_path.read_text(
+        encoding="utf-8"
+    )
     decision = Path(
         manifest["readiness_trial_decision_report_path"]
     ).read_text(encoding="utf-8")
     assert "Clean-Coverage Sensitivity Status" in decision
     assert "Clean-Only Available: No" in decision
     assert "Delayed Anchor Impact Status" in decision
+    assert "Outlier Sensitivity Status" in decision
+    assert "Ex-NVDA Positive" in decision
+    assert "Ex-Top-2 Positive" in decision
 
     regenerate = CliRunner().invoke(
         app,
@@ -448,6 +470,9 @@ def test_standard_backtest_does_not_create_diagnostic_report(
     assert manifest["readiness_trial_diagnostic_report_path"] is None
     assert manifest["readiness_trial_diagnostic_report_json_path"] is None
     assert manifest["diagnostic_status"] is None
+    assert manifest["outlier_sensitivity_report_path"] is None
+    assert manifest["outlier_sensitivity_report_json_path"] is None
+    assert manifest["outlier_dependence_status"] is None
 
 
 def test_task90_documentation_and_demo_runner_remain() -> None:
@@ -458,6 +483,7 @@ def test_task90_documentation_and_demo_runner_remain() -> None:
         "what is driving results",
         "generate-readiness-trial-diagnostic-report",
         "research-only",
+        "outlier and ex-nvda sensitivity report",
     ):
         assert text in readme
 
