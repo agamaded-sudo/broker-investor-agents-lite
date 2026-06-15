@@ -49,6 +49,9 @@ from broker_agents.backtesting.expanded_ticker_coverage_output_validator import 
 from broker_agents.backtesting.expanded_trial_results_analyzer import (
     write_expanded_trial_analysis_report,
 )
+from broker_agents.backtesting.investor_persona_attribution import (
+    write_investor_persona_attribution_report,
+)
 from broker_agents.backtesting.signal_backtester import run_signal_backtest
 from broker_agents.backtesting.readiness_trial_decision_report import (
     regenerate_readiness_trial_decision_report,
@@ -3691,6 +3694,100 @@ def run_research_gatekeeper_command(
         f"{report.recommended_next_research_action}"
     )
     console.print(f"status={report.gatekeeper_status}")
+
+
+@app.command("build-investor-persona-attribution")
+def build_investor_persona_attribution_command(
+    gatekeeper_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--gatekeeper-run-id",
+            help="Research gatekeeper run used by the attribution report.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest research gatekeeper manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing gatekeeper and linked research outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Map held research evidence to independent persona evidence needs."""
+    if bool(gatekeeper_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --gatekeeper-run-id or --auto-latest."
+        )
+    try:
+        files = write_investor_persona_attribution_report(
+            outputs_root=outputs_root,
+            gatekeeper_run_id=(
+                None if auto_latest else gatekeeper_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Investor persona attribution failed: {exc}"
+        ) from exc
+
+    report = files.report
+    summary = report.cross_persona_summary
+    table = Table(title="Investor-Agent Attribution by Persona")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Attribution Run ID", report.attribution_run_id),
+        ("Gatekeeper Run ID", report.gatekeeper_run_id),
+        ("Gatekeeper Decision", report.gatekeeper_decision),
+        ("Progression Allowed", str(report.progression_allowed).lower()),
+        ("Hold Bias", str(report.hold_bias).lower()),
+        ("Attribution Status", report.attribution_status),
+        (
+            "Personas Not Ready",
+            str(summary["personas_not_ready_count"]),
+        ),
+        (
+            "Personas Repair Possible",
+            str(summary["personas_repair_possible_count"]),
+        ),
+        (
+            "Personas Watchlist Only",
+            str(summary["personas_watchlist_only_count"]),
+        ),
+        ("Personas Ready", str(summary["personas_ready_count"])),
+        (
+            "Next Research Action",
+            report.recommended_next_research_action,
+        ),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", "completed"),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(f"attribution_run_id={report.attribution_run_id}")
+    console.print(f"gatekeeper_run_id={report.gatekeeper_run_id}")
+    console.print(f"attribution_status={report.attribution_status}")
+    console.print(
+        f"progression_allowed={str(report.progression_allowed).lower()}"
+    )
+    console.print(
+        "next_research_action="
+        f"{report.recommended_next_research_action}"
+    )
+    console.print("status=completed")
 
 
 @app.command("run-historical-readiness-batch")

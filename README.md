@@ -1171,6 +1171,24 @@ progression when expanded evidence weakens; it does not validate a strategy or
 create recommendations, rankings, allocation instructions, rebalancing
 instructions, trade signals, or execution instructions.
 
+### Investor-Agent Attribution by Persona
+
+After a research gatekeeper hold, the persona attribution report maps the
+existing evidence strengths, weaknesses, and repair needs to the Buffett,
+Munger, Fisher, Lynch, and Bogle personas independently. It identifies the
+backoffice evidence each persona would need before a later review without
+running the agents or changing their philosophies, scores, or decision logic.
+
+```powershell
+python -m broker_agents.cli build-investor-persona-attribution --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli build-investor-persona-attribution --gatekeeper-run-id 20260615_185320 --outputs-root data/outputs
+```
+
+The report does not ask the agents for decisions, rank or average them, create
+a vote or consensus, or produce recommendations, allocation instructions,
+rebalancing instructions, trade signals, or execution instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
