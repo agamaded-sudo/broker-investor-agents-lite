@@ -893,6 +893,35 @@ quality comparison, but it does not produce recommendations, rankings,
 allocation instructions, rebalancing instructions, trade signals, or
 execution instructions. Clean sample thresholds remain conservative.
 
+### Clean Coverage Before/After Comparison
+
+The clean coverage comparison command audits a pre-clean-fixture readiness
+backtest against a post-clean-fixture run. It records whether clean evidence
+became available, whether warning-heavy and limited-financials records fell,
+whether diagnostic metrics changed, and whether the decision remained
+conservative.
+
+Use explicit run IDs for a reproducible comparison:
+
+```powershell
+python -m broker_agents.cli compare-clean-coverage-runs --before-run-id 20260614_201147 --after-run-id 20260614_205804 --outputs-root data/outputs
+```
+
+Or select the latest matching pre-clean and post-clean runs:
+
+```powershell
+python -m broker_agents.cli compare-clean-coverage-runs --auto-latest --outputs-root data/outputs
+```
+
+Each comparison writes Markdown, JSON, and CSV artifacts under
+`data/outputs/clean_coverage_comparisons/{COMPARE_RUN_ID}/`, plus
+`latest_clean_coverage_comparison_manifest.json`. The report preserves clean
+subset metrics alongside delayed-anchor and outlier context.
+
+This is a research-only audit. It does not prove a strategy, validate investor
+agents, or create recommendations, rankings, allocation instructions,
+rebalancing instructions, trade signals, or execution instructions.
+
 ### Clean-Coverage Sensitivity Report
 
 Readiness trial backtests now compare aggregate outcomes with coverage-quality

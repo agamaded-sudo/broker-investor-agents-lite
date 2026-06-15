@@ -34,6 +34,10 @@ from broker_agents.agents.fisher_agent import FisherAgent
 from broker_agents.agents.lynch_agent import LynchAgent
 from broker_agents.agents.munger_agent import MungerAgent
 from broker_agents.archive.signal_ledger import archive_completed_run
+from broker_agents.backtesting.clean_coverage_before_after_report import (
+    find_latest_clean_coverage_runs,
+    write_clean_coverage_comparison_report,
+)
 from broker_agents.backtesting.signal_backtester import run_signal_backtest
 from broker_agents.backtesting.readiness_trial_decision_report import (
     regenerate_readiness_trial_decision_report,
@@ -3413,6 +3417,116 @@ def backtest_signals(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
+
+
+@app.command("compare-clean-coverage-runs")
+def compare_clean_coverage_runs(
+    before_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--before-run-id",
+            help="Pre-clean readiness backtest run ID.",
+        ),
+    ] = None,
+    after_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--after-run-id",
+            help="Post-clean readiness backtest run ID.",
+        ),
+    ] = None,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing backtests and comparison outputs.",
+        ),
+    ] = Path("data/outputs"),
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help=(
+                "Select the latest clean_not_available and clean-supported "
+                "readiness trial runs."
+            ),
+        ),
+    ] = False,
+) -> None:
+    """Compare clean-coverage evidence before and after fixture improvements."""
+    try:
+        if auto_latest:
+            before_run_id, after_run_id = find_latest_clean_coverage_runs(
+                outputs_root
+            )
+        elif not before_run_id or not after_run_id:
+            raise ValueError(
+                "Provide --before-run-id and --after-run-id, or use "
+                "--auto-latest."
+            )
+        files = write_clean_coverage_comparison_report(
+            outputs_root=outputs_root,
+            before_run_id=before_run_id,
+            after_run_id=after_run_id,
+        )
+    except (
+        OSError,
+        ValueError,
+        KeyError,
+        json.JSONDecodeError,
+    ) as exc:
+        raise typer.BadParameter(
+            f"Clean coverage comparison failed: {exc}"
+        ) from exc
+
+    report = files.report
+    before = report.before_summary
+    after = report.after_summary
+    table = Table(title="Clean Coverage Before/After Comparison")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Comparison Run ID", report.comparison_run_id),
+        ("Before Run ID", str(report.before_run_id)),
+        ("After Run ID", str(report.after_run_id)),
+        ("Comparison Status", report.comparison_status),
+        ("Clean Records Before", str(before["clean_record_count"])),
+        ("Clean Records After", str(after["clean_record_count"])),
+        (
+            "Warning-Heavy Before",
+            str(before["warning_heavy_record_count"]),
+        ),
+        (
+            "Warning-Heavy After",
+            str(after["warning_heavy_record_count"]),
+        ),
+        (
+            "Clean-Only Available Before",
+            str(before["clean_only_available"]).lower(),
+        ),
+        (
+            "Clean-Only Available After",
+            str(after["clean_only_available"]).lower(),
+        ),
+        ("Diagnostic Status Before", str(before["diagnostic_status"])),
+        ("Diagnostic Status After", str(after["diagnostic_status"])),
+        ("Decision Status Before", str(before["decision_status"])),
+        ("Decision Status After", str(after["decision_status"])),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", "completed"),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(f"comparison_run_id={report.comparison_run_id}")
+    console.print(f"before_run_id={report.before_run_id}")
+    console.print(f"after_run_id={report.after_run_id}")
+    console.print(f"comparison_status={report.comparison_status}")
+    console.print("status=completed")
 
 
 @app.command("generate-readiness-trial-decision-report")
