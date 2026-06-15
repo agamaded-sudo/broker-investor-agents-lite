@@ -1152,6 +1152,25 @@ when expanded evidence is unstable. It does not validate a strategy or create
 recommendations, rankings, allocation instructions, rebalancing instructions,
 trade signals, or execution instructions.
 
+### Research Gatekeeper
+
+The research gatekeeper is a governance step after the research evidence
+scorecard. It converts the scorecard into a deterministic `proceed`,
+`proceed_with_warnings`, `hold`, or `block` decision. Unstable or mixed
+evidence can therefore stop research progression even when trial execution and
+data-quality controls succeeded.
+
+```powershell
+python -m broker_agents.cli run-research-gatekeeper --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli run-research-gatekeeper --scorecard-run-id 20260615_085455 --outputs-root data/outputs
+```
+
+The gatekeeper is non-actionable and research-only. It prevents premature
+progression when expanded evidence weakens; it does not validate a strategy or
+create recommendations, rankings, allocation instructions, rebalancing
+instructions, trade signals, or execution instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision

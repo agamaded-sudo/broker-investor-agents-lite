@@ -63,6 +63,9 @@ from broker_agents.backtesting.readiness_trial_export import (
 from broker_agents.backtesting.research_evidence_scorecard import (
     write_research_evidence_scorecard_report,
 )
+from broker_agents.backtesting.research_gatekeeper import (
+    write_research_gatekeeper_report,
+)
 from broker_agents.data_providers.price_csv_validation import (
     validate_price_csvs,
 )
@@ -3603,6 +3606,91 @@ def build_research_evidence_scorecard_command(
         f"{scorecard.recommended_next_research_action}"
     )
     console.print(f"status={scorecard.scorecard_status}")
+
+
+@app.command("run-research-gatekeeper")
+def run_research_gatekeeper_command(
+    scorecard_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--scorecard-run-id",
+            help="Research evidence scorecard run used by the gatekeeper.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest research evidence scorecard manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing research evidence scorecard outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Convert a research evidence scorecard into a governance verdict."""
+    if bool(scorecard_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --scorecard-run-id or --auto-latest."
+        )
+    try:
+        files = write_research_gatekeeper_report(
+            outputs_root=outputs_root,
+            scorecard_run_id=None if auto_latest else scorecard_run_id,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Research gatekeeper failed: {exc}"
+        ) from exc
+
+    report = files.report
+    table = Table(title="Research Gatekeeper")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Gatekeeper Run ID", report.gatekeeper_run_id),
+        ("Scorecard Run ID", report.scorecard_run_id),
+        (
+            "Classification",
+            report.research_evidence_classification,
+        ),
+        ("Research Decision", report.research_decision),
+        ("Gatekeeper Decision", report.gatekeeper_decision),
+        ("Progression Allowed", str(report.progression_allowed).lower()),
+        ("Hold Bias", str(report.hold_bias).lower()),
+        ("Hold Rules", str(len(report.hold_rules))),
+        ("Block Rules", str(len(report.block_rules))),
+        (
+            "Next Research Action",
+            report.recommended_next_research_action,
+        ),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.gatekeeper_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(f"gatekeeper_run_id={report.gatekeeper_run_id}")
+    console.print(f"scorecard_run_id={report.scorecard_run_id}")
+    console.print(f"gatekeeper_decision={report.gatekeeper_decision}")
+    console.print(
+        f"progression_allowed={str(report.progression_allowed).lower()}"
+    )
+    console.print(f"hold_bias={str(report.hold_bias).lower()}")
+    console.print(
+        "next_research_action="
+        f"{report.recommended_next_research_action}"
+    )
+    console.print(f"status={report.gatekeeper_status}")
 
 
 @app.command("run-historical-readiness-batch")
