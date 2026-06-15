@@ -1,0 +1,21 @@
+metadata:
+  analysis_date: 2026-06-15
+  data_entry_mode: deterministic_local_research_fixture
+company_identity:
+  company_name: Amazon.com, Inc.
+  ticker: AMZN
+  exchange: NASDAQ
+  market: USA
+  currency: USD
+  sector: Consumer Discretionary
+  industry: Retail and Cloud Platforms
+business_model:
+  summary: Local research fixture for retail, marketplace, and cloud services.
+financial_statements_summary:
+  periods: []
+calculated_financial_metrics:
+  metrics: []
+sources_confidence_data_gaps:
+  source_log: []
+  known_gaps:
+    - Manual pack contains only deterministic local research context.

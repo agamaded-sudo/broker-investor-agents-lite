@@ -70,6 +70,9 @@ from broker_agents.deals.analyze_stock_intake import (
 from broker_agents.deals.expanded_ticker_coverage import (
     write_expanded_ticker_coverage_report,
 )
+from broker_agents.deals.expanded_ticker_readiness_trial import (
+    run_expanded_ticker_readiness_trial,
+)
 from broker_agents.deals.historical_date_coverage import (
     resolve_historical_date_preset,
 )
@@ -3182,6 +3185,205 @@ def run_historical_readiness_multidate_command(
         f"{result.statistical_validity or 'not_run'}"
     )
     console.print("status=completed")
+
+
+@app.command("run-expanded-ticker-readiness-trial")
+def run_expanded_ticker_readiness_trial_command(
+    eligible_universe: Annotated[
+        Path,
+        typer.Option(
+            "--eligible-universe",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Coverage-validated eligible ticker universe YAML.",
+        ),
+    ],
+    as_of_dates: Annotated[
+        str | None,
+        typer.Option(
+            "--as-of-dates",
+            help="Optional explicit dates; takes precedence over the preset.",
+        ),
+    ] = None,
+    date_preset: Annotated[
+        str | None,
+        typer.Option(
+            "--date-preset",
+            help="Date preset: annual_3, semiannual_6, or quarterly_9.",
+        ),
+    ] = "semiannual_6",
+    examples_root: Annotated[
+        Path,
+        typer.Option(
+            "--examples-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+        ),
+    ] = Path("examples"),
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            file_okay=False,
+            dir_okay=True,
+            writable=True,
+        ),
+    ] = Path("data/outputs"),
+    fixtures_root: Annotated[
+        Path,
+        typer.Option(
+            "--fixtures-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+        ),
+    ] = Path("tests/fixtures"),
+    portfolio_context_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--portfolio-context",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+        ),
+    ] = None,
+    financials_provider: Annotated[
+        str,
+        typer.Option("--financials-provider"),
+    ] = "historical_csv",
+    financials_root: Annotated[
+        Path,
+        typer.Option(
+            "--financials-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+        ),
+    ] = Path("tests/fixtures/historical_financials"),
+    price_provider: Annotated[
+        str,
+        typer.Option("--price-provider"),
+    ] = "csv",
+    price_fixtures_path: Annotated[
+        Path,
+        typer.Option(
+            "--price-fixtures",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+        ),
+    ] = Path("tests/fixtures/historical_price_history"),
+    export_trial_ledger: Annotated[
+        bool,
+        typer.Option("--export-trial-ledger"),
+    ] = False,
+    validate_trial_ledger: Annotated[
+        bool,
+        typer.Option("--validate-trial-ledger"),
+    ] = False,
+    run_readiness_backtest: Annotated[
+        bool,
+        typer.Option("--run-readiness-backtest"),
+    ] = False,
+    walk_forward: Annotated[
+        bool,
+        typer.Option("--walk-forward"),
+    ] = False,
+    trial_ledger_path: Annotated[
+        Path,
+        typer.Option("--trial-ledger"),
+    ] = Path(
+        "data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv"
+    ),
+) -> None:
+    """Run a readiness-only trial from a coverage-validated universe."""
+    if price_provider.strip().lower() != "csv":
+        raise typer.BadParameter(
+            "Expanded ticker readiness trial requires --price-provider csv."
+        )
+    try:
+        result = run_expanded_ticker_readiness_trial(
+            eligible_universe=eligible_universe,
+            date_preset=date_preset,
+            as_of_dates=as_of_dates,
+            examples_root=examples_root,
+            outputs_root=outputs_root,
+            fixtures_root=fixtures_root,
+            portfolio_context=portfolio_context_path,
+            financials_provider=financials_provider,
+            financials_root=financials_root,
+            price_fixtures_path=price_fixtures_path,
+            export_trial_ledger=export_trial_ledger,
+            validate_trial_ledger=validate_trial_ledger,
+            run_readiness_backtest=run_readiness_backtest,
+            walk_forward=walk_forward,
+            trial_ledger_path=trial_ledger_path,
+        )
+    except (OSError, ValueError, json.JSONDecodeError, yaml.YAMLError) as exc:
+        raise typer.BadParameter(
+            f"Expanded ticker readiness trial failed: {exc}"
+        ) from exc
+
+    table = Table(title="Expanded Ticker Readiness Trial")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Expanded Trial Run ID", result.expanded_trial_run_id),
+        (
+            "Source Validation Run ID",
+            result.source_validation_run_id or "Unknown",
+        ),
+        ("Eligible Ticker Count", str(len(result.eligible_tickers))),
+        ("Eligible Tickers", ",".join(result.eligible_tickers)),
+        ("Requested Dates", ",".join(result.requested_dates)),
+        ("Usable Dates", ",".join(result.usable_dates) or "None"),
+        ("Skipped Dates", ",".join(result.skipped_dates) or "None"),
+        ("Completed Runs", str(result.completed_runs)),
+        ("Failed Runs", str(result.failed_runs)),
+        (
+            "Trial Ledger Validation",
+            result.trial_ledger_validation_status,
+        ),
+        ("Backtest Run ID", result.backtest_run_id or "Not run"),
+        (
+            "Sample Size After Dedupe",
+            str(result.sample_size_after_dedupe or 0),
+        ),
+        ("Clean Records", str(result.clean_record_count)),
+        ("Warning Records", str(result.warning_record_count)),
+        ("Warning-Heavy Records", str(result.warning_heavy_record_count)),
+        ("Diagnostic Status", result.diagnostic_status or "Not run"),
+        ("Decision Status", result.decision_status or "Not run"),
+        (
+            "Walk-Forward Stability",
+            result.walk_forward_stability_judgment or "Not run",
+        ),
+        ("Summary Report Path", str(result.summary_path)),
+        ("Status", result.status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(f"expanded_trial_run_id={result.expanded_trial_run_id}")
+    console.print(
+        f"source_validation_run_id={result.source_validation_run_id or ''}"
+    )
+    console.print(f"eligible_ticker_count={len(result.eligible_tickers)}")
+    console.print(f"completed_runs={result.completed_runs}")
+    console.print(f"failed_runs={result.failed_runs}")
+    console.print(f"backtest_run_id={result.backtest_run_id or ''}")
+    console.print(
+        f"sample_size_after_dedupe={result.sample_size_after_dedupe or 0}"
+    )
+    console.print(f"status={result.status}")
 
 
 @app.command("run-historical-readiness-batch")

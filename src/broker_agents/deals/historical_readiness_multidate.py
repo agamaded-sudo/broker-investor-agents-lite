@@ -330,6 +330,8 @@ def run_historical_readiness_multidate(
     export_trial_ledger: bool = False,
     validate_trial_ledger: bool = False,
     run_readiness_backtest: bool = False,
+    walk_forward: bool = False,
+    walk_forward_frequency: str = "yearly",
     trial_ledger_path: Path = Path(
         "data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv"
     ),
@@ -508,6 +510,8 @@ def run_historical_readiness_multidate(
                     price_provider="csv",
                     lookback_years=5,
                     dedupe_mode="latest_per_ticker_per_day",
+                    walk_forward=walk_forward,
+                    walk_forward_frequency=walk_forward_frequency,
                 )
             except (OSError, ValueError, json.JSONDecodeError) as exc:
                 pipeline_warnings.append(f"Readiness backtest failed: {exc}")
@@ -578,6 +582,8 @@ def run_historical_readiness_multidate(
             validation_result.rows if validation_result else 0
         ),
         "readiness_backtest_run": backtest_result is not None,
+        "walk_forward_requested": walk_forward,
+        "walk_forward_frequency": walk_forward_frequency,
         "readiness_backtest_run_id": (
             backtest_result.backtest_run_id if backtest_result else None
         ),

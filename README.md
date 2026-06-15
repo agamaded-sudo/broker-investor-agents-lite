@@ -1091,6 +1091,26 @@ instructions. Results remain diagnostic until sample size and data quality are
 sufficient. Missing metadata and readiness-only sections remain visible, and
 dedupe remains important because repeated runs may inflate raw records.
 
+### Expanded Ticker Readiness Trial
+
+The expanded trial consumes the eligible universe produced by expanded ticker
+coverage validation. It runs the existing historical multidate pipeline for
+the validated local fixture cohort, preserves unsupported-date exclusions,
+exports and validates the readiness ledger, and can run the complete
+readiness-only backtest diagnostics with yearly walk-forward analysis.
+
+```powershell
+python -m broker_agents.cli run-expanded-ticker-readiness-trial --eligible-universe data/outputs/expanded_ticker_coverage/20260615_070003/expanded_ticker_eligible_universe.yaml --date-preset semiannual_6 --examples-root examples --outputs-root data/outputs --fixtures-root tests/fixtures --portfolio-context examples/portfolio_context.yaml --financials-provider historical_csv --financials-root tests/fixtures/historical_financials --price-provider csv --price-fixtures tests/fixtures/historical_price_history --export-trial-ledger --validate-trial-ledger --run-readiness-backtest --walk-forward
+```
+
+The summary records source validation provenance, eligible tickers, usable and
+skipped dates, completion totals, coverage-quality counts, and links to the
+normal decision, diagnostic, clean-coverage, delayed-anchor, outlier, and
+walk-forward artifacts. The expanded universe consists only of deterministic
+local research fixtures. It is non-actionable and does not create
+recommendations, rankings, allocation instructions, rebalancing instructions,
+trade signals, or execution instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
