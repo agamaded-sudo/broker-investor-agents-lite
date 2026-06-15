@@ -1,0 +1,4 @@
+ticker,fiscal_period_end_date,filing_date,accepted_date,statement_type,period_type,metric,value,source_url_or_accession_number,currency,units,form_type,fiscal_year,fiscal_quarter,data_as_of_date,ingestion_date,source_name
+AVGO,2020-12-31,2021-02-05,2021-02-05T12:00:00Z,income_statement,annual,revenue,50000,fixture://historical-financials/AVGO/2020,USD,millions,10-K,2020,,2021-02-05,2026-06-15,Synthetic Historical Financials Fixture
+AVGO,2021-12-31,2022-02-05,2022-02-05T12:00:00Z,income_statement,annual,revenue,60000,fixture://historical-financials/AVGO/2021,USD,millions,10-K,2021,,2022-02-05,2026-06-15,Synthetic Historical Financials Fixture
+AVGO,2022-12-31,2023-02-05,2023-02-05T12:00:00Z,income_statement,annual,revenue,70000,fixture://historical-financials/AVGO/2022,USD,millions,10-K,2022,,2023-02-05,2026-06-15,Synthetic Historical Financials Fixture

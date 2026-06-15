@@ -1,0 +1,4 @@
+ticker,fiscal_period_end_date,filing_date,accepted_date,statement_type,period_type,metric,value,source_url_or_accession_number,currency,units,form_type,fiscal_year,fiscal_quarter,data_as_of_date,ingestion_date,source_name
+ADBE,2020-12-31,2021-02-08,2021-02-08T12:00:00Z,income_statement,annual,revenue,30000,fixture://historical-financials/ADBE/2020,USD,millions,10-K,2020,,2021-02-08,2026-06-15,Synthetic Historical Financials Fixture
+ADBE,2021-12-31,2022-02-08,2022-02-08T12:00:00Z,income_statement,annual,revenue,36000,fixture://historical-financials/ADBE/2021,USD,millions,10-K,2021,,2022-02-08,2026-06-15,Synthetic Historical Financials Fixture
+ADBE,2022-12-31,2023-02-08,2023-02-08T12:00:00Z,income_statement,annual,revenue,42000,fixture://historical-financials/ADBE/2022,USD,millions,10-K,2022,,2023-02-08,2026-06-15,Synthetic Historical Financials Fixture

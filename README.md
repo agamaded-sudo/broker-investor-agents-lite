@@ -954,6 +954,32 @@ Each gate writes Markdown, JSON, and criterion CSV artifacts under
 `data/outputs/evidence_decision_gates/{GATE_RUN_ID}/`, plus
 `latest_evidence_decision_gate_manifest.json`.
 
+### Expanded Ticker Universe with Coverage Validation
+
+The expanded universe is a research fixture candidate list, not an endorsement
+or ranking. Before any broader readiness trial, each ticker/date pair is
+checked for point-in-time financial availability, start and forward price
+anchors, benchmark outcomes, delayed anchors, and limited-financials
+conditions.
+
+```powershell
+python -m broker_agents.cli validate-expanded-ticker-coverage --ticker-universe examples/expanded_ticker_universe.yaml --date-preset semiannual_6 --fixtures-root tests/fixtures --financials-root tests/fixtures/historical_financials --price-fixtures tests/fixtures/historical_price_history --outputs-root data/outputs
+```
+
+Ticker/date rows are classified as `eligible_clean`,
+`eligible_with_warnings`, or `not_eligible`. Tickers require at least two clean
+records with no more than half of requested dates excluded to enter the
+expanded trial normally. A smaller but still usable cohort may be admitted
+with caution; insufficient coverage is excluded.
+
+Validation writes Markdown, JSON, a ticker/date matrix CSV, and
+`expanded_ticker_eligible_universe.yaml` under
+`data/outputs/expanded_ticker_coverage/{VALIDATION_RUN_ID}/`. The eligible YAML
+can be converted to a comma-separated list for the existing multidate command.
+All added financial and price rows are deterministic local research fixtures.
+Coverage eligibility does not recommend or rank tickers, validate investor
+agents, or create allocations, execution instructions, or trade signals.
+
 ### Clean-Coverage Sensitivity Report
 
 Readiness trial backtests now compare aggregate outcomes with coverage-quality

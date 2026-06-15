@@ -63,6 +63,12 @@ from broker_agents.deals.analyze_stock_intake import (
     with_as_of_date,
     with_financials_provider,
 )
+from broker_agents.deals.expanded_ticker_coverage import (
+    write_expanded_ticker_coverage_report,
+)
+from broker_agents.deals.historical_date_coverage import (
+    resolve_historical_date_preset,
+)
 from broker_agents.deals.readiness_metadata_enrichment import (
     ENRICHMENT_FIELDS,
 )
@@ -2687,6 +2693,143 @@ def validate_readiness_trial_ledger_command(
         console.print(f"warning={warning}")
     if result.invalid_rows:
         raise typer.Exit(code=1)
+
+
+@app.command("validate-expanded-ticker-coverage")
+def validate_expanded_ticker_coverage_command(
+    ticker_universe: Annotated[
+        Path,
+        typer.Option(
+            "--ticker-universe",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Research-only candidate ticker universe YAML.",
+        ),
+    ] = Path("examples/expanded_ticker_universe.yaml"),
+    as_of_dates: Annotated[
+        str | None,
+        typer.Option(
+            "--as-of-dates",
+            help=(
+                "Comma-separated coverage dates. Explicit dates take "
+                "precedence over --date-preset."
+            ),
+        ),
+    ] = None,
+    date_preset: Annotated[
+        str | None,
+        typer.Option(
+            "--date-preset",
+            help="Date preset: annual_3, semiannual_6, or quarterly_9.",
+        ),
+    ] = None,
+    fixtures_root: Annotated[
+        Path,
+        typer.Option(
+            "--fixtures-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            help="Offline fixture root retained for command consistency.",
+        ),
+    ] = Path("tests/fixtures"),
+    financials_root: Annotated[
+        Path,
+        typer.Option(
+            "--financials-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            help="Point-in-time historical financial fixture directory.",
+        ),
+    ] = Path("tests/fixtures/historical_financials"),
+    price_fixtures: Annotated[
+        Path,
+        typer.Option(
+            "--price-fixtures",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            help="Historical price fixture directory.",
+        ),
+    ] = Path("tests/fixtures/historical_price_history"),
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            file_okay=False,
+            dir_okay=True,
+            writable=True,
+            help="Root for expanded coverage validation artifacts.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Validate expanded ticker admission using local fixture coverage."""
+    del fixtures_root
+    try:
+        if as_of_dates:
+            requested_dates = [
+                value.strip()
+                for value in as_of_dates.split(",")
+                if value.strip()
+            ]
+        elif date_preset:
+            requested_dates = resolve_historical_date_preset(date_preset)
+        else:
+            requested_dates = resolve_historical_date_preset("annual_3")
+        if not requested_dates:
+            raise ValueError("At least one as-of date is required.")
+        files = write_expanded_ticker_coverage_report(
+            ticker_universe_path=ticker_universe,
+            requested_dates=requested_dates,
+            financials_root=financials_root,
+            price_root=price_fixtures,
+            outputs_root=outputs_root,
+        )
+    except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Expanded ticker coverage validation failed: {exc}"
+        ) from exc
+
+    report = files.report
+    table = Table(title="Expanded Ticker Coverage Validation")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Validation Run ID", report.validation_run_id),
+        ("Validation Status", report.validation_status),
+        ("Requested Tickers", str(len(report.requested_tickers))),
+        ("Requested Dates", ", ".join(report.requested_dates)),
+        ("Eligible Tickers", ", ".join(report.eligible_tickers) or "None"),
+        ("Caution Tickers", ", ".join(report.caution_tickers) or "None"),
+        ("Excluded Tickers", ", ".join(report.excluded_tickers) or "None"),
+        (
+            "Coverage Quality Counts",
+            json.dumps(report.coverage_quality_counts, sort_keys=True),
+        ),
+        (
+            "Eligibility Counts",
+            json.dumps(report.eligibility_counts, sort_keys=True),
+        ),
+        ("Eligible Universe", str(files.eligible_universe_path)),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", "completed"),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(f"validation_run_id={report.validation_run_id}")
+    console.print(f"validation_status={report.validation_status}")
+    console.print(f"eligible_tickers={','.join(report.eligible_tickers)}")
+    console.print(f"caution_tickers={','.join(report.caution_tickers)}")
+    console.print(f"excluded_tickers={','.join(report.excluded_tickers)}")
+    console.print(f"eligible_universe={files.eligible_universe_path}")
+    console.print("status=completed")
 
 
 @app.command("run-historical-readiness-multidate")

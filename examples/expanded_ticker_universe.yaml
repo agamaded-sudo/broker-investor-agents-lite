@@ -1,0 +1,66 @@
+universe_name: expanded_historical_readiness_candidates
+purpose: local_research_fixture_coverage_validation
+safety_notice: >-
+  This candidate universe is a research fixture. It is not a recommendation,
+  ranking, allocation list, trade signal, or execution instruction.
+tickers:
+  - ticker: MSFT
+    sector: Technology
+    category: software_platform
+    reason_for_inclusion: Existing readiness research core fixture.
+    universe_group: current_core
+  - ticker: AAPL
+    sector: Technology
+    category: consumer_platform
+    reason_for_inclusion: Existing readiness research core fixture.
+    universe_group: current_core
+  - ticker: NVDA
+    sector: Technology
+    category: semiconductor
+    reason_for_inclusion: Existing readiness research core fixture.
+    universe_group: current_core
+  - ticker: COST
+    sector: Consumer Staples
+    category: consumer_platform
+    reason_for_inclusion: Existing readiness research core fixture.
+    universe_group: current_core
+  - ticker: GOOGL
+    sector: Communication Services
+    category: consumer_platform
+    reason_for_inclusion: Expanded local coverage cohort.
+    universe_group: consumer_platforms
+  - ticker: AMZN
+    sector: Consumer Discretionary
+    category: consumer_platform
+    reason_for_inclusion: Expanded local coverage cohort.
+    universe_group: consumer_platforms
+  - ticker: META
+    sector: Communication Services
+    category: consumer_platform
+    reason_for_inclusion: Expanded local coverage cohort.
+    universe_group: consumer_platforms
+  - ticker: AVGO
+    sector: Technology
+    category: semiconductor
+    reason_for_inclusion: Expanded local coverage cohort.
+    universe_group: semiconductors
+  - ticker: ORCL
+    sector: Technology
+    category: software_platform
+    reason_for_inclusion: Expanded local coverage cohort.
+    universe_group: software_platforms
+  - ticker: CRM
+    sector: Technology
+    category: software_platform
+    reason_for_inclusion: Expanded local coverage cohort.
+    universe_group: software_platforms
+  - ticker: ADBE
+    sector: Technology
+    category: software_platform
+    reason_for_inclusion: Expanded local coverage cohort.
+    universe_group: software_platforms
+  - ticker: NFLX
+    sector: Communication Services
+    category: consumer_platform
+    reason_for_inclusion: Expanded local coverage cohort.
+    universe_group: consumer_platforms
