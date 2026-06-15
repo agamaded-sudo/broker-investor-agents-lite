@@ -980,6 +980,30 @@ All added financial and price rows are deterministic local research fixtures.
 Coverage eligibility does not recommend or rank tickers, validate investor
 agents, or create allocations, execution instructions, or trade signals.
 
+### Expanded Ticker Coverage Output Validation
+
+Before expanded trial execution, a final handoff validator checks that the
+coverage report JSON, ticker-date matrix CSV, eligible-universe YAML, and
+latest manifest are present and internally consistent. It verifies ticker
+membership, clean and usable record minimums, unsupported-row exclusion,
+reported counts, safety language, and the expected next research action.
+
+Validate the latest expanded coverage output:
+
+```powershell
+python -m broker_agents.cli validate-expanded-ticker-coverage-output --auto-latest --outputs-root data/outputs
+```
+
+Or validate a specific run:
+
+```powershell
+python -m broker_agents.cli validate-expanded-ticker-coverage-output --validation-run-id 20260615_070003 --outputs-root data/outputs
+```
+
+This command only validates Task 101 artifacts. It does not run an expanded
+trial or backtest, rank or recommend tickers, validate investor agents, or
+produce allocations, execution instructions, or trade signals.
+
 ### Clean-Coverage Sensitivity Report
 
 Readiness trial backtests now compare aggregate outcomes with coverage-quality

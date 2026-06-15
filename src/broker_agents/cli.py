@@ -42,6 +42,10 @@ from broker_agents.backtesting.evidence_decision_gate import (
     find_latest_evidence_gate_backtest,
     write_evidence_decision_gate_report,
 )
+from broker_agents.backtesting.expanded_ticker_coverage_output_validator import (
+    load_latest_expanded_ticker_coverage_manifest,
+    write_expanded_ticker_coverage_output_validation_report,
+)
 from broker_agents.backtesting.signal_backtester import run_signal_backtest
 from broker_agents.backtesting.readiness_trial_decision_report import (
     regenerate_readiness_trial_decision_report,
@@ -2829,6 +2833,109 @@ def validate_expanded_ticker_coverage_command(
     console.print(f"caution_tickers={','.join(report.caution_tickers)}")
     console.print(f"excluded_tickers={','.join(report.excluded_tickers)}")
     console.print(f"eligible_universe={files.eligible_universe_path}")
+    console.print("status=completed")
+
+
+@app.command("validate-expanded-ticker-coverage-output")
+def validate_expanded_ticker_coverage_output_command(
+    validation_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--validation-run-id",
+            help="Expanded ticker coverage validation run ID.",
+        ),
+    ] = None,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            file_okay=False,
+            dir_okay=True,
+            writable=True,
+            help="Root containing expanded coverage and validation outputs.",
+        ),
+    ] = Path("data/outputs"),
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Validate the latest expanded ticker coverage output.",
+        ),
+    ] = False,
+) -> None:
+    """Validate Task 101 outputs before expanded trial execution."""
+    try:
+        if auto_latest:
+            latest_manifest = load_latest_expanded_ticker_coverage_manifest(
+                outputs_root
+            )
+            validation_run_id = str(latest_manifest["validation_run_id"])
+        else:
+            if not validation_run_id:
+                raise ValueError(
+                    "Provide --validation-run-id or use --auto-latest."
+                )
+            try:
+                latest_manifest = (
+                    load_latest_expanded_ticker_coverage_manifest(
+                        outputs_root
+                    )
+                )
+            except FileNotFoundError:
+                latest_manifest = {}
+        files = (
+            write_expanded_ticker_coverage_output_validation_report(
+                outputs_root=outputs_root,
+                validation_run_id=validation_run_id,
+                latest_manifest=latest_manifest,
+            )
+        )
+    except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Expanded ticker coverage output validation failed: {exc}"
+        ) from exc
+
+    report = files.report
+    table = Table(title="Expanded Ticker Coverage Output Validation")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Validation Check Run ID", report.validation_check_run_id),
+        ("Source Validation Run ID", report.source_validation_run_id),
+        ("Output Validation Status", report.output_validation_status),
+        (
+            "Ready for Expanded Trial",
+            str(report.readiness_for_expanded_trial).lower(),
+        ),
+        ("Eligible Ticker Count", str(len(report.eligible_tickers))),
+        ("Clean Record Total", str(report.clean_record_total)),
+        ("Usable Record Total", str(report.usable_record_total)),
+        ("Unsupported Record Total", str(report.unsupported_record_total)),
+        ("Pass Count", str(report.pass_count)),
+        ("Warning Count", str(report.warn_count)),
+        ("Fail Count", str(report.fail_count)),
+        ("Next Research Action", str(report.next_research_action)),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", "completed"),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        f"validation_check_run_id={report.validation_check_run_id}"
+    )
+    console.print(
+        f"source_validation_run_id={report.source_validation_run_id}"
+    )
+    console.print(
+        f"output_validation_status={report.output_validation_status}"
+    )
+    console.print(
+        "readiness_for_expanded_trial="
+        f"{str(report.readiness_for_expanded_trial).lower()}"
+    )
+    console.print(f"fail_count={report.fail_count}")
+    console.print(f"next_research_action={report.next_research_action}")
     console.print("status=completed")
 
 
