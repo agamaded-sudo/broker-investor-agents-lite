@@ -922,6 +922,38 @@ This is a research-only audit. It does not prove a strategy, validate investor
 agents, or create recommendations, rankings, allocation instructions,
 rebalancing instructions, trade signals, or execution instructions.
 
+### Clean vs Warning Evidence Decision Gate
+
+The evidence decision gate is separate from the readiness trial decision
+report. The decision report remains conservative about the current evidence;
+the gate only determines whether the research program may proceed to a broader
+sample. It requires preliminary clean evidence, keeps warning-bearing records
+visible, and treats delayed-anchor, outlier, sample-size, and concentration
+issues as explicit cautions or blockers.
+
+Run the gate for an explicit readiness trial:
+
+```powershell
+python -m broker_agents.cli run-evidence-decision-gate --backtest-run-id 20260614_205804 --outputs-root data/outputs
+```
+
+Or select the latest completed readiness trial with clean-coverage
+sensitivity:
+
+```powershell
+python -m broker_agents.cli run-evidence-decision-gate --auto-latest --outputs-root data/outputs
+```
+
+An outcome of `research_ready_for_broader_trial` permits broader research
+testing only. It does not validate performance or create investment
+recommendations, rankings, allocations, execution instructions, or trade
+signals. The required next action remains broader ticker coverage with
+coverage validation and preserved clean/warning segmentation.
+
+Each gate writes Markdown, JSON, and criterion CSV artifacts under
+`data/outputs/evidence_decision_gates/{GATE_RUN_ID}/`, plus
+`latest_evidence_decision_gate_manifest.json`.
+
 ### Clean-Coverage Sensitivity Report
 
 Readiness trial backtests now compare aggregate outcomes with coverage-quality

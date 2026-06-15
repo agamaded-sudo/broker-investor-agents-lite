@@ -38,6 +38,10 @@ from broker_agents.backtesting.clean_coverage_before_after_report import (
     find_latest_clean_coverage_runs,
     write_clean_coverage_comparison_report,
 )
+from broker_agents.backtesting.evidence_decision_gate import (
+    find_latest_evidence_gate_backtest,
+    write_evidence_decision_gate_report,
+)
 from broker_agents.backtesting.signal_backtester import run_signal_backtest
 from broker_agents.backtesting.readiness_trial_decision_report import (
     regenerate_readiness_trial_decision_report,
@@ -3526,6 +3530,101 @@ def compare_clean_coverage_runs(
     console.print(f"before_run_id={report.before_run_id}")
     console.print(f"after_run_id={report.after_run_id}")
     console.print(f"comparison_status={report.comparison_status}")
+    console.print("status=completed")
+
+
+@app.command("run-evidence-decision-gate")
+def run_evidence_decision_gate(
+    backtest_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--backtest-run-id",
+            help="Readiness trial backtest run ID to evaluate.",
+        ),
+    ] = None,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing backtests and gate outputs.",
+        ),
+    ] = Path("data/outputs"),
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Select the latest completed readiness trial.",
+        ),
+    ] = False,
+) -> None:
+    """Evaluate whether readiness research may expand its sample."""
+    try:
+        if auto_latest:
+            backtest_run_id = find_latest_evidence_gate_backtest(outputs_root)
+        elif not backtest_run_id:
+            raise ValueError(
+                "Provide --backtest-run-id or use --auto-latest."
+            )
+        files = write_evidence_decision_gate_report(
+            outputs_root=outputs_root,
+            backtest_run_id=backtest_run_id,
+        )
+    except (
+        OSError,
+        ValueError,
+        KeyError,
+        json.JSONDecodeError,
+    ) as exc:
+        raise typer.BadParameter(
+            f"Evidence decision gate failed: {exc}"
+        ) from exc
+
+    report = files.report
+    evidence = report.evidence_summary
+    criteria = {
+        item["criterion"]: item["status"]
+        for item in report.criteria_results
+    }
+    clean_positive = criteria.get("clean_evidence_positive") == "pass"
+    table = Table(title="Evidence Decision Gate")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Gate Run ID", report.gate_run_id),
+        ("Source Backtest Run ID", str(report.source_backtest_run_id)),
+        ("Gate Outcome", report.gate_outcome),
+        ("Gate Status", report.gate_status),
+        ("Clean Records", str(evidence.get("clean_record_count", 0))),
+        ("Warning Records", str(evidence.get("warning_record_count", 0))),
+        (
+            "Warning-Heavy Records",
+            str(evidence.get("warning_heavy_record_count", 0)),
+        ),
+        ("Clean Evidence Positive", str(clean_positive).lower()),
+        (
+            "Delayed Anchor Criterion",
+            str(criteria.get("delayed_anchor_not_blocking")),
+        ),
+        ("Outlier Criterion", str(criteria.get("outlier_not_blocking"))),
+        ("Critical Pass Count", str(report.critical_pass_count)),
+        ("Warning Count", str(report.warn_count)),
+        ("Block Count", str(report.block_count)),
+        ("Next Research Action", report.next_research_action),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", "completed"),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(f"gate_run_id={report.gate_run_id}")
+    console.print(f"source_backtest_run_id={report.source_backtest_run_id}")
+    console.print(f"gate_outcome={report.gate_outcome}")
+    console.print(f"gate_status={report.gate_status}")
+    console.print(f"next_research_action={report.next_research_action}")
     console.print("status=completed")
 
 
