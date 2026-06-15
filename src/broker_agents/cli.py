@@ -38,6 +38,9 @@ from broker_agents.backtesting.clean_coverage_before_after_report import (
     find_latest_clean_coverage_runs,
     write_clean_coverage_comparison_report,
 )
+from broker_agents.backtesting.backoffice_evidence_quality_attribution import (
+    write_backoffice_evidence_quality_report,
+)
 from broker_agents.backtesting.evidence_decision_gate import (
     find_latest_evidence_gate_backtest,
     write_evidence_decision_gate_report,
@@ -3779,6 +3782,104 @@ def build_investor_persona_attribution_command(
     console.print(table)
     console.print(f"attribution_run_id={report.attribution_run_id}")
     console.print(f"gatekeeper_run_id={report.gatekeeper_run_id}")
+    console.print(f"attribution_status={report.attribution_status}")
+    console.print(
+        f"progression_allowed={str(report.progression_allowed).lower()}"
+    )
+    console.print(
+        "next_research_action="
+        f"{report.recommended_next_research_action}"
+    )
+    console.print("status=completed")
+
+
+@app.command("build-backoffice-evidence-quality-attribution")
+def build_backoffice_evidence_quality_attribution_command(
+    persona_attribution_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--persona-attribution-run-id",
+            help="Investor persona attribution run used for repair planning.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest investor persona attribution manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing persona and linked research outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Translate a held persona state into Backoffice repair work."""
+    if bool(persona_attribution_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --persona-attribution-run-id or "
+            "--auto-latest."
+        )
+    try:
+        files = write_backoffice_evidence_quality_report(
+            outputs_root=outputs_root,
+            attribution_run_id=(
+                None if auto_latest else persona_attribution_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Backoffice evidence quality attribution failed: {exc}"
+        ) from exc
+
+    report = files.report
+    summary = report.backoffice_attribution_summary
+    table = Table(title="Backoffice Evidence Quality Attribution")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        (
+            "Backoffice Attribution Run ID",
+            report.backoffice_attribution_run_id,
+        ),
+        (
+            "Persona Attribution Run ID",
+            report.investor_persona_attribution_run_id,
+        ),
+        ("Gatekeeper Run ID", report.gatekeeper_run_id),
+        ("Gatekeeper Decision", report.gatekeeper_decision),
+        ("Progression Allowed", str(report.progression_allowed).lower()),
+        ("Attribution Status", report.attribution_status),
+        ("Total Issues", str(summary["total_issues"])),
+        ("P0 Issues", str(summary["p0_issues"])),
+        ("P1 Issues", str(summary["p1_issues"])),
+        ("Total Work Orders", str(summary["total_work_orders"])),
+        (
+            "Next Research Action",
+            report.recommended_next_research_action,
+        ),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", "completed"),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        "backoffice_attribution_run_id="
+        f"{report.backoffice_attribution_run_id}"
+    )
+    console.print(
+        "persona_attribution_run_id="
+        f"{report.investor_persona_attribution_run_id}"
+    )
     console.print(f"attribution_status={report.attribution_status}")
     console.print(
         f"progression_allowed={str(report.progression_allowed).lower()}"

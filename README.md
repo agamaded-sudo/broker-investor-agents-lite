@@ -1189,6 +1189,25 @@ The report does not ask the agents for decisions, rank or average them, create
 a vote or consensus, or produce recommendations, allocation instructions,
 rebalancing instructions, trade signals, or execution instructions.
 
+### Backoffice Evidence Quality Attribution
+
+The Backoffice evidence quality attribution is the repair-planning layer after
+a gatekeeper hold and persona attribution. It converts held research evidence
+into traceable issues and prioritized work orders for robustness retesting,
+data repair, metadata rechecks, qualitative enrichment, persona-specific
+packaging, and audit documentation.
+
+```powershell
+python -m broker_agents.cli build-backoffice-evidence-quality-attribution --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli build-backoffice-evidence-quality-attribution --persona-attribution-run-id 20260615_192219 --outputs-root data/outputs
+```
+
+Backoffice does not make investment decisions or override the gatekeeper. The
+report prepares evidence for a future rerun and re-gating; it does not create
+recommendations, rankings, consensus, allocation instructions, rebalancing
+instructions, trade signals, or execution instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
