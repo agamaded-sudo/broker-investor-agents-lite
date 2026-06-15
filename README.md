@@ -1111,6 +1111,27 @@ local research fixtures. It is non-actionable and does not create
 recommendations, rankings, allocation instructions, rebalancing instructions,
 trade signals, or execution instructions.
 
+### Expanded Trial Results Analysis
+
+After an expanded ticker trial completes, the analysis command decomposes the
+existing backtest by ticker, sector, category, universe group, historical date,
+coverage quality, delayed-anchor status, and benchmark-relative outcome. It
+also compares the validated current-core cohort with the added ticker cohort
+and rechecks whether readiness and investor-interest metadata have enough
+diversity to support attribution.
+
+```powershell
+python -m broker_agents.cli analyze-expanded-trial-results --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli analyze-expanded-trial-results --expanded-trial-run-id 20260615_074713 --outputs-root data/outputs --prior-backtest-run-id 20260614_205804
+```
+
+The analyzer reads existing artifacts and does not rerun or alter the trial.
+Its next action is a research evidence scorecard when instability is detected.
+The output remains non-actionable: it does not create recommendations,
+rankings, allocation instructions, rebalancing instructions, trade signals,
+or execution instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision

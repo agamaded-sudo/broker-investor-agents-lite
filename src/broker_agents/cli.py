@@ -46,6 +46,9 @@ from broker_agents.backtesting.expanded_ticker_coverage_output_validator import 
     load_latest_expanded_ticker_coverage_manifest,
     write_expanded_ticker_coverage_output_validation_report,
 )
+from broker_agents.backtesting.expanded_trial_results_analyzer import (
+    write_expanded_trial_analysis_report,
+)
 from broker_agents.backtesting.signal_backtester import run_signal_backtest
 from broker_agents.backtesting.readiness_trial_decision_report import (
     regenerate_readiness_trial_decision_report,
@@ -3384,6 +3387,107 @@ def run_expanded_ticker_readiness_trial_command(
         f"sample_size_after_dedupe={result.sample_size_after_dedupe or 0}"
     )
     console.print(f"status={result.status}")
+
+
+@app.command("analyze-expanded-trial-results")
+def analyze_expanded_trial_results_command(
+    expanded_trial_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--expanded-trial-run-id",
+            help="Expanded ticker trial run identifier to analyze.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Analyze the latest expanded ticker trial manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing expanded trial and backtest outputs.",
+        ),
+    ] = Path("data/outputs"),
+    prior_backtest_run_id: Annotated[
+        str,
+        typer.Option(
+            "--prior-backtest-run-id",
+            help="Prior readiness trial backtest used for comparison.",
+        ),
+    ] = "20260614_205804",
+    backtest_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--backtest-run-id",
+            help="Optional backtest override for the selected expanded trial.",
+        ),
+    ] = None,
+) -> None:
+    """Explain expanded readiness trial instability from existing outputs."""
+    if bool(expanded_trial_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --expanded-trial-run-id or --auto-latest."
+        )
+    try:
+        files = write_expanded_trial_analysis_report(
+            outputs_root=outputs_root,
+            expanded_trial_run_id=(
+                None if auto_latest else expanded_trial_run_id
+            ),
+            backtest_run_id=backtest_run_id,
+            prior_backtest_run_id=prior_backtest_run_id,
+        )
+    except (OSError, ValueError, json.JSONDecodeError, yaml.YAMLError) as exc:
+        raise typer.BadParameter(
+            f"Expanded trial results analysis failed: {exc}"
+        ) from exc
+
+    report = files.report
+    explanation = report.expanded_trial_instability_explanation
+    diversity = report.metadata_diversity_recheck
+    table = Table(title="Expanded Trial Results Analysis")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Analysis Run ID", report.analysis_run_id),
+        ("Expanded Trial Run ID", report.expanded_trial_run_id),
+        ("Backtest Run ID", report.backtest_run_id),
+        ("Prior Backtest Run ID", report.prior_backtest_run_id),
+        ("Analysis Status", report.analysis_status),
+        (
+            "Metadata Diversity Status",
+            diversity["metadata_diversity_status"],
+        ),
+        (
+            "Primary Instability Drivers",
+            ",".join(explanation["primary_instability_drivers"]) or "None",
+        ),
+        ("Next Research Action", report.next_research_action),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", "completed"),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(f"analysis_run_id={report.analysis_run_id}")
+    console.print(f"expanded_trial_run_id={report.expanded_trial_run_id}")
+    console.print(f"backtest_run_id={report.backtest_run_id}")
+    console.print(f"analysis_status={report.analysis_status}")
+    console.print(
+        "metadata_diversity_status="
+        f"{diversity['metadata_diversity_status']}"
+    )
+    console.print(f"next_research_action={report.next_research_action}")
+    console.print("status=completed")
 
 
 @app.command("run-historical-readiness-batch")
