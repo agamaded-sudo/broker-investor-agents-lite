@@ -60,6 +60,9 @@ from broker_agents.backtesting.readiness_trial_export import (
     export_readiness_ledger_to_trial_ledger,
     validate_readiness_trial_ledger,
 )
+from broker_agents.backtesting.research_evidence_scorecard import (
+    write_research_evidence_scorecard_report,
+)
 from broker_agents.data_providers.price_csv_validation import (
     validate_price_csvs,
 )
@@ -3488,6 +3491,118 @@ def analyze_expanded_trial_results_command(
     )
     console.print(f"next_research_action={report.next_research_action}")
     console.print("status=completed")
+
+
+@app.command("build-research-evidence-scorecard")
+def build_research_evidence_scorecard_command(
+    analysis_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--analysis-run-id",
+            help="Expanded trial analysis run used by the scorecard.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest expanded trial analysis manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing analysis, trial, and backtest outputs.",
+        ),
+    ] = Path("data/outputs"),
+    expanded_trial_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--expanded-trial-run-id",
+            help="Optional expanded trial run override.",
+        ),
+    ] = None,
+    backtest_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--backtest-run-id",
+            help="Optional expanded trial backtest override.",
+        ),
+    ] = None,
+    prior_backtest_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--prior-backtest-run-id",
+            help="Optional prior readiness trial comparison override.",
+        ),
+    ] = None,
+) -> None:
+    """Consolidate expanded trial diagnostics into a research scorecard."""
+    if bool(analysis_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --analysis-run-id or --auto-latest."
+        )
+    try:
+        files = write_research_evidence_scorecard_report(
+            outputs_root=outputs_root,
+            analysis_run_id=None if auto_latest else analysis_run_id,
+            expanded_trial_run_id=expanded_trial_run_id,
+            backtest_run_id=backtest_run_id,
+            prior_backtest_run_id=prior_backtest_run_id,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Research evidence scorecard failed: {exc}"
+        ) from exc
+
+    scorecard = files.scorecard
+    table = Table(title="Research Evidence Scorecard")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Scorecard Run ID", scorecard.scorecard_run_id),
+        ("Analysis Run ID", scorecard.analysis_run_id),
+        ("Expanded Trial Run ID", scorecard.expanded_trial_run_id),
+        ("Backtest Run ID", scorecard.backtest_run_id),
+        ("Classification", scorecard.research_evidence_classification),
+        ("Research Decision", scorecard.research_decision),
+        ("Raw Score", str(scorecard.raw_score)),
+        (
+            "Normalized Score",
+            f"{scorecard.normalized_score_percent}%",
+        ),
+        ("Positive Factors", str(len(scorecard.positive_factors))),
+        ("Warning Factors", str(scorecard.warning_factor_count)),
+        ("Negative Factors", str(scorecard.negative_factor_count)),
+        ("Blocker Factors", str(scorecard.blocker_count)),
+        (
+            "Next Research Action",
+            scorecard.recommended_next_research_action,
+        ),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", scorecard.scorecard_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(f"scorecard_run_id={scorecard.scorecard_run_id}")
+    console.print(f"analysis_run_id={scorecard.analysis_run_id}")
+    console.print(
+        "research_evidence_classification="
+        f"{scorecard.research_evidence_classification}"
+    )
+    console.print(f"research_decision={scorecard.research_decision}")
+    console.print(
+        "next_research_action="
+        f"{scorecard.recommended_next_research_action}"
+    )
+    console.print(f"status={scorecard.scorecard_status}")
 
 
 @app.command("run-historical-readiness-batch")

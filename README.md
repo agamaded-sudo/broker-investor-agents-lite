@@ -1132,6 +1132,26 @@ The output remains non-actionable: it does not create recommendations,
 rankings, allocation instructions, rebalancing instructions, trade signals,
 or execution instructions.
 
+### Research Evidence Scorecard
+
+The research evidence scorecard consolidates expanded-trial diagnostics into
+one auditable research status. It scores sample strength, clean and warning
+evidence, benchmark-relative and absolute outcomes, walk-forward stability,
+metadata diversity, cohort and period effects, delayed anchors, outliers, and
+data-integrity controls. The weights are research-governance weights, not
+financial scores.
+
+```powershell
+python -m broker_agents.cli build-research-evidence-scorecard --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli build-research-evidence-scorecard --analysis-run-id 20260615_083635 --outputs-root data/outputs
+```
+
+The scorecard prepares the next gatekeeper step while preserving a hold bias
+when expanded evidence is unstable. It does not validate a strategy or create
+recommendations, rankings, allocation instructions, rebalancing instructions,
+trade signals, or execution instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
