@@ -47,6 +47,9 @@ from broker_agents.backtesting.backtest_driver_decomposition import (
 from broker_agents.backtesting.outlier_repair_path import (
     write_outlier_repair_path_report,
 )
+from broker_agents.backtesting.walk_forward_repair_plan import (
+    write_walk_forward_repair_plan_report,
+)
 from broker_agents.backtesting.evidence_decision_gate import (
     find_latest_evidence_gate_backtest,
     write_evidence_decision_gate_report,
@@ -4060,6 +4063,83 @@ def build_outlier_repair_path_command(
     console.print(f"scenario_count={len(report.scenario_analysis)}")
     console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
     console.print(f"status={report.outlier_repair_status}")
+
+
+@app.command("build-walk-forward-repair-plan")
+def build_walk_forward_repair_plan_command(
+    outlier_repair_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--outlier-repair-run-id",
+            help="Outlier repair run used to execute BO-003.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest outlier repair path manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing outlier repair and expanded backtest outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute BO-003 walk-forward stability repair plan."""
+    if bool(outlier_repair_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --outlier-repair-run-id or --auto-latest."
+        )
+    try:
+        files = write_walk_forward_repair_plan_report(
+            outputs_root=outputs_root,
+            outlier_repair_run_id=None if auto_latest else outlier_repair_run_id,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Walk-forward repair plan failed: {exc}"
+        ) from exc
+
+    report = files.report
+    main_finding = (
+        "Post-2021 periods break benchmark-relative stability while "
+        "2021-06-30 remains supportive."
+    )
+    table = Table(title="Walk-Forward Stability Repair Plan")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Walk-Forward Repair Run ID", report.walk_forward_repair_run_id),
+        ("Outlier Repair Run ID", report.outlier_repair_run_id),
+        ("Work Order ID", report.work_order_id),
+        ("Backtest Run ID", report.backtest_run_id),
+        ("Period Count", str(len(report.period_stability_analysis))),
+        ("Failure Mode Count", str(len(report.stability_failure_modes))),
+        ("Main Stability Finding", main_finding),
+        ("Recommended Next Work Order", report.recommended_next_work_order),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.walk_forward_repair_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        f"walk_forward_repair_run_id={report.walk_forward_repair_run_id}"
+    )
+    console.print(f"outlier_repair_run_id={report.outlier_repair_run_id}")
+    console.print(f"period_count={len(report.period_stability_analysis)}")
+    console.print(f"failure_mode_count={len(report.stability_failure_modes)}")
+    console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
+    console.print(f"status={report.walk_forward_repair_status}")
 
 
 @app.command("run-historical-readiness-batch")

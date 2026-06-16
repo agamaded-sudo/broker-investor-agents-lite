@@ -1245,6 +1245,25 @@ original backtest, validate a strategy, rank tickers, create recommendations,
 allocation instructions, rebalancing instructions, trade signals, or execution
 instructions.
 
+### Walk-Forward Stability Repair Plan
+
+The walk-forward stability repair plan executes BO-003 from the Backoffice
+repair queue. It identifies unstable historical periods, separates clean-date
+and warning-date evidence, compares current-core and expanded-cohort behavior
+by period, checks Ex-NVDA period behavior, and creates a retest plan before any
+future re-gating.
+
+```powershell
+python -m broker_agents.cli build-walk-forward-repair-plan --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli build-walk-forward-repair-plan --outlier-repair-run-id 20260616_174925 --outputs-root data/outputs
+```
+
+This is evidence repair only. It does not rerun investor agents, change the
+original backtest, validate a strategy, rank tickers, create recommendations,
+allocation instructions, rebalancing instructions, trade signals, or execution
+instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
