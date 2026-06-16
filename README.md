@@ -1226,6 +1226,25 @@ original backtest, validate a strategy, rank tickers, create recommendations,
 allocation instructions, rebalancing instructions, trade signals, or execution
 instructions.
 
+### Outlier and Ex-NVDA Repair Path
+
+The outlier and Ex-NVDA repair path executes BO-002 from the Backoffice repair
+queue. It checks whether expanded research evidence survives exclusion of NVDA
+and leading positive contributors, separates current-core and expanded-cohort
+evidence, documents supportive-date dependence, and writes a retest
+specification for the next repair step.
+
+```powershell
+python -m broker_agents.cli build-outlier-repair-path --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli build-outlier-repair-path --decomposition-run-id 20260616_171625 --outputs-root data/outputs
+```
+
+This is evidence repair only. It does not rerun investor agents, change the
+original backtest, validate a strategy, rank tickers, create recommendations,
+allocation instructions, rebalancing instructions, trade signals, or execution
+instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision

@@ -44,6 +44,9 @@ from broker_agents.backtesting.backoffice_evidence_quality_attribution import (
 from broker_agents.backtesting.backtest_driver_decomposition import (
     write_backtest_driver_decomposition_report,
 )
+from broker_agents.backtesting.outlier_repair_path import (
+    write_outlier_repair_path_report,
+)
 from broker_agents.backtesting.evidence_decision_gate import (
     find_latest_evidence_gate_backtest,
     write_evidence_decision_gate_report,
@@ -3981,6 +3984,82 @@ def build_backtest_driver_decomposition_command(
     console.print(f"rows_reconciled={report.reconciliation['rows_reconciled']}")
     console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
     console.print(f"status={report.decomposition_status}")
+
+
+@app.command("build-outlier-repair-path")
+def build_outlier_repair_path_command(
+    decomposition_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--decomposition-run-id",
+            help="Backtest driver decomposition run used to execute BO-002.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest backtest driver decomposition manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing decomposition and expanded backtest outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute BO-002 outlier and Ex-NVDA repair path."""
+    if bool(decomposition_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --decomposition-run-id or --auto-latest."
+        )
+    try:
+        files = write_outlier_repair_path_report(
+            outputs_root=outputs_root,
+            decomposition_run_id=None if auto_latest else decomposition_run_id,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(f"Outlier repair path failed: {exc}") from exc
+
+    report = files.report
+    dependence = report.dependence_classification
+    table = Table(title="Outlier and Ex-NVDA Repair Path")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Outlier Repair Run ID", report.outlier_repair_run_id),
+        ("Decomposition Run ID", report.decomposition_run_id),
+        ("Work Order ID", report.work_order_id),
+        ("Backtest Run ID", report.backtest_run_id),
+        ("Scenario Count", str(len(report.scenario_analysis))),
+        (
+            "Overall Outlier Repair Status",
+            dependence["overall_outlier_repair_status"],
+        ),
+        ("Main Outlier Finding", dependence["main_outlier_finding"]),
+        ("Recommended Next Work Order", report.recommended_next_work_order),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.outlier_repair_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(f"outlier_repair_run_id={report.outlier_repair_run_id}")
+    console.print(f"decomposition_run_id={report.decomposition_run_id}")
+    console.print(
+        "overall_outlier_repair_status="
+        f"{dependence['overall_outlier_repair_status']}"
+    )
+    console.print(f"scenario_count={len(report.scenario_analysis)}")
+    console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
+    console.print(f"status={report.outlier_repair_status}")
 
 
 @app.command("run-historical-readiness-batch")
