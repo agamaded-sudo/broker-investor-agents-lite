@@ -41,6 +41,9 @@ from broker_agents.backtesting.clean_coverage_before_after_report import (
 from broker_agents.backtesting.backoffice_evidence_quality_attribution import (
     write_backoffice_evidence_quality_report,
 )
+from broker_agents.backtesting.backtest_driver_decomposition import (
+    write_backtest_driver_decomposition_report,
+)
 from broker_agents.backtesting.evidence_decision_gate import (
     find_latest_evidence_gate_backtest,
     write_evidence_decision_gate_report,
@@ -3889,6 +3892,95 @@ def build_backoffice_evidence_quality_attribution_command(
         f"{report.recommended_next_research_action}"
     )
     console.print("status=completed")
+
+
+@app.command("build-backtest-driver-decomposition")
+def build_backtest_driver_decomposition_command(
+    backoffice_attribution_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--backoffice-attribution-run-id",
+            help="Backoffice attribution run used to execute BO-001.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest Backoffice attribution manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing Backoffice and expanded backtest outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute BO-001 backtest driver decomposition."""
+    if bool(backoffice_attribution_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --backoffice-attribution-run-id or "
+            "--auto-latest."
+        )
+    try:
+        files = write_backtest_driver_decomposition_report(
+            outputs_root=outputs_root,
+            backoffice_attribution_run_id=(
+                None if auto_latest else backoffice_attribution_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Backtest driver decomposition failed: {exc}"
+        ) from exc
+
+    report = files.report
+    summary = report.driver_summary
+    table = Table(title="Backtest Driver Decomposition")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Decomposition Run ID", report.decomposition_run_id),
+        (
+            "Backoffice Attribution Run ID",
+            report.backoffice_attribution_run_id,
+        ),
+        ("Work Order ID", report.work_order_id),
+        ("Backtest Run ID", report.backtest_run_id),
+        ("Rows Reconciled", str(report.reconciliation["rows_reconciled"])),
+        (
+            "Reconciliation Status",
+            report.reconciliation["reconciliation_status"],
+        ),
+        (
+            "Primary Negative Drivers",
+            ",".join(summary["primary_negative_drivers"]) or "None",
+        ),
+        ("Recommended Next Work Order", report.recommended_next_work_order),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.decomposition_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(f"decomposition_run_id={report.decomposition_run_id}")
+    console.print(
+        "backoffice_attribution_run_id="
+        f"{report.backoffice_attribution_run_id}"
+    )
+    console.print(
+        f"reconciliation_status={report.reconciliation['reconciliation_status']}"
+    )
+    console.print(f"rows_reconciled={report.reconciliation['rows_reconciled']}")
+    console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
+    console.print(f"status={report.decomposition_status}")
 
 
 @app.command("run-historical-readiness-batch")

@@ -1208,6 +1208,24 @@ report prepares evidence for a future rerun and re-gating; it does not create
 recommendations, rankings, consensus, allocation instructions, rebalancing
 instructions, trade signals, or execution instructions.
 
+### Backtest Driver Decomposition
+
+The backtest driver decomposition executes BO-001 from the Backoffice repair
+queue. It decomposes benchmark-relative underperformance and expanded-cohort
+weakening by ticker, date, cohort, sector, category, and universe group, while
+reconciling all evaluated rows back to the expanded readiness backtest.
+
+```powershell
+python -m broker_agents.cli build-backtest-driver-decomposition --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli build-backtest-driver-decomposition --backoffice-attribution-run-id 20260615_195343 --outputs-root data/outputs
+```
+
+This is evidence repair only. It does not rerun investor agents, change the
+original backtest, validate a strategy, rank tickers, create recommendations,
+allocation instructions, rebalancing instructions, trade signals, or execution
+instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
