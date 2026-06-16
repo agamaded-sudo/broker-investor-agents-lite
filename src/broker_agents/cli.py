@@ -50,6 +50,9 @@ from broker_agents.backtesting.outlier_repair_path import (
 from broker_agents.backtesting.walk_forward_repair_plan import (
     write_walk_forward_repair_plan_report,
 )
+from broker_agents.backtesting.delayed_anchor_repair import (
+    write_delayed_anchor_repair_report,
+)
 from broker_agents.backtesting.evidence_decision_gate import (
     find_latest_evidence_gate_backtest,
     write_evidence_decision_gate_report,
@@ -4140,6 +4143,88 @@ def build_walk_forward_repair_plan_command(
     console.print(f"failure_mode_count={len(report.stability_failure_modes)}")
     console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
     console.print(f"status={report.walk_forward_repair_status}")
+
+
+@app.command("build-delayed-anchor-repair")
+def build_delayed_anchor_repair_command(
+    walk_forward_repair_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--walk-forward-repair-run-id",
+            help="Walk-forward repair run used to execute BO-004.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest walk-forward repair manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing walk-forward repair and backtest outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute BO-004 delayed anchor exposure repair."""
+    if bool(walk_forward_repair_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --walk-forward-repair-run-id or --auto-latest."
+        )
+    try:
+        files = write_delayed_anchor_repair_report(
+            outputs_root=outputs_root,
+            walk_forward_repair_run_id=(
+                None if auto_latest else walk_forward_repair_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Delayed anchor repair failed: {exc}"
+        ) from exc
+
+    report = files.report
+    classification = report.anchor_impact_classification
+    table = Table(title="Delayed Anchor Exposure Repair")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Delayed Anchor Repair Run ID", report.delayed_anchor_repair_run_id),
+        ("Walk-Forward Repair Run ID", report.walk_forward_repair_run_id),
+        ("Work Order ID", report.work_order_id),
+        ("Backtest Run ID", report.backtest_run_id),
+        ("Anchor Bucket Count", str(len(report.anchor_exposure_analysis))),
+        (
+            "Anchor Data Sufficiency",
+            classification["anchor_data_sufficiency_status"],
+        ),
+        ("Main Anchor Finding", classification["main_anchor_finding"]),
+        ("Recommended Next Work Order", report.recommended_next_work_order),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.delayed_anchor_repair_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        f"delayed_anchor_repair_run_id={report.delayed_anchor_repair_run_id}"
+    )
+    console.print(f"walk_forward_repair_run_id={report.walk_forward_repair_run_id}")
+    console.print(f"anchor_bucket_count={len(report.anchor_exposure_analysis)}")
+    console.print(
+        "anchor_data_sufficiency_status="
+        f"{classification['anchor_data_sufficiency_status']}"
+    )
+    console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
+    console.print(f"status={report.delayed_anchor_repair_status}")
 
 
 @app.command("run-historical-readiness-batch")

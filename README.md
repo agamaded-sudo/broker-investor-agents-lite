@@ -1264,6 +1264,25 @@ original backtest, validate a strategy, rank tickers, create recommendations,
 allocation instructions, rebalancing instructions, trade signals, or execution
 instructions.
 
+### Delayed Anchor Exposure Repair
+
+The delayed anchor exposure repair executes BO-004 from the Backoffice repair
+queue. It separates clean-anchor, delayed-anchor, and unknown-anchor evidence
+where available, attributes anchor exposure by date and cohort, documents when
+exact delay-day fields are unavailable, and creates delayed-anchor retest
+controls before any future re-gating.
+
+```powershell
+python -m broker_agents.cli build-delayed-anchor-repair --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli build-delayed-anchor-repair --walk-forward-repair-run-id 20260616_182026 --outputs-root data/outputs
+```
+
+This is evidence repair only. It does not rerun investor agents, change the
+original backtest, validate a strategy, rank tickers, create recommendations,
+allocation instructions, rebalancing instructions, trade signals, or execution
+instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
