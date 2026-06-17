@@ -110,6 +110,9 @@ from broker_agents.deals.readiness_metadata_enrichment import (
     ENRICHMENT_FIELDS,
 )
 from broker_agents.historical.as_of_context import build_as_of_context
+from broker_agents.personas.persona_evidence_pack_requirements import (
+    write_persona_evidence_pack_requirements_report,
+)
 from broker_agents.historical.financials_as_of_contract import (
     build_financials_as_of_contract,
 )
@@ -4319,6 +4322,90 @@ def build_metadata_diversity_recheck_command(
     )
     console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
     console.print(f"status={report.metadata_diversity_recheck_status}")
+
+
+@app.command("build-persona-evidence-pack-requirements")
+def build_persona_evidence_pack_requirements_command(
+    metadata_diversity_recheck_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--metadata-diversity-recheck-run-id",
+            help="Metadata diversity recheck run used to execute BO-006.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest metadata diversity recheck manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing metadata recheck and persona attribution outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute BO-006 persona evidence pack requirements."""
+    if bool(metadata_diversity_recheck_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --metadata-diversity-recheck-run-id or "
+            "--auto-latest."
+        )
+    try:
+        files = write_persona_evidence_pack_requirements_report(
+            outputs_root=outputs_root,
+            metadata_diversity_recheck_run_id=(
+                None if auto_latest else metadata_diversity_recheck_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Persona evidence pack requirements failed: {exc}"
+        ) from exc
+
+    report = files.report
+    table = Table(title="Persona-Specific Evidence Pack Requirements")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Persona Evidence Pack Run ID", report.persona_evidence_pack_run_id),
+        (
+            "Metadata Diversity Recheck Run ID",
+            report.metadata_diversity_recheck_run_id,
+        ),
+        ("Work Order ID", report.work_order_id),
+        ("Gatekeeper Decision", "hold"),
+        ("Progression Allowed", "false"),
+        ("Persona Count", str(len(report.persona_checklists))),
+        ("Requirement Rows", str(len(report.persona_requirement_matrix))),
+        ("Recommended Next Work Order", report.recommended_next_work_order),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.persona_evidence_pack_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        f"persona_evidence_pack_run_id={report.persona_evidence_pack_run_id}"
+    )
+    console.print(
+        "metadata_diversity_recheck_run_id="
+        f"{report.metadata_diversity_recheck_run_id}"
+    )
+    console.print("gatekeeper_decision=hold")
+    console.print("progression_allowed=false")
+    console.print(f"persona_count={len(report.persona_checklists)}")
+    console.print(f"requirement_rows={len(report.persona_requirement_matrix)}")
+    console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
+    console.print(f"status={report.persona_evidence_pack_status}")
 
 
 @app.command("run-historical-readiness-batch")

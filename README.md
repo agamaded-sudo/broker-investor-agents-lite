@@ -1301,6 +1301,24 @@ original backtest, validate a strategy, rank tickers, create recommendations,
 allocation instructions, rebalancing instructions, trade signals, or execution
 instructions.
 
+### Persona-Specific Evidence Pack Requirements
+
+The persona-specific evidence pack requirements execute BO-006 from the
+Backoffice repair queue. It converts the current Gatekeeper HOLD state and
+repair findings into distinct evidence checklists for Buffett, Munger, Fisher,
+Lynch, and Bogle personas without asking any persona for a decision.
+
+```powershell
+python -m broker_agents.cli build-persona-evidence-pack-requirements --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli build-persona-evidence-pack-requirements --metadata-diversity-recheck-run-id 20260617_192720 --outputs-root data/outputs
+```
+
+This is evidence packaging only. It preserves persona independence and does not
+rerun investor agents, override the Gatekeeper, validate a strategy, rank
+companies or personas, create recommendations, allocation instructions,
+rebalancing instructions, trade signals, or execution instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
