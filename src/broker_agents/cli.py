@@ -53,6 +53,9 @@ from broker_agents.backtesting.walk_forward_repair_plan import (
 from broker_agents.backtesting.delayed_anchor_repair import (
     write_delayed_anchor_repair_report,
 )
+from broker_agents.backtesting.metadata_diversity_recheck import (
+    write_metadata_diversity_recheck_report,
+)
 from broker_agents.backtesting.evidence_decision_gate import (
     find_latest_evidence_gate_backtest,
     write_evidence_decision_gate_report,
@@ -4225,6 +4228,97 @@ def build_delayed_anchor_repair_command(
     )
     console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
     console.print(f"status={report.delayed_anchor_repair_status}")
+
+
+@app.command("build-metadata-diversity-recheck")
+def build_metadata_diversity_recheck_command(
+    delayed_anchor_repair_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--delayed-anchor-repair-run-id",
+            help="Delayed anchor repair run used to execute BO-005.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest delayed anchor repair manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing delayed anchor repair and backtest outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute BO-005 metadata diversity recheck."""
+    if bool(delayed_anchor_repair_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --delayed-anchor-repair-run-id or "
+            "--auto-latest."
+        )
+    try:
+        files = write_metadata_diversity_recheck_report(
+            outputs_root=outputs_root,
+            delayed_anchor_repair_run_id=(
+                None if auto_latest else delayed_anchor_repair_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Metadata diversity recheck failed: {exc}"
+        ) from exc
+
+    report = files.report
+    summary = report.metadata_matrix_summary
+    classification = report.concentration_classification
+    table = Table(title="Metadata Diversity Recheck")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        (
+            "Metadata Diversity Recheck Run ID",
+            report.metadata_diversity_recheck_run_id,
+        ),
+        ("Delayed Anchor Repair Run ID", report.delayed_anchor_repair_run_id),
+        ("Work Order ID", report.work_order_id),
+        ("Backtest Run ID", report.backtest_run_id),
+        ("Ticker Count", str(summary["ticker_count"])),
+        ("Sector Count", str(summary["sector_count"])),
+        ("Category Count", str(summary["category_count"])),
+        ("Universe Group Count", str(summary["universe_group_count"])),
+        ("Metadata Diversity Status", classification["metadata_diversity_status"]),
+        ("Main Metadata Finding", classification["main_metadata_finding"]),
+        ("Recommended Next Work Order", report.recommended_next_work_order),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.metadata_diversity_recheck_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        "metadata_diversity_recheck_run_id="
+        f"{report.metadata_diversity_recheck_run_id}"
+    )
+    console.print(
+        f"delayed_anchor_repair_run_id={report.delayed_anchor_repair_run_id}"
+    )
+    console.print(f"ticker_count={summary['ticker_count']}")
+    console.print(f"sector_count={summary['sector_count']}")
+    console.print(f"category_count={summary['category_count']}")
+    console.print(
+        f"metadata_diversity_status={classification['metadata_diversity_status']}"
+    )
+    console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
+    console.print(f"status={report.metadata_diversity_recheck_status}")
 
 
 @app.command("run-historical-readiness-batch")

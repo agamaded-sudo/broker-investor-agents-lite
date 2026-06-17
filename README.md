@@ -1283,6 +1283,24 @@ original backtest, validate a strategy, rank tickers, create recommendations,
 allocation instructions, rebalancing instructions, trade signals, or execution
 instructions.
 
+### Metadata Diversity Recheck
+
+The metadata diversity recheck executes BO-005 from the Backoffice repair
+queue. It builds a ticker-level metadata matrix and checks concentration by
+sector, category, universe group, cohort, investor-interest labels, source
+verification status, and promotion bucket metadata where available.
+
+```powershell
+python -m broker_agents.cli build-metadata-diversity-recheck --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli build-metadata-diversity-recheck --delayed-anchor-repair-run-id 20260616_191450 --outputs-root data/outputs
+```
+
+This is evidence repair only. It does not rerun investor agents, change the
+original backtest, validate a strategy, rank tickers, create recommendations,
+allocation instructions, rebalancing instructions, trade signals, or execution
+instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
