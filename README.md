@@ -1319,6 +1319,24 @@ rerun investor agents, override the Gatekeeper, validate a strategy, rank
 companies or personas, create recommendations, allocation instructions,
 rebalancing instructions, trade signals, or execution instructions.
 
+### Bogle Benchmark / Index Comparison Pack
+
+The Bogle benchmark/index comparison pack executes BO-007 from the Backoffice
+repair queue. It prepares Bogle-specific evidence requirements around
+benchmark-relative performance, broad-index framing, concentration risk,
+clean-anchor versus delayed-anchor views, current-core versus expanded-cohort
+views, and walk-forward instability.
+
+```powershell
+python -m broker_agents.cli build-bogle-benchmark-index-pack --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli build-bogle-benchmark-index-pack --persona-evidence-pack-run-id 20260617_200326 --outputs-root data/outputs
+```
+
+This is evidence packaging only. It does not ask Bogle for a decision, recommend
+an index or stock, rank securities, create allocation instructions, create
+rebalancing instructions, create trade signals, or override the Gatekeeper HOLD.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision

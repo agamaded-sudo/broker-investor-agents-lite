@@ -113,6 +113,9 @@ from broker_agents.historical.as_of_context import build_as_of_context
 from broker_agents.personas.persona_evidence_pack_requirements import (
     write_persona_evidence_pack_requirements_report,
 )
+from broker_agents.personas.bogle_benchmark_index_pack import (
+    write_bogle_benchmark_index_pack_report,
+)
 from broker_agents.historical.financials_as_of_contract import (
     build_financials_as_of_contract,
 )
@@ -4406,6 +4409,89 @@ def build_persona_evidence_pack_requirements_command(
     console.print(f"requirement_rows={len(report.persona_requirement_matrix)}")
     console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
     console.print(f"status={report.persona_evidence_pack_status}")
+
+
+@app.command("build-bogle-benchmark-index-pack")
+def build_bogle_benchmark_index_pack_command(
+    persona_evidence_pack_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--persona-evidence-pack-run-id",
+            help="Persona evidence pack run used to execute BO-007.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest persona evidence pack manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing persona evidence pack and repair outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute BO-007 Bogle benchmark/index comparison pack."""
+    if bool(persona_evidence_pack_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --persona-evidence-pack-run-id or "
+            "--auto-latest."
+        )
+    try:
+        files = write_bogle_benchmark_index_pack_report(
+            outputs_root=outputs_root,
+            persona_evidence_pack_run_id=(
+                None if auto_latest else persona_evidence_pack_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Bogle benchmark/index pack failed: {exc}"
+        ) from exc
+
+    report = files.report
+    summary = report.bogle_benchmark_summary
+    table = Table(title="Bogle Benchmark / Index Comparison Pack")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Bogle Benchmark Pack Run ID", report.bogle_benchmark_pack_run_id),
+        ("Persona Evidence Pack Run ID", report.persona_evidence_pack_run_id),
+        ("Work Order ID", report.work_order_id),
+        ("Gatekeeper Decision", summary["gatekeeper_decision"]),
+        ("Progression Allowed", str(summary["progression_allowed"]).lower()),
+        ("Bogle Review Allowed", str(summary["bogle_review_allowed"]).lower()),
+        ("Index Comparison Rows", str(len(report.index_comparison_matrix))),
+        ("Concentration Risk Rows", str(len(report.concentration_risk_matrix))),
+        ("Recommended Next Work Order", report.recommended_next_work_order),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.bogle_benchmark_pack_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        f"bogle_benchmark_pack_run_id={report.bogle_benchmark_pack_run_id}"
+    )
+    console.print(
+        f"persona_evidence_pack_run_id={report.persona_evidence_pack_run_id}"
+    )
+    console.print(f"gatekeeper_decision={summary['gatekeeper_decision']}")
+    console.print(f"progression_allowed={str(summary['progression_allowed']).lower()}")
+    console.print(f"bogle_review_allowed={str(summary['bogle_review_allowed']).lower()}")
+    console.print(f"index_comparison_rows={len(report.index_comparison_matrix)}")
+    console.print(f"concentration_risk_rows={len(report.concentration_risk_matrix)}")
+    console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
+    console.print(f"status={report.bogle_benchmark_pack_status}")
 
 
 @app.command("run-historical-readiness-batch")
