@@ -1596,6 +1596,23 @@ Gatekeeper decision, run investor agents, allow persona review, recommend a
 company, rank companies, create allocation instructions, create rebalancing
 instructions, create trade signals, or create execution instructions.
 
+### Gatekeeper Stabilization Re-Review
+
+The Gatekeeper Stabilization Re-Review executes Task 130. It consumes the Task
+129 Gatekeeper 123 vs Stabilized Evidence Comparison and performs a conservative
+Gatekeeper stabilization re-review for Phase 17 closure.
+
+```powershell
+python -m broker_agents.cli run-gatekeeper-stabilization-re-review --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli run-gatekeeper-stabilization-re-review --gatekeeper-stabilized-comparison-run-id 20260618_210843 --outputs-root data/outputs
+```
+
+This is research-only governance re-review. It does not run investor agents,
+run actual persona review, recommend a company, rank companies, create
+allocation instructions, create rebalancing instructions, create trade signals,
+or create execution instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
