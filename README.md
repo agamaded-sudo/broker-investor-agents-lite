@@ -1558,6 +1558,24 @@ investor agents, allow persona review, recommend a company, rank companies,
 create allocation instructions, create rebalancing instructions, create trade
 signals, or create execution instructions.
 
+### Stabilization Validation Trial
+
+The stabilization validation trial executes Task 128. It consumes Task 127
+targeted evidence repairs, validates repair outputs and residual uncertainty,
+and prepares the Task 129 handoff for comparing the Task 123 Gatekeeper baseline
+against stabilized evidence.
+
+```powershell
+python -m broker_agents.cli run-stabilization-validation-trial --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli run-stabilization-validation-trial --targeted-repair-run-id 20260618_190207 --outputs-root data/outputs
+```
+
+This is research-only validation. It does not rerun Gatekeeper, run investor
+agents, allow persona review, recommend a company, rank companies, create
+allocation instructions, create rebalancing instructions, create trade signals,
+or create execution instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision

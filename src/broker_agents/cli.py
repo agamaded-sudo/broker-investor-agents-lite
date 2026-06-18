@@ -58,6 +58,9 @@ from broker_agents.stabilization.residual_blocker_work_orders import (
 from broker_agents.stabilization.targeted_evidence_repairs import (
     write_targeted_evidence_repairs_report,
 )
+from broker_agents.stabilization.stabilization_validation_trial import (
+    write_stabilization_validation_trial_report,
+)
 from broker_agents.agents.bogle_agent import BogleAgent
 from broker_agents.agents.buffett_agent import BuffettAgent
 from broker_agents.agents.fisher_agent import FisherAgent
@@ -5641,6 +5644,102 @@ def execute_targeted_evidence_repairs_command(
     console.print(f"work_orders_blocked={summary['work_orders_blocked']}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.repair_execution_status}")
+
+
+@app.command("run-stabilization-validation-trial")
+def run_stabilization_validation_trial_command(
+    targeted_repair_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--targeted-repair-run-id",
+            help="Task 127 targeted repair run used for Task 128 validation.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest targeted evidence repairs manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing targeted repair and validation outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute Task 128 stabilization validation trial."""
+    if bool(targeted_repair_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --targeted-repair-run-id or --auto-latest."
+        )
+    try:
+        files = write_stabilization_validation_trial_report(
+            outputs_root=outputs_root,
+            targeted_repair_run_id=(None if auto_latest else targeted_repair_run_id),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Stabilization validation trial failed: {exc}"
+        ) from exc
+
+    report = files.report
+    summary = report.validation_trial_summary
+    table = Table(title="Stabilization Validation Trial")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Stabilization Validation Run ID", report.stabilization_validation_run_id),
+        ("Targeted Repair Run ID", report.targeted_repair_run_id),
+        ("Current Phase", "17 - Targeted Evidence Stabilization Layer"),
+        ("Current Task", summary["current_task_name"]),
+        ("Prior Gatekeeper Outcome", summary["prior_gatekeeper_outcome"]),
+        ("Progression Allowed", str(summary["progression_allowed"]).lower()),
+        ("Persona Reviews Allowed", str(summary["persona_reviews_allowed"]).lower()),
+        ("Work Orders Total", str(summary["work_orders_total"])),
+        ("Work Orders Validated", str(summary["work_orders_validated"])),
+        (
+            "Work Orders Partially Validated",
+            str(summary["work_orders_partially_validated"]),
+        ),
+        ("Work Orders Failed", str(summary["work_orders_failed"])),
+        ("Work Orders Not Testable", str(summary["work_orders_not_testable"])),
+        ("Recommended Next Task", report.recommended_next_task),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.validation_trial_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        f"stabilization_validation_run_id={report.stabilization_validation_run_id}"
+    )
+    console.print(f"targeted_repair_run_id={report.targeted_repair_run_id}")
+    console.print("current_phase=17 - Targeted Evidence Stabilization Layer")
+    console.print(f"current_task={summary['current_task_name']}")
+    console.print(f"prior_gatekeeper_outcome={summary['prior_gatekeeper_outcome']}")
+    console.print(
+        f"progression_allowed={str(summary['progression_allowed']).lower()}"
+    )
+    console.print(
+        f"persona_reviews_allowed={str(summary['persona_reviews_allowed']).lower()}"
+    )
+    console.print(f"work_orders_total={summary['work_orders_total']}")
+    console.print(f"work_orders_validated={summary['work_orders_validated']}")
+    console.print(
+        f"work_orders_partially_validated={summary['work_orders_partially_validated']}"
+    )
+    console.print(f"work_orders_failed={summary['work_orders_failed']}")
+    console.print(f"work_orders_not_testable={summary['work_orders_not_testable']}")
+    console.print(f"recommended_next_task={report.recommended_next_task}")
+    console.print(f"status={report.validation_trial_status}")
 
 
 @app.command("run-historical-readiness-batch")
