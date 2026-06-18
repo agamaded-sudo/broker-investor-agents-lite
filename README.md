@@ -1337,6 +1337,24 @@ This is evidence packaging only. It does not ask Bogle for a decision, recommend
 an index or stock, rank securities, create allocation instructions, create
 rebalancing instructions, create trade signals, or override the Gatekeeper HOLD.
 
+### Fisher Qualitative Growth Evidence Pack
+
+The Fisher qualitative growth evidence pack executes BO-008 from the Backoffice
+repair queue. It prepares Fisher-specific qualitative growth requirements for
+product pipeline, innovation, sales organization, market expansion, management
+depth, customer and competitive proxy evidence, and durable growth runway.
+
+```powershell
+python -m broker_agents.cli build-fisher-qualitative-growth-pack --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli build-fisher-qualitative-growth-pack --bogle-benchmark-pack-run-id 20260617_204227 --outputs-root data/outputs
+```
+
+This is evidence packaging only. It does not ask Fisher for a decision, rerun
+investor agents, recommend a company, rank companies, create allocation
+instructions, create rebalancing instructions, create trade signals, or override
+the Gatekeeper HOLD.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision

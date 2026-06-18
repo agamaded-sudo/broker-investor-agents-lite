@@ -116,6 +116,9 @@ from broker_agents.personas.persona_evidence_pack_requirements import (
 from broker_agents.personas.bogle_benchmark_index_pack import (
     write_bogle_benchmark_index_pack_report,
 )
+from broker_agents.personas.fisher_qualitative_growth_pack import (
+    write_fisher_qualitative_growth_pack_report,
+)
 from broker_agents.historical.financials_as_of_contract import (
     build_financials_as_of_contract,
 )
@@ -4492,6 +4495,97 @@ def build_bogle_benchmark_index_pack_command(
     console.print(f"concentration_risk_rows={len(report.concentration_risk_matrix)}")
     console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
     console.print(f"status={report.bogle_benchmark_pack_status}")
+
+
+@app.command("build-fisher-qualitative-growth-pack")
+def build_fisher_qualitative_growth_pack_command(
+    bogle_benchmark_pack_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--bogle-benchmark-pack-run-id",
+            help="Bogle benchmark pack run used to execute BO-008.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest Bogle benchmark pack manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing Bogle benchmark pack and repair outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute BO-008 Fisher qualitative growth evidence pack."""
+    if bool(bogle_benchmark_pack_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --bogle-benchmark-pack-run-id or "
+            "--auto-latest."
+        )
+    try:
+        files = write_fisher_qualitative_growth_pack_report(
+            outputs_root=outputs_root,
+            bogle_benchmark_pack_run_id=(
+                None if auto_latest else bogle_benchmark_pack_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Fisher qualitative growth pack failed: {exc}"
+        ) from exc
+
+    report = files.report
+    summary = report.fisher_growth_summary
+    table = Table(title="Fisher Qualitative Growth Evidence Pack")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Fisher Growth Pack Run ID", report.fisher_growth_pack_run_id),
+        ("Bogle Benchmark Pack Run ID", report.bogle_benchmark_pack_run_id),
+        ("Work Order ID", report.work_order_id),
+        ("Gatekeeper Decision", summary["gatekeeper_decision"]),
+        ("Progression Allowed", str(summary["progression_allowed"]).lower()),
+        ("Fisher Review Allowed", str(summary["fisher_review_allowed"]).lower()),
+        (
+            "Qualitative Evidence Rows",
+            str(len(report.fisher_qualitative_evidence_matrix)),
+        ),
+        (
+            "Scuttlebutt Proxy Rows",
+            str(len(report.fisher_scuttlebutt_proxy_matrix)),
+        ),
+        ("Growth Risk Rows", str(len(report.fisher_growth_risk_matrix))),
+        ("Recommended Next Work Order", report.recommended_next_work_order),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.fisher_growth_pack_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(f"fisher_growth_pack_run_id={report.fisher_growth_pack_run_id}")
+    console.print(f"bogle_benchmark_pack_run_id={report.bogle_benchmark_pack_run_id}")
+    console.print(f"gatekeeper_decision={summary['gatekeeper_decision']}")
+    console.print(f"progression_allowed={str(summary['progression_allowed']).lower()}")
+    console.print(f"fisher_review_allowed={str(summary['fisher_review_allowed']).lower()}")
+    console.print(
+        f"qualitative_evidence_rows={len(report.fisher_qualitative_evidence_matrix)}"
+    )
+    console.print(
+        f"scuttlebutt_proxy_rows={len(report.fisher_scuttlebutt_proxy_matrix)}"
+    )
+    console.print(f"growth_risk_rows={len(report.fisher_growth_risk_matrix)}")
+    console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
+    console.print(f"status={report.fisher_growth_pack_status}")
 
 
 @app.command("run-historical-readiness-batch")
