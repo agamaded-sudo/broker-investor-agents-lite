@@ -1412,6 +1412,24 @@ instructions, create rebalancing instructions, create trade signals, or create
 execution instructions. Task 119 satisfies only the re-run/retest planning
 prerequisite; it leaves Gatekeeper re-evaluation for a later task.
 
+### Re-Run Input Package
+
+The re-run input package executes Task 120 in Phase 16. It converts the
+re-run/re-gate plan into a controlled input package for Task 121, including the
+universe matrix, date matrix, control matrix, artifact source map, Task 121
+execution manifest, and validation checks.
+
+```powershell
+python -m broker_agents.cli build-re-run-input-package --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli build-re-run-input-package --re-run-re-gate-plan-run-id 20260618_083143 --outputs-root data/outputs
+```
+
+This is input packaging only. It does not execute the re-run, rerun Gatekeeper,
+allow persona review, recommend a company, rank companies, create allocation
+instructions, create rebalancing instructions, create trade signals, or create
+execution instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
