@@ -28,6 +28,9 @@ from broker_agents.backoffice.portfolio_context import (
     load_portfolio_context,
     merge_portfolio_context_into_pack,
 )
+from broker_agents.backoffice.research_audit_trail_bundle import (
+    write_research_audit_trail_bundle_report,
+)
 from broker_agents.agents.bogle_agent import BogleAgent
 from broker_agents.agents.buffett_agent import BuffettAgent
 from broker_agents.agents.fisher_agent import FisherAgent
@@ -118,6 +121,9 @@ from broker_agents.personas.bogle_benchmark_index_pack import (
 )
 from broker_agents.personas.fisher_qualitative_growth_pack import (
     write_fisher_qualitative_growth_pack_report,
+)
+from broker_agents.personas.buffett_munger_quality_risk_pack import (
+    write_buffett_munger_quality_risk_pack_report,
 )
 from broker_agents.historical.financials_as_of_contract import (
     build_financials_as_of_contract,
@@ -4586,6 +4592,177 @@ def build_fisher_qualitative_growth_pack_command(
     console.print(f"growth_risk_rows={len(report.fisher_growth_risk_matrix)}")
     console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
     console.print(f"status={report.fisher_growth_pack_status}")
+
+
+@app.command("build-buffett-munger-quality-risk-pack")
+def build_buffett_munger_quality_risk_pack_command(
+    fisher_growth_pack_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--fisher-growth-pack-run-id",
+            help="Fisher growth pack run used to execute BO-009.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest Fisher growth pack manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing Fisher growth pack and repair outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute BO-009 Buffett/Munger quality and risk pack."""
+    if bool(fisher_growth_pack_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --fisher-growth-pack-run-id or "
+            "--auto-latest."
+        )
+    try:
+        files = write_buffett_munger_quality_risk_pack_report(
+            outputs_root=outputs_root,
+            fisher_growth_pack_run_id=(
+                None if auto_latest else fisher_growth_pack_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Buffett/Munger quality and risk pack failed: {exc}"
+        ) from exc
+
+    report = files.report
+    buffett = report.buffett_quality_summary
+    munger = report.munger_quality_summary
+    table = Table(title="Buffett/Munger Quality and Risk Pack")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Buffett/Munger Pack Run ID", report.buffett_munger_pack_run_id),
+        ("Fisher Growth Pack Run ID", report.fisher_growth_pack_run_id),
+        ("Work Order ID", report.work_order_id),
+        ("Gatekeeper Decision", buffett["gatekeeper_decision"]),
+        ("Progression Allowed", str(buffett["progression_allowed"]).lower()),
+        ("Buffett Review Allowed", str(buffett["buffett_review_allowed"]).lower()),
+        ("Munger Review Allowed", str(munger["munger_review_allowed"]).lower()),
+        ("Quality Evidence Rows", str(len(report.quality_evidence_matrix))),
+        ("Munger Risk Rows", str(len(report.munger_inversion_risk_matrix))),
+        ("Recommended Next Work Order", report.recommended_next_work_order),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.buffett_munger_pack_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        f"buffett_munger_pack_run_id={report.buffett_munger_pack_run_id}"
+    )
+    console.print(f"fisher_growth_pack_run_id={report.fisher_growth_pack_run_id}")
+    console.print(f"gatekeeper_decision={buffett['gatekeeper_decision']}")
+    console.print(f"progression_allowed={str(buffett['progression_allowed']).lower()}")
+    console.print(
+        f"buffett_review_allowed={str(buffett['buffett_review_allowed']).lower()}"
+    )
+    console.print(
+        f"munger_review_allowed={str(munger['munger_review_allowed']).lower()}"
+    )
+    console.print(f"quality_evidence_rows={len(report.quality_evidence_matrix)}")
+    console.print(f"munger_risk_rows={len(report.munger_inversion_risk_matrix)}")
+    console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
+    console.print(f"status={report.buffett_munger_pack_status}")
+
+
+@app.command("build-research-audit-trail-bundle")
+def build_research_audit_trail_bundle_command(
+    buffett_munger_pack_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--buffett-munger-pack-run-id",
+            help="Buffett/Munger pack run used to execute BO-010.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest Buffett/Munger pack manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing Buffett/Munger pack and repair outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute BO-010 research audit trail bundle."""
+    if bool(buffett_munger_pack_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --buffett-munger-pack-run-id or "
+            "--auto-latest."
+        )
+    try:
+        files = write_research_audit_trail_bundle_report(
+            outputs_root=outputs_root,
+            buffett_munger_pack_run_id=(
+                None if auto_latest else buffett_munger_pack_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Research audit trail bundle failed: {exc}"
+        ) from exc
+
+    report = files.report
+    phase = report.phase_closure_summary
+    table = Table(title="Research Audit Trail Bundle")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Research Audit Trail Run ID", report.research_audit_trail_run_id),
+        ("Buffett/Munger Pack Run ID", report.buffett_munger_pack_run_id),
+        ("Work Order ID", report.work_order_id),
+        ("Gatekeeper Decision", phase["final_gatekeeper_decision"]),
+        ("Progression Allowed", str(phase["progression_allowed"]).lower()),
+        ("Current Phase", phase["current_phase_name"]),
+        ("Phase Status", phase["phase_status"]),
+        ("Completed Work Orders", str(phase["completed_work_orders"])),
+        ("Recommended Next Phase", report.recommended_next_phase),
+        ("Recommended Next Task", report.recommended_next_task),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.research_audit_trail_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        f"research_audit_trail_run_id={report.research_audit_trail_run_id}"
+    )
+    console.print(f"buffett_munger_pack_run_id={report.buffett_munger_pack_run_id}")
+    console.print(f"gatekeeper_decision={phase['final_gatekeeper_decision']}")
+    console.print(f"progression_allowed={str(phase['progression_allowed']).lower()}")
+    console.print(f"current_phase={phase['current_phase_name']}")
+    console.print(f"phase_status={phase['phase_status']}")
+    console.print(f"completed_work_orders={phase['completed_work_orders']}")
+    console.print(f"recommended_next_phase={report.recommended_next_phase}")
+    console.print(f"recommended_next_task={report.recommended_next_task}")
+    console.print(f"status={report.research_audit_trail_status}")
 
 
 @app.command("run-historical-readiness-batch")

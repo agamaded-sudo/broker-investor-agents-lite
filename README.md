@@ -1355,6 +1355,44 @@ investor agents, recommend a company, rank companies, create allocation
 instructions, create rebalancing instructions, create trade signals, or override
 the Gatekeeper HOLD.
 
+### Buffett/Munger Quality and Risk Pack
+
+The Buffett/Munger quality and risk pack executes BO-009 from the Backoffice
+repair queue. It prepares Buffett-specific quality, owner earnings, valuation
+assumption, margin-of-safety discussion, and capital allocation evidence
+requirements while separately preparing Munger-specific moat, incentives,
+inversion, hidden-risk, and failure-mode evidence requirements.
+
+```powershell
+python -m broker_agents.cli build-buffett-munger-quality-risk-pack --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli build-buffett-munger-quality-risk-pack --fisher-growth-pack-run-id 20260618_063909 --outputs-root data/outputs
+```
+
+This is evidence packaging only. It does not ask Buffett or Munger for
+decisions, compute intrinsic values, create price targets, recommend a company,
+rank companies, create allocation instructions, create rebalancing instructions,
+create trade signals, or override the Gatekeeper HOLD.
+
+### Research Audit Trail Bundle
+
+The research audit trail bundle executes BO-010 from the Backoffice repair
+queue. It closes Phase 15, the Backoffice Repair Execution Layer, by linking the
+Gatekeeper HOLD decision, Backoffice evidence issues, BO-001 through BO-010
+repair work orders, generated report paths, safety boundaries, and remaining
+re-gate prerequisites.
+
+```powershell
+python -m broker_agents.cli build-research-audit-trail-bundle --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli build-research-audit-trail-bundle --buffett-munger-pack-run-id 20260618_065614 --outputs-root data/outputs
+```
+
+This is audit and documentation only. It does not rerun Gatekeeper, allow
+persona review, recommend a company, rank companies, create allocation
+instructions, create rebalancing instructions, create trade signals, or override
+the Gatekeeper HOLD.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
