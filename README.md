@@ -1430,6 +1430,24 @@ allow persona review, recommend a company, rank companies, create allocation
 instructions, create rebalancing instructions, create trade signals, or create
 execution instructions.
 
+### Controlled Re-Run Trial
+
+The controlled re-run trial executes Task 121 in Phase 16. It consumes the Task
+120 input package and reports local scenario results, control diagnostics,
+limitations, and the Task 122 handoff manifest for future pre-repair versus
+post-repair comparison.
+
+```powershell
+python -m broker_agents.cli execute-controlled-re-run-trial --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli execute-controlled-re-run-trial --re-run-input-package-run-id 20260618_085936 --outputs-root data/outputs
+```
+
+This is a controlled research re-run only. It does not rerun Gatekeeper, allow
+persona review, recommend a company, rank companies, create allocation
+instructions, create rebalancing instructions, create trade signals, or create
+execution instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision

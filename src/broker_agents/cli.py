@@ -37,6 +37,9 @@ from broker_agents.regate.re_run_re_gate_plan import (
 from broker_agents.regate.re_run_input_package import (
     write_re_run_input_package_report,
 )
+from broker_agents.regate.controlled_re_run_trial import (
+    write_controlled_re_run_trial_report,
+)
 from broker_agents.agents.bogle_agent import BogleAgent
 from broker_agents.agents.buffett_agent import BuffettAgent
 from broker_agents.agents.fisher_agent import FisherAgent
@@ -4953,6 +4956,100 @@ def build_re_run_input_package_command(
     console.print(f"control_rows={len(report.re_run_control_matrix)}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.package_status}")
+
+
+@app.command("execute-controlled-re-run-trial")
+def execute_controlled_re_run_trial_command(
+    re_run_input_package_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--re-run-input-package-run-id",
+            help="Task 120 re-run input package used to execute Task 121.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest re-run input package manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing re-run input package and controlled trial outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute Task 121 controlled local re-run without rerunning Gatekeeper."""
+    if bool(re_run_input_package_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --re-run-input-package-run-id or "
+            "--auto-latest."
+        )
+    try:
+        files = write_controlled_re_run_trial_report(
+            outputs_root=outputs_root,
+            re_run_input_package_run_id=(
+                None if auto_latest else re_run_input_package_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(f"Controlled re-run trial failed: {exc}") from exc
+
+    report = files.report
+    summary = report.controlled_re_run_summary
+    table = Table(title="Controlled Re-Run Trial")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Controlled Re-Run Trial Run ID", report.controlled_re_run_trial_run_id),
+        ("Re-Run Input Package Run ID", report.re_run_input_package_run_id),
+        ("Current Phase", "16 - Re-Run & Re-Gate Layer"),
+        ("Current Task", summary["current_task_name"]),
+        ("Gatekeeper Decision", summary["gatekeeper_decision"]),
+        ("Progression Allowed", str(summary["progression_allowed"]).lower()),
+        (
+            "Persona Reviews Allowed",
+            str(summary["persona_reviews_allowed"]).lower(),
+        ),
+        ("Scenario Rows", str(len(report.scenario_execution_plan))),
+        ("Result Rows", str(len(report.scenario_results_matrix))),
+        ("Control Rows", str(len(report.control_diagnostics_matrix))),
+        ("Recommended Next Task", report.recommended_next_task),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.controlled_re_run_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        f"controlled_re_run_trial_run_id={report.controlled_re_run_trial_run_id}"
+    )
+    console.print(
+        f"re_run_input_package_run_id={report.re_run_input_package_run_id}"
+    )
+    console.print("current_phase=16 - Re-Run & Re-Gate Layer")
+    console.print(f"current_task={summary['current_task_name']}")
+    console.print(f"gatekeeper_decision={summary['gatekeeper_decision']}")
+    console.print(
+        f"progression_allowed={str(summary['progression_allowed']).lower()}"
+    )
+    console.print(
+        "persona_reviews_allowed="
+        f"{str(summary['persona_reviews_allowed']).lower()}"
+    )
+    console.print(f"scenario_rows={len(report.scenario_execution_plan)}")
+    console.print(f"result_rows={len(report.scenario_results_matrix)}")
+    console.print(f"control_rows={len(report.control_diagnostics_matrix)}")
+    console.print(f"recommended_next_task={report.recommended_next_task}")
+    console.print(f"status={report.controlled_re_run_status}")
 
 
 @app.command("run-historical-readiness-batch")
