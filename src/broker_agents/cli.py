@@ -52,6 +52,9 @@ from broker_agents.regate.phase_16_closure import (
 from broker_agents.stabilization.targeted_evidence_stabilization_plan import (
     write_targeted_evidence_stabilization_plan_report,
 )
+from broker_agents.stabilization.residual_blocker_work_orders import (
+    write_residual_blocker_work_order_report,
+)
 from broker_agents.agents.bogle_agent import BogleAgent
 from broker_agents.agents.buffett_agent import BuffettAgent
 from broker_agents.agents.fisher_agent import FisherAgent
@@ -5450,6 +5453,95 @@ def define_targeted_evidence_stabilization_plan_command(
     console.print(f"roadmap_rows={len(report.phase_17_execution_roadmap)}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.plan_status}")
+
+
+@app.command("build-residual-blocker-work-orders")
+def build_residual_blocker_work_orders_command(
+    stabilization_plan_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--stabilization-plan-run-id",
+            help="Task 125 stabilization plan used to build residual work orders.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest targeted evidence stabilization plan manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing stabilization plans and work-order outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute Task 126 residual blocker work-order packaging."""
+    if bool(stabilization_plan_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --stabilization-plan-run-id or --auto-latest."
+        )
+    try:
+        files = write_residual_blocker_work_order_report(
+            outputs_root=outputs_root,
+            stabilization_plan_run_id=(
+                None if auto_latest else stabilization_plan_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Residual blocker work-order packaging failed: {exc}"
+        ) from exc
+
+    report = files.report
+    summary = report.work_order_package_summary
+    table = Table(title="Residual Blocker Work Orders")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Residual Work Order Package Run ID", report.residual_work_order_package_run_id),
+        ("Stabilization Plan Run ID", report.stabilization_plan_run_id),
+        ("Current Phase", "17 - Targeted Evidence Stabilization Layer"),
+        ("Current Task", summary["current_task_name"]),
+        ("Prior Gatekeeper Outcome", summary["prior_gatekeeper_outcome"]),
+        ("Progression Allowed", str(summary["progression_allowed"]).lower()),
+        ("Persona Reviews Allowed", str(summary["persona_reviews_allowed"]).lower()),
+        ("Work Order Rows", str(len(report.residual_blocker_work_order_matrix))),
+        ("Dependency Rows", str(len(report.work_order_dependency_matrix))),
+        ("Input Rows", str(len(report.work_order_input_requirements_matrix))),
+        ("Recommended Next Task", report.recommended_next_task),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.package_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        f"residual_work_order_package_run_id={report.residual_work_order_package_run_id}"
+    )
+    console.print(f"stabilization_plan_run_id={report.stabilization_plan_run_id}")
+    console.print("current_phase=17 - Targeted Evidence Stabilization Layer")
+    console.print(f"current_task={summary['current_task_name']}")
+    console.print(f"prior_gatekeeper_outcome={summary['prior_gatekeeper_outcome']}")
+    console.print(
+        f"progression_allowed={str(summary['progression_allowed']).lower()}"
+    )
+    console.print(
+        f"persona_reviews_allowed={str(summary['persona_reviews_allowed']).lower()}"
+    )
+    console.print(f"work_order_rows={len(report.residual_blocker_work_order_matrix)}")
+    console.print(f"dependency_rows={len(report.work_order_dependency_matrix)}")
+    console.print(f"input_rows={len(report.work_order_input_requirements_matrix)}")
+    console.print(f"recommended_next_task={report.recommended_next_task}")
+    console.print(f"status={report.package_status}")
 
 
 @app.command("run-historical-readiness-batch")

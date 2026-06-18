@@ -1522,6 +1522,24 @@ run investor agents, allow persona review, recommend a company, rank companies,
 create allocation instructions, create rebalancing instructions, create trade
 signals, or create execution instructions.
 
+### Residual Blocker Work Orders
+
+The residual blocker work-order package executes Task 126. It consumes the
+Task 125 targeted evidence stabilization plan, converts residual blockers into
+work orders, defines dependencies, input requirements, success criteria, and
+the execution sequence, and prepares the Task 127 execution manifest.
+
+```powershell
+python -m broker_agents.cli build-residual-blocker-work-orders --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli build-residual-blocker-work-orders --stabilization-plan-run-id 20260618_163127 --outputs-root data/outputs
+```
+
+This is research-only work-order packaging. It does not execute repairs, rerun
+Gatekeeper, run investor agents, allow persona review, recommend a company,
+rank companies, create allocation instructions, create rebalancing
+instructions, create trade signals, or create execution instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
