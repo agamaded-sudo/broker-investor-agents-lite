@@ -40,6 +40,9 @@ from broker_agents.regate.re_run_input_package import (
 from broker_agents.regate.controlled_re_run_trial import (
     write_controlled_re_run_trial_report,
 )
+from broker_agents.regate.pre_post_repair_comparison import (
+    write_pre_post_repair_comparison_report,
+)
 from broker_agents.agents.bogle_agent import BogleAgent
 from broker_agents.agents.buffett_agent import BuffettAgent
 from broker_agents.agents.fisher_agent import FisherAgent
@@ -5050,6 +5053,106 @@ def execute_controlled_re_run_trial_command(
     console.print(f"control_rows={len(report.control_diagnostics_matrix)}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.controlled_re_run_status}")
+
+
+@app.command("compare-pre-post-repair-evidence")
+def compare_pre_post_repair_evidence_command(
+    controlled_re_run_trial_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--controlled-re-run-trial-run-id",
+            help="Task 121 controlled re-run trial used to execute Task 122.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest controlled re-run trial manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing controlled re-run and comparison outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute Task 122 pre/post repair comparison without rerunning Gatekeeper."""
+    if bool(controlled_re_run_trial_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --controlled-re-run-trial-run-id or "
+            "--auto-latest."
+        )
+    try:
+        files = write_pre_post_repair_comparison_report(
+            outputs_root=outputs_root,
+            controlled_re_run_trial_run_id=(
+                None if auto_latest else controlled_re_run_trial_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Pre/post repair evidence comparison failed: {exc}"
+        ) from exc
+
+    report = files.report
+    summary = report.comparison_summary
+    table = Table(title="Pre/Post Repair Evidence Comparison")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Pre/Post Repair Comparison Run ID", report.pre_post_repair_comparison_run_id),
+        ("Controlled Re-Run Trial Run ID", report.controlled_re_run_trial_run_id),
+        ("Current Phase", "16 - Re-Run & Re-Gate Layer"),
+        ("Current Task", summary["current_task_name"]),
+        ("Gatekeeper Decision", summary["gatekeeper_decision"]),
+        ("Progression Allowed", str(summary["progression_allowed"]).lower()),
+        (
+            "Persona Reviews Allowed",
+            str(summary["persona_reviews_allowed"]).lower(),
+        ),
+        ("Evidence Delta Rows", str(len(report.evidence_delta_matrix))),
+        ("Scenario Delta Rows", str(len(report.scenario_delta_matrix))),
+        ("Stability Rows", str(len(report.stability_delta_matrix))),
+        ("Gatekeeper Readiness Rows", str(len(report.gatekeeper_readiness_delta))),
+        ("Recommended Next Task", report.recommended_next_task),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.comparison_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        f"pre_post_repair_comparison_run_id={report.pre_post_repair_comparison_run_id}"
+    )
+    console.print(
+        f"controlled_re_run_trial_run_id={report.controlled_re_run_trial_run_id}"
+    )
+    console.print("current_phase=16 - Re-Run & Re-Gate Layer")
+    console.print(f"current_task={summary['current_task_name']}")
+    console.print(f"gatekeeper_decision={summary['gatekeeper_decision']}")
+    console.print(
+        f"progression_allowed={str(summary['progression_allowed']).lower()}"
+    )
+    console.print(
+        "persona_reviews_allowed="
+        f"{str(summary['persona_reviews_allowed']).lower()}"
+    )
+    console.print(f"evidence_delta_rows={len(report.evidence_delta_matrix)}")
+    console.print(f"scenario_delta_rows={len(report.scenario_delta_matrix)}")
+    console.print(f"stability_rows={len(report.stability_delta_matrix)}")
+    console.print(
+        f"gatekeeper_readiness_rows={len(report.gatekeeper_readiness_delta)}"
+    )
+    console.print(f"recommended_next_task={report.recommended_next_task}")
+    console.print(f"status={report.comparison_status}")
 
 
 @app.command("run-historical-readiness-batch")

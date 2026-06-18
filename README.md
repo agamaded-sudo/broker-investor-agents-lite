@@ -1448,6 +1448,24 @@ persona review, recommend a company, rank companies, create allocation
 instructions, create rebalancing instructions, create trade signals, or create
 execution instructions.
 
+### Pre/Post Repair Evidence Comparison
+
+The pre/post repair evidence comparison executes Task 122 in Phase 16. It
+consumes the Task 121 controlled re-run trial and compares pre-repair evidence
+with post-controlled-re-run evidence across evidence deltas, scenario deltas,
+stability deltas, limitation resolution, and Task 123 handoff readiness.
+
+```powershell
+python -m broker_agents.cli compare-pre-post-repair-evidence --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli compare-pre-post-repair-evidence --controlled-re-run-trial-run-id 20260618_094644 --outputs-root data/outputs
+```
+
+This is comparison only. It does not rerun Gatekeeper, allow persona review,
+recommend a company, rank companies, create allocation instructions, create
+rebalancing instructions, create trade signals, or create execution
+instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
