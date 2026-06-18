@@ -1393,6 +1393,25 @@ persona review, recommend a company, rank companies, create allocation
 instructions, create rebalancing instructions, create trade signals, or override
 the Gatekeeper HOLD.
 
+### Re-Run & Re-Gate Plan
+
+The re-run and re-gate plan starts Phase 16, the Re-Run & Re-Gate
+Layer. It converts the completed research audit trail into a planning-only
+roadmap for controlled re-run packaging, future controlled trial execution,
+pre/post repair comparison, and later Gatekeeper re-evaluation.
+
+```powershell
+python -m broker_agents.cli build-re-run-re-gate-plan --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli build-re-run-re-gate-plan --research-audit-trail-run-id 20260618_072740 --outputs-root data/outputs
+```
+
+This is planning only. It does not execute a re-run, rerun Gatekeeper, allow
+persona review, recommend a company, rank companies, create allocation
+instructions, create rebalancing instructions, create trade signals, or create
+execution instructions. Task 119 satisfies only the re-run/retest planning
+prerequisite; it leaves Gatekeeper re-evaluation for a later task.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision

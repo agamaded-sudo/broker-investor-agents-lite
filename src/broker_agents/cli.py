@@ -31,6 +31,9 @@ from broker_agents.backoffice.portfolio_context import (
 from broker_agents.backoffice.research_audit_trail_bundle import (
     write_research_audit_trail_bundle_report,
 )
+from broker_agents.regate.re_run_re_gate_plan import (
+    write_re_run_re_gate_plan_report,
+)
 from broker_agents.agents.bogle_agent import BogleAgent
 from broker_agents.agents.buffett_agent import BuffettAgent
 from broker_agents.agents.fisher_agent import FisherAgent
@@ -4763,6 +4766,96 @@ def build_research_audit_trail_bundle_command(
     console.print(f"recommended_next_phase={report.recommended_next_phase}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.research_audit_trail_status}")
+
+
+@app.command("build-re-run-re-gate-plan")
+def build_re_run_re_gate_plan_command(
+    research_audit_trail_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--research-audit-trail-run-id",
+            help="Research audit trail run used to define the Phase 16 plan.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest research audit trail manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing research audit trail and re-gate outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Define the Phase 16 re-run and re-gate plan without executing it."""
+    if bool(research_audit_trail_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --research-audit-trail-run-id or "
+            "--auto-latest."
+        )
+    try:
+        files = write_re_run_re_gate_plan_report(
+            outputs_root=outputs_root,
+            research_audit_trail_run_id=(
+                None if auto_latest else research_audit_trail_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(f"Re-run and re-gate plan failed: {exc}") from exc
+
+    report = files.report
+    context = report.phase_16_context
+    table = Table(title="Re-Run & Re-Gate Plan")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Re-Run & Re-Gate Plan Run ID", report.re_run_re_gate_plan_run_id),
+        ("Research Audit Trail Run ID", report.research_audit_trail_run_id),
+        ("Current Phase", context["phase_name"]),
+        ("Current Task", context["current_task_name"]),
+        ("Gatekeeper Decision", context["gatekeeper_decision"]),
+        ("Progression Allowed", str(context["progression_allowed"]).lower()),
+        (
+            "Persona Reviews Allowed",
+            str(context["persona_reviews_allowed"]).lower(),
+        ),
+        ("Roadmap Tasks", str(len(report.phase_16_task_roadmap))),
+        ("Recommended Next Task", report.recommended_next_task),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.plan_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        f"re_run_re_gate_plan_run_id={report.re_run_re_gate_plan_run_id}"
+    )
+    console.print(
+        f"research_audit_trail_run_id={report.research_audit_trail_run_id}"
+    )
+    console.print(f"current_phase={context['phase_name']}")
+    console.print(f"current_task={context['current_task_name']}")
+    console.print(f"gatekeeper_decision={context['gatekeeper_decision']}")
+    console.print(
+        f"progression_allowed={str(context['progression_allowed']).lower()}"
+    )
+    console.print(
+        "persona_reviews_allowed="
+        f"{str(context['persona_reviews_allowed']).lower()}"
+    )
+    console.print(f"roadmap_tasks={len(report.phase_16_task_roadmap)}")
+    console.print(f"recommended_next_task={report.recommended_next_task}")
+    console.print(f"status={report.plan_status}")
 
 
 @app.command("run-historical-readiness-batch")
