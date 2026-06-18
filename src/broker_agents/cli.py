@@ -43,6 +43,9 @@ from broker_agents.regate.controlled_re_run_trial import (
 from broker_agents.regate.pre_post_repair_comparison import (
     write_pre_post_repair_comparison_report,
 )
+from broker_agents.regate.gatekeeper_re_evaluation import (
+    write_gatekeeper_re_evaluation_report,
+)
 from broker_agents.agents.bogle_agent import BogleAgent
 from broker_agents.agents.buffett_agent import BuffettAgent
 from broker_agents.agents.fisher_agent import FisherAgent
@@ -5153,6 +5156,101 @@ def compare_pre_post_repair_evidence_command(
     )
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.comparison_status}")
+
+
+@app.command("run-gatekeeper-re-evaluation")
+def run_gatekeeper_re_evaluation_command(
+    pre_post_repair_comparison_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--pre-post-repair-comparison-run-id",
+            help="Task 122 comparison used to execute Task 123.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest pre/post repair comparison manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing comparison and Gatekeeper re-evaluation outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute Task 123 research Gatekeeper re-evaluation."""
+    if bool(pre_post_repair_comparison_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --pre-post-repair-comparison-run-id or "
+            "--auto-latest."
+        )
+    try:
+        files = write_gatekeeper_re_evaluation_report(
+            outputs_root=outputs_root,
+            pre_post_repair_comparison_run_id=(
+                None if auto_latest else pre_post_repair_comparison_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(f"Gatekeeper re-evaluation failed: {exc}") from exc
+
+    report = files.report
+    summary = report.re_evaluation_summary
+    decision = report.re_gate_decision_record
+    table = Table(title="Gatekeeper Re-Evaluation")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Gatekeeper Re-Evaluation Run ID", report.gatekeeper_re_evaluation_run_id),
+        ("Pre/Post Repair Comparison Run ID", report.pre_post_repair_comparison_run_id),
+        ("Current Phase", "16 - Re-Run & Re-Gate Layer"),
+        ("Current Task", summary["current_task_name"]),
+        ("Previous Gatekeeper Decision", summary["previous_gatekeeper_decision"]),
+        ("New Gatekeeper Outcome", decision["new_gatekeeper_outcome"]),
+        (
+            "Progression Allowed After Re-Evaluation",
+            str(decision["progression_allowed_after_re_evaluation"]).lower(),
+        ),
+        (
+            "Persona Reviews Allowed After Re-Evaluation",
+            str(decision["persona_reviews_allowed_after_re_evaluation"]).lower(),
+        ),
+        ("Recommended Next Task", report.recommended_next_task),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.gatekeeper_re_evaluation_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        f"gatekeeper_re_evaluation_run_id={report.gatekeeper_re_evaluation_run_id}"
+    )
+    console.print(
+        f"pre_post_repair_comparison_run_id={report.pre_post_repair_comparison_run_id}"
+    )
+    console.print("current_phase=16 - Re-Run & Re-Gate Layer")
+    console.print(f"current_task={summary['current_task_name']}")
+    console.print(f"previous_gatekeeper_decision={summary['previous_gatekeeper_decision']}")
+    console.print(f"new_gatekeeper_outcome={decision['new_gatekeeper_outcome']}")
+    console.print(
+        "progression_allowed_after_re_evaluation="
+        f"{str(decision['progression_allowed_after_re_evaluation']).lower()}"
+    )
+    console.print(
+        "persona_reviews_allowed_after_re_evaluation="
+        f"{str(decision['persona_reviews_allowed_after_re_evaluation']).lower()}"
+    )
+    console.print(f"recommended_next_task={report.recommended_next_task}")
+    console.print(f"status={report.gatekeeper_re_evaluation_status}")
 
 
 @app.command("run-historical-readiness-batch")

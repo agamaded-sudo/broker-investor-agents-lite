@@ -1466,6 +1466,25 @@ recommend a company, rank companies, create allocation instructions, create
 rebalancing instructions, create trade signals, or create execution
 instructions.
 
+### Gatekeeper Re-Evaluation
+
+The Gatekeeper re-evaluation executes Task 123 in Phase 16. It consumes the
+Task 122 pre/post repair comparison and performs a research Gatekeeper
+re-evaluation with readiness inputs, rule evaluations, evidence change
+assessment, safety checks, a decision record, next-phase options, and a Task
+124 handoff.
+
+```powershell
+python -m broker_agents.cli run-gatekeeper-re-evaluation --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli run-gatekeeper-re-evaluation --pre-post-repair-comparison-run-id 20260618_105141 --outputs-root data/outputs
+```
+
+This is a research Gatekeeper re-evaluation only. It does not run investor
+agents, allow persona review automatically, recommend a company, rank
+companies, create allocation instructions, create rebalancing instructions,
+create trade signals, or create execution instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
