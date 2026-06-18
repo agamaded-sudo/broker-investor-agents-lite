@@ -1576,6 +1576,26 @@ agents, allow persona review, recommend a company, rank companies, create
 allocation instructions, create rebalancing instructions, create trade signals,
 or create execution instructions.
 
+### Gatekeeper 123 vs Stabilized Evidence Comparison
+
+The Gatekeeper 123 vs stabilized evidence comparison executes Task 129. It
+consumes the Task 128 stabilization validation trial, compares it with the Task
+123 Gatekeeper baseline, and prepares the Task 130 Gatekeeper Stabilization
+Re-Review handoff.
+
+```powershell
+python -m broker_agents.cli compare-gatekeeper-stabilized-evidence --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli compare-gatekeeper-stabilized-evidence --stabilization-validation-run-id 20260618_193123 --outputs-root data/outputs
+
+python -m broker_agents.cli compare-gatekeeper-stabilized-evidence --stabilization-validation-run-id 20260618_193123 --gatekeeper-re-evaluation-run-id 20260618_111449 --outputs-root data/outputs
+```
+
+This is research-only comparison. It does not rerun Gatekeeper, issue a new
+Gatekeeper decision, run investor agents, allow persona review, recommend a
+company, rank companies, create allocation instructions, create rebalancing
+instructions, create trade signals, or create execution instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision

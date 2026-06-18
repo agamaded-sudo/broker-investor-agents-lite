@@ -61,6 +61,9 @@ from broker_agents.stabilization.targeted_evidence_repairs import (
 from broker_agents.stabilization.stabilization_validation_trial import (
     write_stabilization_validation_trial_report,
 )
+from broker_agents.stabilization.gatekeeper_stabilized_evidence_comparison import (
+    write_gatekeeper_stabilized_evidence_comparison_report,
+)
 from broker_agents.agents.bogle_agent import BogleAgent
 from broker_agents.agents.buffett_agent import BuffettAgent
 from broker_agents.agents.fisher_agent import FisherAgent
@@ -5740,6 +5743,122 @@ def run_stabilization_validation_trial_command(
     console.print(f"work_orders_not_testable={summary['work_orders_not_testable']}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.validation_trial_status}")
+
+
+@app.command("compare-gatekeeper-stabilized-evidence")
+def compare_gatekeeper_stabilized_evidence_command(
+    stabilization_validation_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--stabilization-validation-run-id",
+            help="Task 128 stabilization validation run used for comparison.",
+        ),
+    ] = None,
+    gatekeeper_re_evaluation_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--gatekeeper-re-evaluation-run-id",
+            help="Optional explicit Task 123 Gatekeeper baseline run.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest stabilization validation manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing validation, Gatekeeper, and comparison outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute Task 129 Gatekeeper baseline vs stabilized evidence comparison."""
+    if bool(stabilization_validation_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --stabilization-validation-run-id or --auto-latest."
+        )
+    try:
+        files = write_gatekeeper_stabilized_evidence_comparison_report(
+            outputs_root=outputs_root,
+            stabilization_validation_run_id=(
+                None if auto_latest else stabilization_validation_run_id
+            ),
+            gatekeeper_re_evaluation_run_id=gatekeeper_re_evaluation_run_id,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Gatekeeper stabilized evidence comparison failed: {exc}"
+        ) from exc
+
+    report = files.report
+    summary = report.comparison_summary
+    table = Table(title="Gatekeeper 123 vs Stabilized Evidence Comparison")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        (
+            "Gatekeeper Stabilized Comparison Run ID",
+            report.gatekeeper_stabilized_comparison_run_id,
+        ),
+        ("Stabilization Validation Run ID", report.stabilization_validation_run_id),
+        ("Gatekeeper Re-Evaluation Run ID", report.gatekeeper_re_evaluation_run_id),
+        ("Current Phase", "17 - Targeted Evidence Stabilization Layer"),
+        ("Current Task", summary["current_task_name"]),
+        ("Task 123 Gatekeeper Outcome", summary["task_123_gatekeeper_outcome"]),
+        ("Progression Allowed", str(summary["progression_allowed"]).lower()),
+        ("Persona Reviews Allowed", str(summary["persona_reviews_allowed"]).lower()),
+        ("Blockers Compared", str(summary["blockers_compared"])),
+        ("Blockers Improved", str(summary["blockers_improved"])),
+        (
+            "Blockers Partially Improved",
+            str(summary["blockers_partially_improved"]),
+        ),
+        ("Blockers Unresolved", str(summary["blockers_unresolved"])),
+        ("Recommended Next Task", report.recommended_next_task),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.comparison_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        "gatekeeper_stabilized_comparison_run_id="
+        f"{report.gatekeeper_stabilized_comparison_run_id}"
+    )
+    console.print(
+        f"stabilization_validation_run_id={report.stabilization_validation_run_id}"
+    )
+    console.print(
+        f"gatekeeper_re_evaluation_run_id={report.gatekeeper_re_evaluation_run_id}"
+    )
+    console.print("current_phase=17 - Targeted Evidence Stabilization Layer")
+    console.print(f"current_task={summary['current_task_name']}")
+    console.print(
+        f"task_123_gatekeeper_outcome={summary['task_123_gatekeeper_outcome']}"
+    )
+    console.print(
+        f"progression_allowed={str(summary['progression_allowed']).lower()}"
+    )
+    console.print(
+        f"persona_reviews_allowed={str(summary['persona_reviews_allowed']).lower()}"
+    )
+    console.print(f"blockers_compared={summary['blockers_compared']}")
+    console.print(f"blockers_improved={summary['blockers_improved']}")
+    console.print(
+        f"blockers_partially_improved={summary['blockers_partially_improved']}"
+    )
+    console.print(f"blockers_unresolved={summary['blockers_unresolved']}")
+    console.print(f"recommended_next_task={report.recommended_next_task}")
+    console.print(f"status={report.comparison_status}")
 
 
 @app.command("run-historical-readiness-batch")
