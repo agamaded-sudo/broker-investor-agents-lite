@@ -1540,6 +1540,24 @@ Gatekeeper, run investor agents, allow persona review, recommend a company,
 rank companies, create allocation instructions, create rebalancing
 instructions, create trade signals, or create execution instructions.
 
+### Targeted Evidence Repairs
+
+The targeted evidence repairs package executes Task 127. It consumes Task 126
+residual blocker work orders, performs controlled local evidence repair
+packaging, documents bounded findings and remaining limitations, and prepares
+the Task 128 validation input manifest.
+
+```powershell
+python -m broker_agents.cli execute-targeted-evidence-repairs --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli execute-targeted-evidence-repairs --residual-work-order-package-run-id 20260618_183647 --outputs-root data/outputs
+```
+
+This is research-only repair execution. It does not rerun Gatekeeper, run
+investor agents, allow persona review, recommend a company, rank companies,
+create allocation instructions, create rebalancing instructions, create trade
+signals, or create execution instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision

@@ -55,6 +55,9 @@ from broker_agents.stabilization.targeted_evidence_stabilization_plan import (
 from broker_agents.stabilization.residual_blocker_work_orders import (
     write_residual_blocker_work_order_report,
 )
+from broker_agents.stabilization.targeted_evidence_repairs import (
+    write_targeted_evidence_repairs_report,
+)
 from broker_agents.agents.bogle_agent import BogleAgent
 from broker_agents.agents.buffett_agent import BuffettAgent
 from broker_agents.agents.fisher_agent import FisherAgent
@@ -5542,6 +5545,102 @@ def build_residual_blocker_work_orders_command(
     console.print(f"input_rows={len(report.work_order_input_requirements_matrix)}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.package_status}")
+
+
+@app.command("execute-targeted-evidence-repairs")
+def execute_targeted_evidence_repairs_command(
+    residual_work_order_package_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--residual-work-order-package-run-id",
+            help="Task 126 residual work-order package used for Task 127 repairs.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest residual blocker work-order manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing work-order packages and repair outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute Task 127 targeted evidence repairs."""
+    if bool(residual_work_order_package_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --residual-work-order-package-run-id or "
+            "--auto-latest."
+        )
+    try:
+        files = write_targeted_evidence_repairs_report(
+            outputs_root=outputs_root,
+            residual_work_order_package_run_id=(
+                None if auto_latest else residual_work_order_package_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(f"Targeted evidence repairs failed: {exc}") from exc
+
+    report = files.report
+    summary = report.repair_execution_summary
+    table = Table(title="Targeted Evidence Repairs")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Targeted Repair Run ID", report.targeted_repair_run_id),
+        ("Residual Work Order Package Run ID", report.residual_work_order_package_run_id),
+        ("Current Phase", "17 - Targeted Evidence Stabilization Layer"),
+        ("Current Task", summary["current_task_name"]),
+        ("Prior Gatekeeper Outcome", summary["prior_gatekeeper_outcome"]),
+        ("Progression Allowed", str(summary["progression_allowed"]).lower()),
+        ("Persona Reviews Allowed", str(summary["persona_reviews_allowed"]).lower()),
+        ("Work Orders Total", str(summary["work_orders_total"])),
+        ("Work Orders Completed", str(summary["work_orders_completed"])),
+        (
+            "Work Orders Partially Completed",
+            str(summary["work_orders_partially_completed"]),
+        ),
+        ("Work Orders Blocked", str(summary["work_orders_blocked"])),
+        ("Recommended Next Task", report.recommended_next_task),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.repair_execution_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(f"targeted_repair_run_id={report.targeted_repair_run_id}")
+    console.print(
+        f"residual_work_order_package_run_id={report.residual_work_order_package_run_id}"
+    )
+    console.print("current_phase=17 - Targeted Evidence Stabilization Layer")
+    console.print(f"current_task={summary['current_task_name']}")
+    console.print(f"prior_gatekeeper_outcome={summary['prior_gatekeeper_outcome']}")
+    console.print(
+        f"progression_allowed={str(summary['progression_allowed']).lower()}"
+    )
+    console.print(
+        f"persona_reviews_allowed={str(summary['persona_reviews_allowed']).lower()}"
+    )
+    console.print(f"work_orders_total={summary['work_orders_total']}")
+    console.print(f"work_orders_completed={summary['work_orders_completed']}")
+    console.print(
+        "work_orders_partially_completed="
+        f"{summary['work_orders_partially_completed']}"
+    )
+    console.print(f"work_orders_blocked={summary['work_orders_blocked']}")
+    console.print(f"recommended_next_task={report.recommended_next_task}")
+    console.print(f"status={report.repair_execution_status}")
 
 
 @app.command("run-historical-readiness-batch")
