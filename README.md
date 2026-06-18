@@ -1504,6 +1504,24 @@ Gatekeeper, run investor agents, allow persona review, recommend a company,
 rank companies, create allocation instructions, create rebalancing
 instructions, create trade signals, or create execution instructions.
 
+### Targeted Evidence Stabilization Plan
+
+The targeted evidence stabilization plan executes Task 125 and starts Phase 17.
+It consumes the Phase 16 closure, preserves the `hold_with_repair_progress`
+state, and converts residual blockers into stabilization workstreams,
+priorities, success criteria, blocked actions, and a Task 126 handoff.
+
+```powershell
+python -m broker_agents.cli define-targeted-evidence-stabilization-plan --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli define-targeted-evidence-stabilization-plan --phase-16-closure-run-id 20260618_115312 --outputs-root data/outputs
+```
+
+This is research-only planning. It does not execute repairs, rerun Gatekeeper,
+run investor agents, allow persona review, recommend a company, rank companies,
+create allocation instructions, create rebalancing instructions, create trade
+signals, or create execution instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision

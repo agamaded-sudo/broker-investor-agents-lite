@@ -49,6 +49,9 @@ from broker_agents.regate.gatekeeper_re_evaluation import (
 from broker_agents.regate.phase_16_closure import (
     write_phase_16_closure_report,
 )
+from broker_agents.stabilization.targeted_evidence_stabilization_plan import (
+    write_targeted_evidence_stabilization_plan_report,
+)
 from broker_agents.agents.bogle_agent import BogleAgent
 from broker_agents.agents.buffett_agent import BuffettAgent
 from broker_agents.agents.fisher_agent import FisherAgent
@@ -5344,6 +5347,109 @@ def close_phase_16_command(
     console.print(f"recommended_next_phase={report.recommended_next_phase}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.phase_completion_status}")
+
+
+@app.command("define-targeted-evidence-stabilization-plan")
+def define_targeted_evidence_stabilization_plan_command(
+    phase_16_closure_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--phase-16-closure-run-id",
+            help="Task 124 Phase 16 closure used to start Phase 17 planning.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest Phase 16 closure manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing Phase 16 closure and stabilization outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute Task 125 targeted evidence stabilization planning."""
+    if bool(phase_16_closure_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --phase-16-closure-run-id or --auto-latest."
+        )
+    try:
+        files = write_targeted_evidence_stabilization_plan_report(
+            outputs_root=outputs_root,
+            phase_16_closure_run_id=(None if auto_latest else phase_16_closure_run_id),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Targeted evidence stabilization plan failed: {exc}"
+        ) from exc
+
+    report = files.report
+    summary = report.stabilization_plan_summary
+    table = Table(title="Targeted Evidence Stabilization Plan")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Stabilization Plan Run ID", report.stabilization_plan_run_id),
+        ("Phase 16 Closure Run ID", report.phase_16_closure_run_id),
+        ("Current Phase", "17 - Targeted Evidence Stabilization Layer"),
+        ("Current Task", summary["current_task_name"]),
+        (
+            "Prior Gatekeeper Outcome",
+            summary["prior_phase_final_gatekeeper_outcome"],
+        ),
+        (
+            "Progression Allowed",
+            str(summary["prior_phase_final_progression_allowed"]).lower(),
+        ),
+        (
+            "Persona Reviews Allowed",
+            str(summary["prior_phase_final_persona_reviews_allowed"]).lower(),
+        ),
+        ("Workstream Rows", str(len(report.stabilization_workstream_matrix))),
+        ("Priority Rows", str(len(report.evidence_stabilization_priority_matrix))),
+        ("Roadmap Rows", str(len(report.phase_17_execution_roadmap))),
+        ("Recommended Next Task", report.recommended_next_task),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.plan_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(f"stabilization_plan_run_id={report.stabilization_plan_run_id}")
+    console.print(f"phase_16_closure_run_id={report.phase_16_closure_run_id}")
+    console.print("current_phase=17 - Targeted Evidence Stabilization Layer")
+    console.print(f"current_task={summary['current_task_name']}")
+    console.print(
+        "prior_gatekeeper_outcome="
+        f"{summary['prior_phase_final_gatekeeper_outcome']}"
+    )
+    console.print(
+        "progression_allowed="
+        f"{str(summary['prior_phase_final_progression_allowed']).lower()}"
+    )
+    console.print(
+        "persona_reviews_allowed="
+        f"{str(summary['prior_phase_final_persona_reviews_allowed']).lower()}"
+    )
+    console.print(
+        f"workstream_rows={len(report.stabilization_workstream_matrix)}"
+    )
+    console.print(
+        f"priority_rows={len(report.evidence_stabilization_priority_matrix)}"
+    )
+    console.print(f"roadmap_rows={len(report.phase_17_execution_roadmap)}")
+    console.print(f"recommended_next_task={report.recommended_next_task}")
+    console.print(f"status={report.plan_status}")
 
 
 @app.command("run-historical-readiness-batch")
