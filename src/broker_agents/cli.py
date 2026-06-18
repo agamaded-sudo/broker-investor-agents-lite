@@ -46,6 +46,9 @@ from broker_agents.regate.pre_post_repair_comparison import (
 from broker_agents.regate.gatekeeper_re_evaluation import (
     write_gatekeeper_re_evaluation_report,
 )
+from broker_agents.regate.phase_16_closure import (
+    write_phase_16_closure_report,
+)
 from broker_agents.agents.bogle_agent import BogleAgent
 from broker_agents.agents.buffett_agent import BuffettAgent
 from broker_agents.agents.fisher_agent import FisherAgent
@@ -5251,6 +5254,96 @@ def run_gatekeeper_re_evaluation_command(
     )
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.gatekeeper_re_evaluation_status}")
+
+
+@app.command("close-phase-16")
+def close_phase_16_command(
+    gatekeeper_re_evaluation_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--gatekeeper-re-evaluation-run-id",
+            help="Task 123 Gatekeeper re-evaluation used to close Phase 16.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest Gatekeeper re-evaluation manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing Gatekeeper re-evaluation and closure outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute Task 124 Phase 16 closure and next-phase recommendation."""
+    if bool(gatekeeper_re_evaluation_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --gatekeeper-re-evaluation-run-id or "
+            "--auto-latest."
+        )
+    try:
+        files = write_phase_16_closure_report(
+            outputs_root=outputs_root,
+            gatekeeper_re_evaluation_run_id=(
+                None if auto_latest else gatekeeper_re_evaluation_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(f"Phase 16 closure failed: {exc}") from exc
+
+    report = files.report
+    summary = report.phase_closure_summary
+    table = Table(title="Phase 16 Closure")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Phase 16 Closure Run ID", report.phase_16_closure_run_id),
+        ("Gatekeeper Re-Evaluation Run ID", report.gatekeeper_re_evaluation_run_id),
+        ("Current Phase", "16 - Re-Run & Re-Gate Layer"),
+        ("Current Task", summary["current_task_name"]),
+        ("Phase Completion Status", report.phase_completion_status),
+        ("Final Gatekeeper Outcome", report.final_gatekeeper_outcome),
+        ("Final Progression Allowed", str(report.final_progression_allowed).lower()),
+        (
+            "Final Persona Reviews Allowed",
+            str(report.final_persona_reviews_allowed).lower(),
+        ),
+        ("Recommended Next Phase", report.recommended_next_phase),
+        ("Recommended Next Task", report.recommended_next_task),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.phase_completion_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(f"phase_16_closure_run_id={report.phase_16_closure_run_id}")
+    console.print(
+        f"gatekeeper_re_evaluation_run_id={report.gatekeeper_re_evaluation_run_id}"
+    )
+    console.print("current_phase=16 - Re-Run & Re-Gate Layer")
+    console.print(f"current_task={summary['current_task_name']}")
+    console.print(f"phase_completion_status={report.phase_completion_status}")
+    console.print(f"final_gatekeeper_outcome={report.final_gatekeeper_outcome}")
+    console.print(
+        f"final_progression_allowed={str(report.final_progression_allowed).lower()}"
+    )
+    console.print(
+        "final_persona_reviews_allowed="
+        f"{str(report.final_persona_reviews_allowed).lower()}"
+    )
+    console.print(f"recommended_next_phase={report.recommended_next_phase}")
+    console.print(f"recommended_next_task={report.recommended_next_task}")
+    console.print(f"status={report.phase_completion_status}")
 
 
 @app.command("run-historical-readiness-batch")

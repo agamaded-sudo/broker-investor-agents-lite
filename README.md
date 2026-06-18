@@ -1485,6 +1485,25 @@ agents, allow persona review automatically, recommend a company, rank
 companies, create allocation instructions, create rebalancing instructions,
 create trade signals, or create execution instructions.
 
+### Phase 16 Closure & Next-Phase Recommendation
+
+The Phase 16 closure executes Task 124. It consumes the Task 123 Gatekeeper
+re-evaluation, preserves the final Gatekeeper outcome, closes Phase 16, and
+recommends the next governance phase. With a `hold_with_repair_progress`
+outcome, the next phase is targeted evidence stabilization rather than persona
+review.
+
+```powershell
+python -m broker_agents.cli close-phase-16 --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli close-phase-16 --gatekeeper-re-evaluation-run-id 20260618_111449 --outputs-root data/outputs
+```
+
+This is phase closure and governance planning only. It does not rerun
+Gatekeeper, run investor agents, allow persona review, recommend a company,
+rank companies, create allocation instructions, create rebalancing
+instructions, create trade signals, or create execution instructions.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
