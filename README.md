@@ -1669,6 +1669,25 @@ company, rank companies, create allocation instructions, create rebalancing
 instructions, create trade signals, create execution instructions, validate a
 strategy, or enable auto-promotion.
 
+### Gatekeeper Return Package Assembly
+
+The Gatekeeper Return Package Assembly executes Task 134. It consumes the Task
+133 input inventory and assembles the Gatekeeper-facing return package with
+section, evidence-reference, residual-risk, permission-boundary, limitation, and
+Task 135 handoff matrices.
+
+```powershell
+python -m broker_agents.cli assemble-gatekeeper-return-package --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli assemble-gatekeeper-return-package --gatekeeper-return-input-inventory-run-id 20260619_072007 --outputs-root data/outputs
+```
+
+This is research-only package assembly. It does not validate final completeness,
+rerun Gatekeeper, run investor agents, allow actual persona review, recommend a
+company, rank companies, create allocation instructions, create rebalancing
+instructions, create trade signals, create execution instructions, validate a
+strategy, or enable auto-promotion.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
