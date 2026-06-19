@@ -1800,6 +1800,25 @@ a company, rank companies, create allocation instructions, create rebalancing
 instructions, create trade signals, create execution instructions, validate a
 strategy, or enable auto-promotion.
 
+### Limited Preparation Package Validation
+
+The Limited Preparation Package Validation executes Task 141. It validates the
+Task 140 package's sections, artifact inclusion, carried warnings, permission
+boundaries, prohibited outputs, and future approval requirements before the
+separate Task 142 Gatekeeper review.
+
+```powershell
+python -m broker_agents.cli validate-limited-preparation-package --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli validate-limited-preparation-package --limited-preparation-package-run-id 20260619_162233 --outputs-root data/outputs
+```
+
+This is research-only package validation. It does not run Gatekeeper review,
+run investor agents, allow actual persona review, recommend a company, rank
+companies, create allocation instructions, create rebalancing instructions,
+create trade signals, create execution instructions, validate a strategy, or
+enable auto-promotion.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision

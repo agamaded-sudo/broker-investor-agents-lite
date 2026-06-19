@@ -97,6 +97,9 @@ from broker_agents.limited_preparation.limited_preparation_artifact_inventory im
 from broker_agents.limited_preparation.limited_preparation_package_assembly import (
     write_limited_preparation_package_report,
 )
+from broker_agents.limited_preparation.limited_preparation_package_validation import (
+    write_limited_preparation_package_validation_report,
+)
 from broker_agents.agents.bogle_agent import BogleAgent
 from broker_agents.agents.buffett_agent import BuffettAgent
 from broker_agents.agents.fisher_agent import FisherAgent
@@ -337,9 +340,7 @@ def _merge_optional_portfolio_context(pack: dict, context_path: Path | None) -> 
     try:
         context = load_portfolio_context(context_path)
     except (OSError, ValueError, yaml.YAMLError) as exc:
-        raise typer.BadParameter(
-            f"Could not load portfolio context {context_path}: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Could not load portfolio context {context_path}: {exc}") from exc
     return merge_portfolio_context_into_pack(pack, context)
 
 
@@ -631,9 +632,7 @@ def enrich_known_tickers(
             )
             _write_enrichment_summary(result, summary_path)
         except (OSError, ValueError) as exc:
-            raise typer.BadParameter(
-                f"Could not enrich known ticker {ticker}: {exc}"
-            ) from exc
+            raise typer.BadParameter(f"Could not enrich known ticker {ticker}: {exc}") from exc
         table.add_row(
             ticker,
             ", ".join(result.applied_sources) or "None",
@@ -692,9 +691,7 @@ def merge_sec_fixture(
             encoding="utf-8",
         )
     except (OSError, ValueError) as exc:
-        raise typer.BadParameter(
-            f"Could not merge SEC fixture {fixture_path}: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Could not merge SEC fixture {fixture_path}: {exc}") from exc
 
     console.print(f"[bold]SEC fixture merge written to:[/bold] {output_path}")
 
@@ -748,9 +745,7 @@ def merge_market_fixture(
             encoding="utf-8",
         )
     except (OSError, ValueError) as exc:
-        raise typer.BadParameter(
-            f"Could not merge market fixture {fixture_path}: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Could not merge market fixture {fixture_path}: {exc}") from exc
 
     console.print(f"[bold]Market fixture merge written to:[/bold] {output_path}")
 
@@ -796,11 +791,7 @@ def merge_historical_valuation_fixture(
     pack = _load_yaml(input_path)
     try:
         fixture = load_historical_valuation_fixture(fixture_path)
-        snapshot = (
-            HistoricalValuationFetcher().map_fixture_to_historical_valuation(
-                fixture
-            )
-        )
+        snapshot = HistoricalValuationFetcher().map_fixture_to_historical_valuation(fixture)
         merged = merge_historical_valuation_into_pack(pack, snapshot)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(
@@ -812,9 +803,7 @@ def merge_historical_valuation_fixture(
             f"Could not merge historical valuation fixture {fixture_path}: {exc}"
         ) from exc
 
-    console.print(
-        f"[bold]Historical valuation fixture merge written to:[/bold] {output_path}"
-    )
+    console.print(f"[bold]Historical valuation fixture merge written to:[/bold] {output_path}")
 
 
 @app.command("merge-growth-peg-fixture")
@@ -870,9 +859,7 @@ def merge_growth_peg_fixture(
             f"Could not merge growth and PEG fixture {fixture_path}: {exc}"
         ) from exc
 
-    console.print(
-        f"[bold]Growth and PEG fixture merge written to:[/bold] {output_path}"
-    )
+    console.print(f"[bold]Growth and PEG fixture merge written to:[/bold] {output_path}")
 
 
 @app.command("build-backoffice-report")
@@ -1082,7 +1069,9 @@ def summarize_agents(
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(summary, encoding="utf-8")
     except OSError as exc:
-        raise typer.BadParameter(f"Could not write agents summary report {output_path}: {exc}") from exc
+        raise typer.BadParameter(
+            f"Could not write agents summary report {output_path}: {exc}"
+        ) from exc
 
     console.print(f"[bold]Agents summary written to:[/bold] {output_path}")
 
@@ -1252,9 +1241,7 @@ def run_enriched_pipelines(
     if not parsed_tickers:
         raise typer.BadParameter("At least one ticker must be provided.")
     portfolio_context = (
-        load_portfolio_context(portfolio_context_path)
-        if portfolio_context_path
-        else None
+        load_portfolio_context(portfolio_context_path) if portfolio_context_path else None
     )
 
     table = Table(title="Enriched Pipeline Batch")
@@ -1460,9 +1447,7 @@ def human_review_queue(
                 encoding="utf-8",
             )
     except OSError as exc:
-        raise typer.BadParameter(
-            f"Could not write Human Review Queue output: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Could not write Human Review Queue output: {exc}") from exc
 
     console.print(f"[bold]Human Review Queue written to:[/bold] {output_path}")
     if json_output_path is not None:
@@ -1539,15 +1524,11 @@ def portfolio_readiness(
                 encoding="utf-8",
             )
     except OSError as exc:
-        raise typer.BadParameter(
-            f"Could not write portfolio readiness output: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Could not write portfolio readiness output: {exc}") from exc
 
     console.print(f"[bold]Portfolio readiness report written to:[/bold] {output_path}")
     if json_output_path is not None:
-        console.print(
-            f"[bold]Portfolio readiness JSON written to:[/bold] {json_output_path}"
-        )
+        console.print(f"[bold]Portfolio readiness JSON written to:[/bold] {json_output_path}")
 
 
 @app.command("deal-intake")
@@ -1638,9 +1619,7 @@ def deal_intake(
         company_name=company_name,
     )
     normalized = status.normalized_ticker or "UNKNOWN"
-    output_path = output_path or (
-        outputs_root / normalized / "deal_intake_report.md"
-    )
+    output_path = output_path or (outputs_root / normalized / "deal_intake_report.md")
     try:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(
@@ -1659,9 +1638,7 @@ def deal_intake(
     console.print(f"[bold]Intake status:[/bold] {status.intake_status}")
     console.print(f"[bold]Deal intake report written to:[/bold] {output_path}")
     if json_output_path is not None:
-        console.print(
-            f"[bold]Deal intake JSON written to:[/bold] {json_output_path}"
-        )
+        console.print(f"[bold]Deal intake JSON written to:[/bold] {json_output_path}")
 
 
 @app.command("deal-intakes")
@@ -1714,9 +1691,7 @@ def deal_intakes(
     ] = None,
 ) -> None:
     """Generate deal intake Markdown and JSON for multiple tickers."""
-    parsed_tickers = [
-        ticker.strip().upper() for ticker in tickers.split(",") if ticker.strip()
-    ]
+    parsed_tickers = [ticker.strip().upper() for ticker in tickers.split(",") if ticker.strip()]
     if not parsed_tickers:
         raise typer.BadParameter("At least one ticker must be provided.")
 
@@ -1822,35 +1797,16 @@ def run_deal(
     except (OSError, ValueError, yaml.YAMLError) as exc:
         raise typer.BadParameter(f"Broker deal workflow failed: {exc}") from exc
 
-    console.print(
-        f"[bold]Broker deal package written to:[/bold] "
-        f"{result.broker_deal_package_path}"
-    )
+    console.print(f"[bold]Broker deal package written to:[/bold] {result.broker_deal_package_path}")
     console.print(f"[bold]Enriched deal input:[/bold] {result.enriched_pack_path}")
-    console.print(
-        f"[bold]Investor output directory:[/bold] "
-        f"{result.investor_summary_path.parent}"
-    )
+    console.print(f"[bold]Investor output directory:[/bold] {result.investor_summary_path.parent}")
     if result.investor_response_letter_paths:
-        response_letter_dir = next(
-            iter(result.investor_response_letter_paths.values())
-        ).parent
-        console.print(
-            f"[bold]Investor response letters directory:[/bold] "
-            f"{response_letter_dir}"
-        )
+        response_letter_dir = next(iter(result.investor_response_letter_paths.values())).parent
+        console.print(f"[bold]Investor response letters directory:[/bold] {response_letter_dir}")
     if result.investor_follow_up_memo_paths:
-        follow_up_memo_dir = next(
-            iter(result.investor_follow_up_memo_paths.values())
-        ).parent
-        console.print(
-            f"[bold]Investor follow-up memos directory:[/bold] "
-            f"{follow_up_memo_dir}"
-        )
-    console.print(
-        f"[bold]Backoffice work orders:[/bold] "
-        f"{result.backoffice_work_orders_path}"
-    )
+        follow_up_memo_dir = next(iter(result.investor_follow_up_memo_paths.values())).parent
+        console.print(f"[bold]Investor follow-up memos directory:[/bold] {follow_up_memo_dir}")
+    console.print(f"[bold]Backoffice work orders:[/bold] {result.backoffice_work_orders_path}")
 
 
 @app.command("analyze-stock")
@@ -1929,8 +1885,7 @@ def analyze_stock(
         typer.Option(
             "--financials-provider",
             help=(
-                "Official financials provider: fixture, sec_fixture, default, "
-                "or historical_csv."
+                "Official financials provider: fixture, sec_fixture, default, or historical_csv."
             ),
         ),
     ] = None,
@@ -1948,13 +1903,9 @@ def analyze_stock(
 ) -> None:
     """Run intake and the complete existing broker deal workflow for one ticker."""
     if ticker is not None and intake_file is not None:
-        raise typer.BadParameter(
-            "Provide either --ticker or --intake-file, not both."
-        )
+        raise typer.BadParameter("Provide either --ticker or --intake-file, not both.")
     if ticker is None and intake_file is None:
-        raise typer.BadParameter(
-            "Provide one input mode: --ticker or --intake-file."
-        )
+        raise typer.BadParameter("Provide one input mode: --ticker or --intake-file.")
     try:
         if intake_file is not None:
             intake = load_analyze_stock_intake(intake_file)
@@ -1988,9 +1939,7 @@ def analyze_stock(
             intake_file=intake_file,
         )
     except (OSError, ValueError, yaml.YAMLError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Unified stock analysis failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Unified stock analysis failed: {exc}") from exc
 
     normalized = execution.intake_status.normalized_ticker or "UNKNOWN"
     result = execution.workflow_result
@@ -2004,9 +1953,7 @@ def analyze_stock(
         broker_deal_package_path=result.broker_deal_package_path,
     )
     historical_context = build_as_of_context(intake.as_of_date)
-    run_manifest = json.loads(
-        run_bundle.run_manifest_path.read_text(encoding="utf-8")
-    )
+    run_manifest = json.loads(run_bundle.run_manifest_path.read_text(encoding="utf-8"))
     readiness_ledger = run_manifest.get(
         "historical_readiness_ledger_record",
         {},
@@ -2058,10 +2005,7 @@ def analyze_stock(
         ("Run Summary", str(run_bundle.run_summary_path)),
         (
             "Official Financials Snapshot",
-            str(
-                run_bundle.run_folder
-                / "official_financials_as_of_snapshot.csv"
-            )
+            str(run_bundle.run_folder / "official_financials_as_of_snapshot.csv")
             if intake.financials_provider == "historical_csv"
             else "Not enabled",
         ),
@@ -2093,10 +2037,7 @@ def analyze_stock(
         ),
         (
             "Promotion-Blocking Categories",
-            ", ".join(
-                work_order_plan.get("promotion_blocking_categories", [])
-            )
-            or "None",
+            ", ".join(work_order_plan.get("promotion_blocking_categories", [])) or "None",
         ),
         ("Signal Archive Record", "archived"),
         ("Signal Ledger", str(archive_result.jsonl_path)),
@@ -2176,9 +2117,7 @@ def validate_historical_snapshot(
             financials_root=financials_root,
         )
     except ValueError as exc:
-        raise typer.BadParameter(
-            f"Historical snapshot validation failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Historical snapshot validation failed: {exc}") from exc
 
     table = Table(title="Historical Data Snapshot Contract")
     for column in (
@@ -2191,11 +2130,7 @@ def validate_historical_snapshot(
     ):
         table.add_column(column)
     for capability in contract.provider_capabilities:
-        status = (
-            "supported"
-            if capability.supports_as_of_date
-            else capability.enforcement_level
-        )
+        status = "supported" if capability.supports_as_of_date else capability.enforcement_level
         table.add_row(
             capability.section,
             capability.provider_name,
@@ -2211,10 +2146,7 @@ def validate_historical_snapshot(
                 (
                     f"section={capability.section}",
                     f"provider={capability.provider_name}",
-                    (
-                        "supports_as_of_date="
-                        f"{str(capability.supports_as_of_date).lower()}"
-                    ),
+                    (f"supports_as_of_date={str(capability.supports_as_of_date).lower()}"),
                     f"enforcement_level={capability.enforcement_level}",
                     f"leakage_risk={capability.leakage_risk}",
                 )
@@ -2222,18 +2154,11 @@ def validate_historical_snapshot(
         )
     console.print(f"As-Of Date: {contract.as_of_date}")
     console.print(f"Snapshot Status: {contract.snapshot_status}")
-    console.print(
-        f"Point-in-Time Enforcement: {contract.point_in_time_enforcement}"
-    )
+    console.print(f"Point-in-Time Enforcement: {contract.point_in_time_enforcement}")
     analysis_window = build_analysis_price_window(as_of_date)
-    console.print(
-        f"Analysis Price Window End Date: {analysis_window.end_date}"
-    )
+    console.print(f"Analysis Price Window End Date: {analysis_window.end_date}")
     console.print("Market Price Window Enforcement: analysis_window_enforced")
-    console.print(
-        "Price Window Note: prices after as_of_date are excluded from "
-        "analysis windows."
-    )
+    console.print("Price Window Note: prices after as_of_date are excluded from analysis windows.")
     financials_contract = build_financials_as_of_contract(
         as_of_date,
         fixtures_root=price_fixtures_path,
@@ -2241,27 +2166,17 @@ def validate_historical_snapshot(
         financials_root=financials_root,
     )
     console.print("Official Financials As-Of Readiness:")
-    console.print(
-        f"Official Financials Note: {financials_contract.notes[0]}"
-    )
-    console.print(
-        "Official Financials Status: "
-        f"{financials_contract.status}"
-    )
+    console.print(f"Official Financials Note: {financials_contract.notes[0]}")
+    console.print(f"Official Financials Status: {financials_contract.status}")
     if not financials_contract.supports_as_of_date:
-        console.print(
-            "Official financials are not yet guaranteed point-in-time safe."
-        )
+        console.print("Official financials are not yet guaranteed point-in-time safe.")
     console.print(
         "Official Financials Missing Date Fields: "
         f"{', '.join(financials_contract.missing_date_fields) or 'None'}"
     )
     for warning in financials_contract.warnings:
         console.print(f"Official Financials Warning: {warning}")
-    console.print(
-        "Leakage Risk Sections: "
-        f"{', '.join(contract.leakage_risk_sections) or 'None'}"
-    )
+    console.print(f"Leakage Risk Sections: {', '.join(contract.leakage_risk_sections) or 'None'}")
     for warning in contract.warnings:
         console.print(f"Warning: {warning}")
 
@@ -2305,9 +2220,7 @@ def validate_financials_csv(
     ):
         table.add_column(column)
     automation_lines = []
-    parsed_tickers = [
-        item.strip().upper() for item in tickers.split(",") if item.strip()
-    ]
+    parsed_tickers = [item.strip().upper() for item in tickers.split(",") if item.strip()]
     for ticker in parsed_tickers:
         path = historical_financials_path(financials_root, ticker)
         validation = validate_historical_financials_csv(path)
@@ -2319,9 +2232,7 @@ def validate_financials_csv(
                     as_of_date,
                 )
             except ValueError as exc:
-                raise typer.BadParameter(
-                    f"Historical financials validation failed: {exc}"
-                ) from exc
+                raise typer.BadParameter(f"Historical financials validation failed: {exc}") from exc
         before = filtered.rows_before_filter if filtered else validation.rows_count
         after = filtered.rows_after_filter if filtered else 0
         future = filtered.future_rows_excluded_count if filtered else 0
@@ -2332,9 +2243,7 @@ def validate_financials_csv(
         )
         status = filtered.status if filtered else validation.status
         max_filing = filtered.max_filing_date_after_filter if filtered else None
-        max_accepted = (
-            filtered.max_accepted_date_after_filter if filtered else None
-        )
+        max_accepted = filtered.max_accepted_date_after_filter if filtered else None
         table.add_row(
             ticker,
             str(validation.file_found).lower(),
@@ -2361,15 +2270,9 @@ def validate_financials_csv(
                     f"rows_before_filter={before}",
                     f"rows_after_filter={after}",
                     f"future_rows_excluded_count={future}",
-                    (
-                        "rows_missing_availability_date_count="
-                        f"{missing_availability}"
-                    ),
+                    (f"rows_missing_availability_date_count={missing_availability}"),
                     f"max_filing_date_after_filter={max_filing or 'None'}",
-                    (
-                        "max_accepted_date_after_filter="
-                        f"{max_accepted or 'None'}"
-                    ),
+                    (f"max_accepted_date_after_filter={max_accepted or 'None'}"),
                     f"status={status}",
                 )
             )
@@ -2415,9 +2318,7 @@ def validate_financials_as_of(
             ticker=ticker,
         )
     except ValueError as exc:
-        raise typer.BadParameter(
-            f"Financials as-of validation failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Financials as-of validation failed: {exc}") from exc
 
     table = Table(title="Official Financials As-Of Contract")
     table.add_column("Field")
@@ -2447,9 +2348,7 @@ def validate_financials_as_of(
     console.print(table)
     console.print(f"provider={contract.provider_name}")
     console.print(f"as_of_date={contract.as_of_date}")
-    console.print(
-        f"supports_as_of_date={str(contract.supports_as_of_date).lower()}"
-    )
+    console.print(f"supports_as_of_date={str(contract.supports_as_of_date).lower()}")
     console.print(f"enforcement_level={contract.enforcement_level}")
     console.print(f"leakage_risk={contract.leakage_risk}")
     console.print(f"status={contract.status}")
@@ -2520,9 +2419,7 @@ def validate_price_window(
     console.print(f"as_of_date={as_of_date}")
     console.print(f"rows_before_filter={result.rows_before_filter}")
     console.print(f"rows_after_filter={result.rows_after_filter}")
-    console.print(
-        f"future_rows_excluded_count={result.future_rows_excluded_count}"
-    )
+    console.print(f"future_rows_excluded_count={result.future_rows_excluded_count}")
     console.print(f"max_date_after_filter={max_date or 'None'}")
     console.print(f"status={result.status}")
 
@@ -2546,9 +2443,7 @@ def validate_historical_signal_candidate(
         payload = json.loads(candidate_file.read_text(encoding="utf-8"))
         candidate = HistoricalSignalReadinessCandidate(**payload)
     except (OSError, json.JSONDecodeError, TypeError) as exc:
-        raise typer.BadParameter(
-            f"Historical signal candidate validation failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Historical signal candidate validation failed: {exc}") from exc
     valid = (
         candidate.historical_signal_candidate
         and candidate.signal_generation_status == "readiness_only"
@@ -2558,9 +2453,7 @@ def validate_historical_signal_candidate(
         and candidate.not_allocation_instruction
     )
     if not valid:
-        raise typer.BadParameter(
-            "Candidate does not satisfy readiness-only safety invariants."
-        )
+        raise typer.BadParameter("Candidate does not satisfy readiness-only safety invariants.")
 
     table = Table(title="Historical Signal Readiness Candidate")
     table.add_column("Field")
@@ -2583,19 +2476,13 @@ def validate_historical_signal_candidate(
     console.print(table)
     console.print(f"ticker={candidate.ticker}")
     console.print(f"as_of_date={candidate.as_of_date}")
-    console.print(
-        f"signal_generation_status={candidate.signal_generation_status}"
-    )
+    console.print(f"signal_generation_status={candidate.signal_generation_status}")
     console.print(
         "safe_for_historical_signal_generation="
         f"{str(candidate.safe_for_historical_signal_generation).lower()}"
     )
-    console.print(
-        f"not_trade_signal={str(candidate.not_trade_signal).lower()}"
-    )
-    console.print(
-        f"not_recommendation={str(candidate.not_recommendation).lower()}"
-    )
+    console.print(f"not_trade_signal={str(candidate.not_trade_signal).lower()}")
+    console.print(f"not_recommendation={str(candidate.not_recommendation).lower()}")
     console.print(f"blocking_reasons_count={len(candidate.blocking_reasons)}")
     console.print("status=valid_readiness_candidate")
 
@@ -2615,19 +2502,13 @@ def show_historical_readiness_ledger(
 ) -> None:
     """Show the latest separate historical-readiness ledger snapshot."""
     ledger_dir = outputs_root / "historical_readiness_ledger"
-    snapshot_path = (
-        ledger_dir / "latest_historical_signal_readiness_ledger_snapshot.json"
-    )
+    snapshot_path = ledger_dir / "latest_historical_signal_readiness_ledger_snapshot.json"
     if not snapshot_path.is_file():
-        raise typer.BadParameter(
-            f"Historical readiness ledger snapshot not found: {snapshot_path}"
-        )
+        raise typer.BadParameter(f"Historical readiness ledger snapshot not found: {snapshot_path}")
     try:
         snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Historical readiness ledger could not be read: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Historical readiness ledger could not be read: {exc}") from exc
     latest = snapshot.get("latest_record", {})
     table = Table(title="Historical Readiness Candidate Ledger")
     table.add_column("Field")
@@ -2658,16 +2539,11 @@ def show_historical_readiness_ledger(
     console.print(f"latest_ticker={latest.get('ticker', 'None')}")
     console.print(f"latest_as_of_date={latest.get('as_of_date', 'None')}")
     console.print(
-        "latest_signal_generation_status="
-        f"{latest.get('signal_generation_status', 'None')}"
+        f"latest_signal_generation_status={latest.get('signal_generation_status', 'None')}"
     )
+    console.print(f"latest_not_trade_signal={str(latest.get('not_trade_signal', False)).lower()}")
     console.print(
-        "latest_not_trade_signal="
-        f"{str(latest.get('not_trade_signal', False)).lower()}"
-    )
-    console.print(
-        "latest_not_recommendation="
-        f"{str(latest.get('not_recommendation', False)).lower()}"
+        f"latest_not_recommendation={str(latest.get('not_recommendation', False)).lower()}"
     )
     console.print(f"ledger_jsonl={snapshot.get('ledger_jsonl', 'None')}")
     console.print(f"ledger_csv={snapshot.get('ledger_csv', 'None')}")
@@ -2693,9 +2569,7 @@ def export_readiness_trial_ledger(
             dir_okay=False,
             help="Destination trial ledger CSV.",
         ),
-    ] = Path(
-        "data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv"
-    ),
+    ] = Path("data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv"),
     source_ledger: Annotated[
         Path | None,
         typer.Option(
@@ -2719,9 +2593,7 @@ def export_readiness_trial_ledger(
 ) -> None:
     """Export readiness-only records to a research trial ledger."""
     resolved_source = source_ledger or (
-        outputs_root
-        / "historical_readiness_ledger"
-        / "historical_signal_readiness_ledger.csv"
+        outputs_root / "historical_readiness_ledger" / "historical_signal_readiness_ledger.csv"
     )
     try:
         result = export_readiness_ledger_to_trial_ledger(
@@ -2730,9 +2602,7 @@ def export_readiness_trial_ledger(
             metadata_file=metadata_file,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Readiness trial ledger export failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Readiness trial ledger export failed: {exc}") from exc
 
     table = Table(title="Readiness Ledger Trial Export")
     table.add_column("Field")
@@ -2757,9 +2627,7 @@ def export_readiness_trial_ledger(
     console.print(table)
     console.print(f"source_ledger={result.source_ledger}", soft_wrap=True)
     console.print(f"output_ledger={result.output_ledger}", soft_wrap=True)
-    console.print(
-        f"total_exported_records={result.total_exported_records}"
-    )
+    console.print(f"total_exported_records={result.total_exported_records}")
     console.print("status=completed")
 
 
@@ -2781,9 +2649,7 @@ def validate_readiness_trial_ledger_command(
     try:
         result = validate_readiness_trial_ledger(ledger)
     except (OSError, ValueError) as exc:
-        raise typer.BadParameter(
-            f"Readiness trial ledger validation failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Readiness trial ledger validation failed: {exc}") from exc
 
     table = Table(title="Readiness Trial Ledger Validation")
     table.add_column("Field")
@@ -2802,9 +2668,7 @@ def validate_readiness_trial_ledger_command(
     console.print(f"rows={result.rows}")
     console.print(f"readiness_only_rows={result.readiness_only_rows}")
     console.print(f"not_trade_signal_rows={result.not_trade_signal_rows}")
-    console.print(
-        f"not_recommendation_rows={result.not_recommendation_rows}"
-    )
+    console.print(f"not_recommendation_rows={result.not_recommendation_rows}")
     console.print(f"invalid_rows={result.invalid_rows}")
     console.print(f"status={result.status}")
     for warning in result.warnings:
@@ -2831,8 +2695,7 @@ def validate_expanded_ticker_coverage_command(
         typer.Option(
             "--as-of-dates",
             help=(
-                "Comma-separated coverage dates. Explicit dates take "
-                "precedence over --date-preset."
+                "Comma-separated coverage dates. Explicit dates take precedence over --date-preset."
             ),
         ),
     ] = None,
@@ -2891,11 +2754,7 @@ def validate_expanded_ticker_coverage_command(
     del fixtures_root
     try:
         if as_of_dates:
-            requested_dates = [
-                value.strip()
-                for value in as_of_dates.split(",")
-                if value.strip()
-            ]
+            requested_dates = [value.strip() for value in as_of_dates.split(",") if value.strip()]
         elif date_preset:
             requested_dates = resolve_historical_date_preset(date_preset)
         else:
@@ -2910,9 +2769,7 @@ def validate_expanded_ticker_coverage_command(
             outputs_root=outputs_root,
         )
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Expanded ticker coverage validation failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Expanded ticker coverage validation failed: {exc}") from exc
 
     report = files.report
     table = Table(title="Expanded Ticker Coverage Validation")
@@ -2980,29 +2837,19 @@ def validate_expanded_ticker_coverage_output_command(
     """Validate Task 101 outputs before expanded trial execution."""
     try:
         if auto_latest:
-            latest_manifest = load_latest_expanded_ticker_coverage_manifest(
-                outputs_root
-            )
+            latest_manifest = load_latest_expanded_ticker_coverage_manifest(outputs_root)
             validation_run_id = str(latest_manifest["validation_run_id"])
         else:
             if not validation_run_id:
-                raise ValueError(
-                    "Provide --validation-run-id or use --auto-latest."
-                )
+                raise ValueError("Provide --validation-run-id or use --auto-latest.")
             try:
-                latest_manifest = (
-                    load_latest_expanded_ticker_coverage_manifest(
-                        outputs_root
-                    )
-                )
+                latest_manifest = load_latest_expanded_ticker_coverage_manifest(outputs_root)
             except FileNotFoundError:
                 latest_manifest = {}
-        files = (
-            write_expanded_ticker_coverage_output_validation_report(
-                outputs_root=outputs_root,
-                validation_run_id=validation_run_id,
-                latest_manifest=latest_manifest,
-            )
+        files = write_expanded_ticker_coverage_output_validation_report(
+            outputs_root=outputs_root,
+            validation_run_id=validation_run_id,
+            latest_manifest=latest_manifest,
         )
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
         raise typer.BadParameter(
@@ -3035,18 +2882,11 @@ def validate_expanded_ticker_coverage_output_command(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
+    console.print(f"validation_check_run_id={report.validation_check_run_id}")
+    console.print(f"source_validation_run_id={report.source_validation_run_id}")
+    console.print(f"output_validation_status={report.output_validation_status}")
     console.print(
-        f"validation_check_run_id={report.validation_check_run_id}"
-    )
-    console.print(
-        f"source_validation_run_id={report.source_validation_run_id}"
-    )
-    console.print(
-        f"output_validation_status={report.output_validation_status}"
-    )
-    console.print(
-        "readiness_for_expanded_trial="
-        f"{str(report.readiness_for_expanded_trial).lower()}"
+        f"readiness_for_expanded_trial={str(report.readiness_for_expanded_trial).lower()}"
     )
     console.print(f"fail_count={report.fail_count}")
     console.print(f"next_research_action={report.next_research_action}")
@@ -3167,9 +3007,7 @@ def run_historical_readiness_multidate_command(
             "--trial-ledger",
             help="Output path for the aggregate readiness trial ledger.",
         ),
-    ] = Path(
-        "data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv"
-    ),
+    ] = Path("data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv"),
     price_fixtures_path: Annotated[
         Path,
         typer.Option(
@@ -3201,9 +3039,7 @@ def run_historical_readiness_multidate_command(
             price_fixtures_path=price_fixtures_path,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Historical readiness multi-date trial failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Historical readiness multi-date trial failed: {exc}") from exc
 
     table = Table(title="Historical Readiness Multi-Date Trial")
     table.add_column("Field")
@@ -3260,41 +3096,25 @@ def run_historical_readiness_multidate_command(
     console.print(table)
     console.print(f"multidate_run_id={result.multidate_run_id}")
     console.print(f"date_preset={result.date_preset or 'explicit'}")
-    console.print(
-        f"as_of_dates={','.join(result.resolved_as_of_dates)}"
-    )
+    console.print(f"as_of_dates={','.join(result.resolved_as_of_dates)}")
     console.print(f"usable_dates={','.join(result.usable_dates)}")
     console.print(f"skipped_dates={','.join(result.skipped_dates)}")
     console.print(f"date_coverage_status={result.date_coverage_status}")
     console.print(
-        "coverage_quality_counts="
-        f"{json.dumps(result.coverage_quality_counts, sort_keys=True)}"
+        f"coverage_quality_counts={json.dumps(result.coverage_quality_counts, sort_keys=True)}"
     )
     console.print(
-        "coverage_severity_counts="
-        f"{json.dumps(result.coverage_severity_counts, sort_keys=True)}"
+        f"coverage_severity_counts={json.dumps(result.coverage_severity_counts, sort_keys=True)}"
     )
     console.print(f"tickers={tickers}")
     console.print(f"total_expected_runs={result.total_expected_runs}")
     console.print(f"total_completed_runs={result.total_completed_runs}")
     console.print(f"total_failed_runs={result.total_failed_runs}")
-    console.print(
-        "trial_ledger_exported="
-        f"{str(result.trial_ledger_exported).lower()}"
-    )
-    console.print(
-        "readiness_backtest_run="
-        f"{str(result.readiness_backtest_run).lower()}"
-    )
-    console.print(
-        "sample_size_after_dedupe="
-        f"{result.sample_size_after_dedupe or 0}"
-    )
+    console.print(f"trial_ledger_exported={str(result.trial_ledger_exported).lower()}")
+    console.print(f"readiness_backtest_run={str(result.readiness_backtest_run).lower()}")
+    console.print(f"sample_size_after_dedupe={result.sample_size_after_dedupe or 0}")
     console.print(f"decision_status={result.decision_status or 'not_run'}")
-    console.print(
-        "statistical_validity="
-        f"{result.statistical_validity or 'not_run'}"
-    )
+    console.print(f"statistical_validity={result.statistical_validity or 'not_run'}")
     console.print("status=completed")
 
 
@@ -3411,15 +3231,11 @@ def run_expanded_ticker_readiness_trial_command(
     trial_ledger_path: Annotated[
         Path,
         typer.Option("--trial-ledger"),
-    ] = Path(
-        "data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv"
-    ),
+    ] = Path("data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv"),
 ) -> None:
     """Run a readiness-only trial from a coverage-validated universe."""
     if price_provider.strip().lower() != "csv":
-        raise typer.BadParameter(
-            "Expanded ticker readiness trial requires --price-provider csv."
-        )
+        raise typer.BadParameter("Expanded ticker readiness trial requires --price-provider csv.")
     try:
         result = run_expanded_ticker_readiness_trial(
             eligible_universe=eligible_universe,
@@ -3439,9 +3255,7 @@ def run_expanded_ticker_readiness_trial_command(
             trial_ledger_path=trial_ledger_path,
         )
     except (OSError, ValueError, json.JSONDecodeError, yaml.YAMLError) as exc:
-        raise typer.BadParameter(
-            f"Expanded ticker readiness trial failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Expanded ticker readiness trial failed: {exc}") from exc
 
     table = Table(title="Expanded Ticker Readiness Trial")
     table.add_column("Field")
@@ -3484,16 +3298,12 @@ def run_expanded_ticker_readiness_trial_command(
         table.add_row(label, value)
     console.print(table)
     console.print(f"expanded_trial_run_id={result.expanded_trial_run_id}")
-    console.print(
-        f"source_validation_run_id={result.source_validation_run_id or ''}"
-    )
+    console.print(f"source_validation_run_id={result.source_validation_run_id or ''}")
     console.print(f"eligible_ticker_count={len(result.eligible_tickers)}")
     console.print(f"completed_runs={result.completed_runs}")
     console.print(f"failed_runs={result.failed_runs}")
     console.print(f"backtest_run_id={result.backtest_run_id or ''}")
-    console.print(
-        f"sample_size_after_dedupe={result.sample_size_after_dedupe or 0}"
-    )
+    console.print(f"sample_size_after_dedupe={result.sample_size_after_dedupe or 0}")
     console.print(f"status={result.status}")
 
 
@@ -3542,22 +3352,16 @@ def analyze_expanded_trial_results_command(
 ) -> None:
     """Explain expanded readiness trial instability from existing outputs."""
     if bool(expanded_trial_run_id) == bool(auto_latest):
-        raise typer.BadParameter(
-            "Provide exactly one of --expanded-trial-run-id or --auto-latest."
-        )
+        raise typer.BadParameter("Provide exactly one of --expanded-trial-run-id or --auto-latest.")
     try:
         files = write_expanded_trial_analysis_report(
             outputs_root=outputs_root,
-            expanded_trial_run_id=(
-                None if auto_latest else expanded_trial_run_id
-            ),
+            expanded_trial_run_id=(None if auto_latest else expanded_trial_run_id),
             backtest_run_id=backtest_run_id,
             prior_backtest_run_id=prior_backtest_run_id,
         )
     except (OSError, ValueError, json.JSONDecodeError, yaml.YAMLError) as exc:
-        raise typer.BadParameter(
-            f"Expanded trial results analysis failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Expanded trial results analysis failed: {exc}") from exc
 
     report = files.report
     explanation = report.expanded_trial_instability_explanation
@@ -3590,10 +3394,7 @@ def analyze_expanded_trial_results_command(
     console.print(f"expanded_trial_run_id={report.expanded_trial_run_id}")
     console.print(f"backtest_run_id={report.backtest_run_id}")
     console.print(f"analysis_status={report.analysis_status}")
-    console.print(
-        "metadata_diversity_status="
-        f"{diversity['metadata_diversity_status']}"
-    )
+    console.print(f"metadata_diversity_status={diversity['metadata_diversity_status']}")
     console.print(f"next_research_action={report.next_research_action}")
     console.print("status=completed")
 
@@ -3650,9 +3451,7 @@ def build_research_evidence_scorecard_command(
 ) -> None:
     """Consolidate expanded trial diagnostics into a research scorecard."""
     if bool(analysis_run_id) == bool(auto_latest):
-        raise typer.BadParameter(
-            "Provide exactly one of --analysis-run-id or --auto-latest."
-        )
+        raise typer.BadParameter("Provide exactly one of --analysis-run-id or --auto-latest.")
     try:
         files = write_research_evidence_scorecard_report(
             outputs_root=outputs_root,
@@ -3662,9 +3461,7 @@ def build_research_evidence_scorecard_command(
             prior_backtest_run_id=prior_backtest_run_id,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Research evidence scorecard failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Research evidence scorecard failed: {exc}") from exc
 
     scorecard = files.scorecard
     table = Table(title="Research Evidence Scorecard")
@@ -3698,15 +3495,9 @@ def build_research_evidence_scorecard_command(
     console.print(table)
     console.print(f"scorecard_run_id={scorecard.scorecard_run_id}")
     console.print(f"analysis_run_id={scorecard.analysis_run_id}")
-    console.print(
-        "research_evidence_classification="
-        f"{scorecard.research_evidence_classification}"
-    )
+    console.print(f"research_evidence_classification={scorecard.research_evidence_classification}")
     console.print(f"research_decision={scorecard.research_decision}")
-    console.print(
-        "next_research_action="
-        f"{scorecard.recommended_next_research_action}"
-    )
+    console.print(f"next_research_action={scorecard.recommended_next_research_action}")
     console.print(f"status={scorecard.scorecard_status}")
 
 
@@ -3741,18 +3532,14 @@ def run_research_gatekeeper_command(
 ) -> None:
     """Convert a research evidence scorecard into a governance verdict."""
     if bool(scorecard_run_id) == bool(auto_latest):
-        raise typer.BadParameter(
-            "Provide exactly one of --scorecard-run-id or --auto-latest."
-        )
+        raise typer.BadParameter("Provide exactly one of --scorecard-run-id or --auto-latest.")
     try:
         files = write_research_gatekeeper_report(
             outputs_root=outputs_root,
             scorecard_run_id=None if auto_latest else scorecard_run_id,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Research gatekeeper failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Research gatekeeper failed: {exc}") from exc
 
     report = files.report
     table = Table(title="Research Gatekeeper")
@@ -3784,14 +3571,9 @@ def run_research_gatekeeper_command(
     console.print(f"gatekeeper_run_id={report.gatekeeper_run_id}")
     console.print(f"scorecard_run_id={report.scorecard_run_id}")
     console.print(f"gatekeeper_decision={report.gatekeeper_decision}")
-    console.print(
-        f"progression_allowed={str(report.progression_allowed).lower()}"
-    )
+    console.print(f"progression_allowed={str(report.progression_allowed).lower()}")
     console.print(f"hold_bias={str(report.hold_bias).lower()}")
-    console.print(
-        "next_research_action="
-        f"{report.recommended_next_research_action}"
-    )
+    console.print(f"next_research_action={report.recommended_next_research_action}")
     console.print(f"status={report.gatekeeper_status}")
 
 
@@ -3826,20 +3608,14 @@ def build_investor_persona_attribution_command(
 ) -> None:
     """Map held research evidence to independent persona evidence needs."""
     if bool(gatekeeper_run_id) == bool(auto_latest):
-        raise typer.BadParameter(
-            "Provide exactly one of --gatekeeper-run-id or --auto-latest."
-        )
+        raise typer.BadParameter("Provide exactly one of --gatekeeper-run-id or --auto-latest.")
     try:
         files = write_investor_persona_attribution_report(
             outputs_root=outputs_root,
-            gatekeeper_run_id=(
-                None if auto_latest else gatekeeper_run_id
-            ),
+            gatekeeper_run_id=(None if auto_latest else gatekeeper_run_id),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Investor persona attribution failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Investor persona attribution failed: {exc}") from exc
 
     report = files.report
     summary = report.cross_persona_summary
@@ -3879,13 +3655,8 @@ def build_investor_persona_attribution_command(
     console.print(f"attribution_run_id={report.attribution_run_id}")
     console.print(f"gatekeeper_run_id={report.gatekeeper_run_id}")
     console.print(f"attribution_status={report.attribution_status}")
-    console.print(
-        f"progression_allowed={str(report.progression_allowed).lower()}"
-    )
-    console.print(
-        "next_research_action="
-        f"{report.recommended_next_research_action}"
-    )
+    console.print(f"progression_allowed={str(report.progression_allowed).lower()}")
+    console.print(f"next_research_action={report.recommended_next_research_action}")
     console.print("status=completed")
 
 
@@ -3921,20 +3692,15 @@ def build_backoffice_evidence_quality_attribution_command(
     """Translate a held persona state into Backoffice repair work."""
     if bool(persona_attribution_run_id) == bool(auto_latest):
         raise typer.BadParameter(
-            "Provide exactly one of --persona-attribution-run-id or "
-            "--auto-latest."
+            "Provide exactly one of --persona-attribution-run-id or --auto-latest."
         )
     try:
         files = write_backoffice_evidence_quality_report(
             outputs_root=outputs_root,
-            attribution_run_id=(
-                None if auto_latest else persona_attribution_run_id
-            ),
+            attribution_run_id=(None if auto_latest else persona_attribution_run_id),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Backoffice evidence quality attribution failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Backoffice evidence quality attribution failed: {exc}") from exc
 
     report = files.report
     summary = report.backoffice_attribution_summary
@@ -3968,22 +3734,11 @@ def build_backoffice_evidence_quality_attribution_command(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
-    console.print(
-        "backoffice_attribution_run_id="
-        f"{report.backoffice_attribution_run_id}"
-    )
-    console.print(
-        "persona_attribution_run_id="
-        f"{report.investor_persona_attribution_run_id}"
-    )
+    console.print(f"backoffice_attribution_run_id={report.backoffice_attribution_run_id}")
+    console.print(f"persona_attribution_run_id={report.investor_persona_attribution_run_id}")
     console.print(f"attribution_status={report.attribution_status}")
-    console.print(
-        f"progression_allowed={str(report.progression_allowed).lower()}"
-    )
-    console.print(
-        "next_research_action="
-        f"{report.recommended_next_research_action}"
-    )
+    console.print(f"progression_allowed={str(report.progression_allowed).lower()}")
+    console.print(f"next_research_action={report.recommended_next_research_action}")
     console.print("status=completed")
 
 
@@ -4019,20 +3774,15 @@ def build_backtest_driver_decomposition_command(
     """Execute BO-001 backtest driver decomposition."""
     if bool(backoffice_attribution_run_id) == bool(auto_latest):
         raise typer.BadParameter(
-            "Provide exactly one of --backoffice-attribution-run-id or "
-            "--auto-latest."
+            "Provide exactly one of --backoffice-attribution-run-id or --auto-latest."
         )
     try:
         files = write_backtest_driver_decomposition_report(
             outputs_root=outputs_root,
-            backoffice_attribution_run_id=(
-                None if auto_latest else backoffice_attribution_run_id
-            ),
+            backoffice_attribution_run_id=(None if auto_latest else backoffice_attribution_run_id),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Backtest driver decomposition failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Backtest driver decomposition failed: {exc}") from exc
 
     report = files.report
     summary = report.driver_summary
@@ -4064,13 +3814,8 @@ def build_backtest_driver_decomposition_command(
         table.add_row(label, value)
     console.print(table)
     console.print(f"decomposition_run_id={report.decomposition_run_id}")
-    console.print(
-        "backoffice_attribution_run_id="
-        f"{report.backoffice_attribution_run_id}"
-    )
-    console.print(
-        f"reconciliation_status={report.reconciliation['reconciliation_status']}"
-    )
+    console.print(f"backoffice_attribution_run_id={report.backoffice_attribution_run_id}")
+    console.print(f"reconciliation_status={report.reconciliation['reconciliation_status']}")
     console.print(f"rows_reconciled={report.reconciliation['rows_reconciled']}")
     console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
     console.print(f"status={report.decomposition_status}")
@@ -4107,9 +3852,7 @@ def build_outlier_repair_path_command(
 ) -> None:
     """Execute BO-002 outlier and Ex-NVDA repair path."""
     if bool(decomposition_run_id) == bool(auto_latest):
-        raise typer.BadParameter(
-            "Provide exactly one of --decomposition-run-id or --auto-latest."
-        )
+        raise typer.BadParameter("Provide exactly one of --decomposition-run-id or --auto-latest.")
     try:
         files = write_outlier_repair_path_report(
             outputs_root=outputs_root,
@@ -4143,10 +3886,7 @@ def build_outlier_repair_path_command(
     console.print(table)
     console.print(f"outlier_repair_run_id={report.outlier_repair_run_id}")
     console.print(f"decomposition_run_id={report.decomposition_run_id}")
-    console.print(
-        "overall_outlier_repair_status="
-        f"{dependence['overall_outlier_repair_status']}"
-    )
+    console.print(f"overall_outlier_repair_status={dependence['overall_outlier_repair_status']}")
     console.print(f"scenario_count={len(report.scenario_analysis)}")
     console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
     console.print(f"status={report.outlier_repair_status}")
@@ -4183,23 +3923,18 @@ def build_walk_forward_repair_plan_command(
 ) -> None:
     """Execute BO-003 walk-forward stability repair plan."""
     if bool(outlier_repair_run_id) == bool(auto_latest):
-        raise typer.BadParameter(
-            "Provide exactly one of --outlier-repair-run-id or --auto-latest."
-        )
+        raise typer.BadParameter("Provide exactly one of --outlier-repair-run-id or --auto-latest.")
     try:
         files = write_walk_forward_repair_plan_report(
             outputs_root=outputs_root,
             outlier_repair_run_id=None if auto_latest else outlier_repair_run_id,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Walk-forward repair plan failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Walk-forward repair plan failed: {exc}") from exc
 
     report = files.report
     main_finding = (
-        "Post-2021 periods break benchmark-relative stability while "
-        "2021-06-30 remains supportive."
+        "Post-2021 periods break benchmark-relative stability while 2021-06-30 remains supportive."
     )
     table = Table(title="Walk-Forward Stability Repair Plan")
     table.add_column("Field")
@@ -4219,9 +3954,7 @@ def build_walk_forward_repair_plan_command(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
-    console.print(
-        f"walk_forward_repair_run_id={report.walk_forward_repair_run_id}"
-    )
+    console.print(f"walk_forward_repair_run_id={report.walk_forward_repair_run_id}")
     console.print(f"outlier_repair_run_id={report.outlier_repair_run_id}")
     console.print(f"period_count={len(report.period_stability_analysis)}")
     console.print(f"failure_mode_count={len(report.stability_failure_modes)}")
@@ -4266,14 +3999,10 @@ def build_delayed_anchor_repair_command(
     try:
         files = write_delayed_anchor_repair_report(
             outputs_root=outputs_root,
-            walk_forward_repair_run_id=(
-                None if auto_latest else walk_forward_repair_run_id
-            ),
+            walk_forward_repair_run_id=(None if auto_latest else walk_forward_repair_run_id),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Delayed anchor repair failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Delayed anchor repair failed: {exc}") from exc
 
     report = files.report
     classification = report.anchor_impact_classification
@@ -4298,14 +4027,11 @@ def build_delayed_anchor_repair_command(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
-    console.print(
-        f"delayed_anchor_repair_run_id={report.delayed_anchor_repair_run_id}"
-    )
+    console.print(f"delayed_anchor_repair_run_id={report.delayed_anchor_repair_run_id}")
     console.print(f"walk_forward_repair_run_id={report.walk_forward_repair_run_id}")
     console.print(f"anchor_bucket_count={len(report.anchor_exposure_analysis)}")
     console.print(
-        "anchor_data_sufficiency_status="
-        f"{classification['anchor_data_sufficiency_status']}"
+        f"anchor_data_sufficiency_status={classification['anchor_data_sufficiency_status']}"
     )
     console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
     console.print(f"status={report.delayed_anchor_repair_status}")
@@ -4343,20 +4069,15 @@ def build_metadata_diversity_recheck_command(
     """Execute BO-005 metadata diversity recheck."""
     if bool(delayed_anchor_repair_run_id) == bool(auto_latest):
         raise typer.BadParameter(
-            "Provide exactly one of --delayed-anchor-repair-run-id or "
-            "--auto-latest."
+            "Provide exactly one of --delayed-anchor-repair-run-id or --auto-latest."
         )
     try:
         files = write_metadata_diversity_recheck_report(
             outputs_root=outputs_root,
-            delayed_anchor_repair_run_id=(
-                None if auto_latest else delayed_anchor_repair_run_id
-            ),
+            delayed_anchor_repair_run_id=(None if auto_latest else delayed_anchor_repair_run_id),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Metadata diversity recheck failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Metadata diversity recheck failed: {exc}") from exc
 
     report = files.report
     summary = report.metadata_matrix_summary
@@ -4385,19 +4106,12 @@ def build_metadata_diversity_recheck_command(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
-    console.print(
-        "metadata_diversity_recheck_run_id="
-        f"{report.metadata_diversity_recheck_run_id}"
-    )
-    console.print(
-        f"delayed_anchor_repair_run_id={report.delayed_anchor_repair_run_id}"
-    )
+    console.print(f"metadata_diversity_recheck_run_id={report.metadata_diversity_recheck_run_id}")
+    console.print(f"delayed_anchor_repair_run_id={report.delayed_anchor_repair_run_id}")
     console.print(f"ticker_count={summary['ticker_count']}")
     console.print(f"sector_count={summary['sector_count']}")
     console.print(f"category_count={summary['category_count']}")
-    console.print(
-        f"metadata_diversity_status={classification['metadata_diversity_status']}"
-    )
+    console.print(f"metadata_diversity_status={classification['metadata_diversity_status']}")
     console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
     console.print(f"status={report.metadata_diversity_recheck_status}")
 
@@ -4434,8 +4148,7 @@ def build_persona_evidence_pack_requirements_command(
     """Execute BO-006 persona evidence pack requirements."""
     if bool(metadata_diversity_recheck_run_id) == bool(auto_latest):
         raise typer.BadParameter(
-            "Provide exactly one of --metadata-diversity-recheck-run-id or "
-            "--auto-latest."
+            "Provide exactly one of --metadata-diversity-recheck-run-id or --auto-latest."
         )
     try:
         files = write_persona_evidence_pack_requirements_report(
@@ -4445,9 +4158,7 @@ def build_persona_evidence_pack_requirements_command(
             ),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Persona evidence pack requirements failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Persona evidence pack requirements failed: {exc}") from exc
 
     report = files.report
     table = Table(title="Persona-Specific Evidence Pack Requirements")
@@ -4471,13 +4182,8 @@ def build_persona_evidence_pack_requirements_command(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
-    console.print(
-        f"persona_evidence_pack_run_id={report.persona_evidence_pack_run_id}"
-    )
-    console.print(
-        "metadata_diversity_recheck_run_id="
-        f"{report.metadata_diversity_recheck_run_id}"
-    )
+    console.print(f"persona_evidence_pack_run_id={report.persona_evidence_pack_run_id}")
+    console.print(f"metadata_diversity_recheck_run_id={report.metadata_diversity_recheck_run_id}")
     console.print("gatekeeper_decision=hold")
     console.print("progression_allowed=false")
     console.print(f"persona_count={len(report.persona_checklists)}")
@@ -4518,20 +4224,15 @@ def build_bogle_benchmark_index_pack_command(
     """Execute BO-007 Bogle benchmark/index comparison pack."""
     if bool(persona_evidence_pack_run_id) == bool(auto_latest):
         raise typer.BadParameter(
-            "Provide exactly one of --persona-evidence-pack-run-id or "
-            "--auto-latest."
+            "Provide exactly one of --persona-evidence-pack-run-id or --auto-latest."
         )
     try:
         files = write_bogle_benchmark_index_pack_report(
             outputs_root=outputs_root,
-            persona_evidence_pack_run_id=(
-                None if auto_latest else persona_evidence_pack_run_id
-            ),
+            persona_evidence_pack_run_id=(None if auto_latest else persona_evidence_pack_run_id),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Bogle benchmark/index pack failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Bogle benchmark/index pack failed: {exc}") from exc
 
     report = files.report
     summary = report.bogle_benchmark_summary
@@ -4554,12 +4255,8 @@ def build_bogle_benchmark_index_pack_command(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
-    console.print(
-        f"bogle_benchmark_pack_run_id={report.bogle_benchmark_pack_run_id}"
-    )
-    console.print(
-        f"persona_evidence_pack_run_id={report.persona_evidence_pack_run_id}"
-    )
+    console.print(f"bogle_benchmark_pack_run_id={report.bogle_benchmark_pack_run_id}")
+    console.print(f"persona_evidence_pack_run_id={report.persona_evidence_pack_run_id}")
     console.print(f"gatekeeper_decision={summary['gatekeeper_decision']}")
     console.print(f"progression_allowed={str(summary['progression_allowed']).lower()}")
     console.print(f"bogle_review_allowed={str(summary['bogle_review_allowed']).lower()}")
@@ -4601,20 +4298,15 @@ def build_fisher_qualitative_growth_pack_command(
     """Execute BO-008 Fisher qualitative growth evidence pack."""
     if bool(bogle_benchmark_pack_run_id) == bool(auto_latest):
         raise typer.BadParameter(
-            "Provide exactly one of --bogle-benchmark-pack-run-id or "
-            "--auto-latest."
+            "Provide exactly one of --bogle-benchmark-pack-run-id or --auto-latest."
         )
     try:
         files = write_fisher_qualitative_growth_pack_report(
             outputs_root=outputs_root,
-            bogle_benchmark_pack_run_id=(
-                None if auto_latest else bogle_benchmark_pack_run_id
-            ),
+            bogle_benchmark_pack_run_id=(None if auto_latest else bogle_benchmark_pack_run_id),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Fisher qualitative growth pack failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Fisher qualitative growth pack failed: {exc}") from exc
 
     report = files.report
     summary = report.fisher_growth_summary
@@ -4649,12 +4341,8 @@ def build_fisher_qualitative_growth_pack_command(
     console.print(f"gatekeeper_decision={summary['gatekeeper_decision']}")
     console.print(f"progression_allowed={str(summary['progression_allowed']).lower()}")
     console.print(f"fisher_review_allowed={str(summary['fisher_review_allowed']).lower()}")
-    console.print(
-        f"qualitative_evidence_rows={len(report.fisher_qualitative_evidence_matrix)}"
-    )
-    console.print(
-        f"scuttlebutt_proxy_rows={len(report.fisher_scuttlebutt_proxy_matrix)}"
-    )
+    console.print(f"qualitative_evidence_rows={len(report.fisher_qualitative_evidence_matrix)}")
+    console.print(f"scuttlebutt_proxy_rows={len(report.fisher_scuttlebutt_proxy_matrix)}")
     console.print(f"growth_risk_rows={len(report.fisher_growth_risk_matrix)}")
     console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
     console.print(f"status={report.fisher_growth_pack_status}")
@@ -4692,20 +4380,15 @@ def build_buffett_munger_quality_risk_pack_command(
     """Execute BO-009 Buffett/Munger quality and risk pack."""
     if bool(fisher_growth_pack_run_id) == bool(auto_latest):
         raise typer.BadParameter(
-            "Provide exactly one of --fisher-growth-pack-run-id or "
-            "--auto-latest."
+            "Provide exactly one of --fisher-growth-pack-run-id or --auto-latest."
         )
     try:
         files = write_buffett_munger_quality_risk_pack_report(
             outputs_root=outputs_root,
-            fisher_growth_pack_run_id=(
-                None if auto_latest else fisher_growth_pack_run_id
-            ),
+            fisher_growth_pack_run_id=(None if auto_latest else fisher_growth_pack_run_id),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Buffett/Munger quality and risk pack failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Buffett/Munger quality and risk pack failed: {exc}") from exc
 
     report = files.report
     buffett = report.buffett_quality_summary
@@ -4730,18 +4413,12 @@ def build_buffett_munger_quality_risk_pack_command(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
-    console.print(
-        f"buffett_munger_pack_run_id={report.buffett_munger_pack_run_id}"
-    )
+    console.print(f"buffett_munger_pack_run_id={report.buffett_munger_pack_run_id}")
     console.print(f"fisher_growth_pack_run_id={report.fisher_growth_pack_run_id}")
     console.print(f"gatekeeper_decision={buffett['gatekeeper_decision']}")
     console.print(f"progression_allowed={str(buffett['progression_allowed']).lower()}")
-    console.print(
-        f"buffett_review_allowed={str(buffett['buffett_review_allowed']).lower()}"
-    )
-    console.print(
-        f"munger_review_allowed={str(munger['munger_review_allowed']).lower()}"
-    )
+    console.print(f"buffett_review_allowed={str(buffett['buffett_review_allowed']).lower()}")
+    console.print(f"munger_review_allowed={str(munger['munger_review_allowed']).lower()}")
     console.print(f"quality_evidence_rows={len(report.quality_evidence_matrix)}")
     console.print(f"munger_risk_rows={len(report.munger_inversion_risk_matrix)}")
     console.print(f"recommended_next_work_order={report.recommended_next_work_order}")
@@ -4780,20 +4457,15 @@ def build_research_audit_trail_bundle_command(
     """Execute BO-010 research audit trail bundle."""
     if bool(buffett_munger_pack_run_id) == bool(auto_latest):
         raise typer.BadParameter(
-            "Provide exactly one of --buffett-munger-pack-run-id or "
-            "--auto-latest."
+            "Provide exactly one of --buffett-munger-pack-run-id or --auto-latest."
         )
     try:
         files = write_research_audit_trail_bundle_report(
             outputs_root=outputs_root,
-            buffett_munger_pack_run_id=(
-                None if auto_latest else buffett_munger_pack_run_id
-            ),
+            buffett_munger_pack_run_id=(None if auto_latest else buffett_munger_pack_run_id),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Research audit trail bundle failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Research audit trail bundle failed: {exc}") from exc
 
     report = files.report
     phase = report.phase_closure_summary
@@ -4817,9 +4489,7 @@ def build_research_audit_trail_bundle_command(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
-    console.print(
-        f"research_audit_trail_run_id={report.research_audit_trail_run_id}"
-    )
+    console.print(f"research_audit_trail_run_id={report.research_audit_trail_run_id}")
     console.print(f"buffett_munger_pack_run_id={report.buffett_munger_pack_run_id}")
     console.print(f"gatekeeper_decision={phase['final_gatekeeper_decision']}")
     console.print(f"progression_allowed={str(phase['progression_allowed']).lower()}")
@@ -4863,15 +4533,12 @@ def build_re_run_re_gate_plan_command(
     """Define the Phase 16 re-run and re-gate plan without executing it."""
     if bool(research_audit_trail_run_id) == bool(auto_latest):
         raise typer.BadParameter(
-            "Provide exactly one of --research-audit-trail-run-id or "
-            "--auto-latest."
+            "Provide exactly one of --research-audit-trail-run-id or --auto-latest."
         )
     try:
         files = write_re_run_re_gate_plan_report(
             outputs_root=outputs_root,
-            research_audit_trail_run_id=(
-                None if auto_latest else research_audit_trail_run_id
-            ),
+            research_audit_trail_run_id=(None if auto_latest else research_audit_trail_run_id),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         raise typer.BadParameter(f"Re-run and re-gate plan failed: {exc}") from exc
@@ -4900,22 +4567,13 @@ def build_re_run_re_gate_plan_command(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
-    console.print(
-        f"re_run_re_gate_plan_run_id={report.re_run_re_gate_plan_run_id}"
-    )
-    console.print(
-        f"research_audit_trail_run_id={report.research_audit_trail_run_id}"
-    )
+    console.print(f"re_run_re_gate_plan_run_id={report.re_run_re_gate_plan_run_id}")
+    console.print(f"research_audit_trail_run_id={report.research_audit_trail_run_id}")
     console.print(f"current_phase={context['phase_name']}")
     console.print(f"current_task={context['current_task_name']}")
     console.print(f"gatekeeper_decision={context['gatekeeper_decision']}")
-    console.print(
-        f"progression_allowed={str(context['progression_allowed']).lower()}"
-    )
-    console.print(
-        "persona_reviews_allowed="
-        f"{str(context['persona_reviews_allowed']).lower()}"
-    )
+    console.print(f"progression_allowed={str(context['progression_allowed']).lower()}")
+    console.print(f"persona_reviews_allowed={str(context['persona_reviews_allowed']).lower()}")
     console.print(f"roadmap_tasks={len(report.phase_16_task_roadmap)}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.plan_status}")
@@ -4953,15 +4611,12 @@ def build_re_run_input_package_command(
     """Build Task 120 re-run input package without executing the re-run."""
     if bool(re_run_re_gate_plan_run_id) == bool(auto_latest):
         raise typer.BadParameter(
-            "Provide exactly one of --re-run-re-gate-plan-run-id or "
-            "--auto-latest."
+            "Provide exactly one of --re-run-re-gate-plan-run-id or --auto-latest."
         )
     try:
         files = write_re_run_input_package_report(
             outputs_root=outputs_root,
-            re_run_re_gate_plan_run_id=(
-                None if auto_latest else re_run_re_gate_plan_run_id
-            ),
+            re_run_re_gate_plan_run_id=(None if auto_latest else re_run_re_gate_plan_run_id),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         raise typer.BadParameter(f"Re-run input package failed: {exc}") from exc
@@ -4992,22 +4647,13 @@ def build_re_run_input_package_command(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
-    console.print(
-        f"re_run_input_package_run_id={report.re_run_input_package_run_id}"
-    )
-    console.print(
-        f"re_run_re_gate_plan_run_id={report.re_run_re_gate_plan_run_id}"
-    )
+    console.print(f"re_run_input_package_run_id={report.re_run_input_package_run_id}")
+    console.print(f"re_run_re_gate_plan_run_id={report.re_run_re_gate_plan_run_id}")
     console.print("current_phase=16 - Re-Run & Re-Gate Layer")
     console.print(f"current_task={summary['current_task_name']}")
     console.print(f"gatekeeper_decision={summary['gatekeeper_decision']}")
-    console.print(
-        f"progression_allowed={str(summary['progression_allowed']).lower()}"
-    )
-    console.print(
-        "persona_reviews_allowed="
-        f"{str(summary['persona_reviews_allowed']).lower()}"
-    )
+    console.print(f"progression_allowed={str(summary['progression_allowed']).lower()}")
+    console.print(f"persona_reviews_allowed={str(summary['persona_reviews_allowed']).lower()}")
     console.print(f"universe_rows={len(report.re_run_universe_matrix)}")
     console.print(f"date_rows={len(report.re_run_date_matrix)}")
     console.print(f"control_rows={len(report.re_run_control_matrix)}")
@@ -5047,15 +4693,12 @@ def execute_controlled_re_run_trial_command(
     """Execute Task 121 controlled local re-run without rerunning Gatekeeper."""
     if bool(re_run_input_package_run_id) == bool(auto_latest):
         raise typer.BadParameter(
-            "Provide exactly one of --re-run-input-package-run-id or "
-            "--auto-latest."
+            "Provide exactly one of --re-run-input-package-run-id or --auto-latest."
         )
     try:
         files = write_controlled_re_run_trial_report(
             outputs_root=outputs_root,
-            re_run_input_package_run_id=(
-                None if auto_latest else re_run_input_package_run_id
-            ),
+            re_run_input_package_run_id=(None if auto_latest else re_run_input_package_run_id),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         raise typer.BadParameter(f"Controlled re-run trial failed: {exc}") from exc
@@ -5086,22 +4729,13 @@ def execute_controlled_re_run_trial_command(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
-    console.print(
-        f"controlled_re_run_trial_run_id={report.controlled_re_run_trial_run_id}"
-    )
-    console.print(
-        f"re_run_input_package_run_id={report.re_run_input_package_run_id}"
-    )
+    console.print(f"controlled_re_run_trial_run_id={report.controlled_re_run_trial_run_id}")
+    console.print(f"re_run_input_package_run_id={report.re_run_input_package_run_id}")
     console.print("current_phase=16 - Re-Run & Re-Gate Layer")
     console.print(f"current_task={summary['current_task_name']}")
     console.print(f"gatekeeper_decision={summary['gatekeeper_decision']}")
-    console.print(
-        f"progression_allowed={str(summary['progression_allowed']).lower()}"
-    )
-    console.print(
-        "persona_reviews_allowed="
-        f"{str(summary['persona_reviews_allowed']).lower()}"
-    )
+    console.print(f"progression_allowed={str(summary['progression_allowed']).lower()}")
+    console.print(f"persona_reviews_allowed={str(summary['persona_reviews_allowed']).lower()}")
     console.print(f"scenario_rows={len(report.scenario_execution_plan)}")
     console.print(f"result_rows={len(report.scenario_results_matrix)}")
     console.print(f"control_rows={len(report.control_diagnostics_matrix)}")
@@ -5141,8 +4775,7 @@ def compare_pre_post_repair_evidence_command(
     """Execute Task 122 pre/post repair comparison without rerunning Gatekeeper."""
     if bool(controlled_re_run_trial_run_id) == bool(auto_latest):
         raise typer.BadParameter(
-            "Provide exactly one of --controlled-re-run-trial-run-id or "
-            "--auto-latest."
+            "Provide exactly one of --controlled-re-run-trial-run-id or --auto-latest."
         )
     try:
         files = write_pre_post_repair_comparison_report(
@@ -5152,9 +4785,7 @@ def compare_pre_post_repair_evidence_command(
             ),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Pre/post repair evidence comparison failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Pre/post repair evidence comparison failed: {exc}") from exc
 
     report = files.report
     summary = report.comparison_summary
@@ -5183,28 +4814,17 @@ def compare_pre_post_repair_evidence_command(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
-    console.print(
-        f"pre_post_repair_comparison_run_id={report.pre_post_repair_comparison_run_id}"
-    )
-    console.print(
-        f"controlled_re_run_trial_run_id={report.controlled_re_run_trial_run_id}"
-    )
+    console.print(f"pre_post_repair_comparison_run_id={report.pre_post_repair_comparison_run_id}")
+    console.print(f"controlled_re_run_trial_run_id={report.controlled_re_run_trial_run_id}")
     console.print("current_phase=16 - Re-Run & Re-Gate Layer")
     console.print(f"current_task={summary['current_task_name']}")
     console.print(f"gatekeeper_decision={summary['gatekeeper_decision']}")
-    console.print(
-        f"progression_allowed={str(summary['progression_allowed']).lower()}"
-    )
-    console.print(
-        "persona_reviews_allowed="
-        f"{str(summary['persona_reviews_allowed']).lower()}"
-    )
+    console.print(f"progression_allowed={str(summary['progression_allowed']).lower()}")
+    console.print(f"persona_reviews_allowed={str(summary['persona_reviews_allowed']).lower()}")
     console.print(f"evidence_delta_rows={len(report.evidence_delta_matrix)}")
     console.print(f"scenario_delta_rows={len(report.scenario_delta_matrix)}")
     console.print(f"stability_rows={len(report.stability_delta_matrix)}")
-    console.print(
-        f"gatekeeper_readiness_rows={len(report.gatekeeper_readiness_delta)}"
-    )
+    console.print(f"gatekeeper_readiness_rows={len(report.gatekeeper_readiness_delta)}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.comparison_status}")
 
@@ -5241,8 +4861,7 @@ def run_gatekeeper_re_evaluation_command(
     """Execute Task 123 research Gatekeeper re-evaluation."""
     if bool(pre_post_repair_comparison_run_id) == bool(auto_latest):
         raise typer.BadParameter(
-            "Provide exactly one of --pre-post-repair-comparison-run-id or "
-            "--auto-latest."
+            "Provide exactly one of --pre-post-repair-comparison-run-id or --auto-latest."
         )
     try:
         files = write_gatekeeper_re_evaluation_report(
@@ -5282,12 +4901,8 @@ def run_gatekeeper_re_evaluation_command(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
-    console.print(
-        f"gatekeeper_re_evaluation_run_id={report.gatekeeper_re_evaluation_run_id}"
-    )
-    console.print(
-        f"pre_post_repair_comparison_run_id={report.pre_post_repair_comparison_run_id}"
-    )
+    console.print(f"gatekeeper_re_evaluation_run_id={report.gatekeeper_re_evaluation_run_id}")
+    console.print(f"pre_post_repair_comparison_run_id={report.pre_post_repair_comparison_run_id}")
     console.print("current_phase=16 - Re-Run & Re-Gate Layer")
     console.print(f"current_task={summary['current_task_name']}")
     console.print(f"previous_gatekeeper_decision={summary['previous_gatekeeper_decision']}")
@@ -5336,8 +4951,7 @@ def close_phase_16_command(
     """Execute Task 124 Phase 16 closure and next-phase recommendation."""
     if bool(gatekeeper_re_evaluation_run_id) == bool(auto_latest):
         raise typer.BadParameter(
-            "Provide exactly one of --gatekeeper-re-evaluation-run-id or "
-            "--auto-latest."
+            "Provide exactly one of --gatekeeper-re-evaluation-run-id or --auto-latest."
         )
     try:
         files = write_phase_16_closure_report(
@@ -5375,19 +4989,14 @@ def close_phase_16_command(
         table.add_row(label, value)
     console.print(table)
     console.print(f"phase_16_closure_run_id={report.phase_16_closure_run_id}")
-    console.print(
-        f"gatekeeper_re_evaluation_run_id={report.gatekeeper_re_evaluation_run_id}"
-    )
+    console.print(f"gatekeeper_re_evaluation_run_id={report.gatekeeper_re_evaluation_run_id}")
     console.print("current_phase=16 - Re-Run & Re-Gate Layer")
     console.print(f"current_task={summary['current_task_name']}")
     console.print(f"phase_completion_status={report.phase_completion_status}")
     console.print(f"final_gatekeeper_outcome={report.final_gatekeeper_outcome}")
+    console.print(f"final_progression_allowed={str(report.final_progression_allowed).lower()}")
     console.print(
-        f"final_progression_allowed={str(report.final_progression_allowed).lower()}"
-    )
-    console.print(
-        "final_persona_reviews_allowed="
-        f"{str(report.final_persona_reviews_allowed).lower()}"
+        f"final_persona_reviews_allowed={str(report.final_persona_reviews_allowed).lower()}"
     )
     console.print(f"recommended_next_phase={report.recommended_next_phase}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
@@ -5434,9 +5043,7 @@ def define_targeted_evidence_stabilization_plan_command(
             phase_16_closure_run_id=(None if auto_latest else phase_16_closure_run_id),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Targeted evidence stabilization plan failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Targeted evidence stabilization plan failed: {exc}") from exc
 
     report = files.report
     summary = report.stabilization_plan_summary
@@ -5474,24 +5081,16 @@ def define_targeted_evidence_stabilization_plan_command(
     console.print(f"phase_16_closure_run_id={report.phase_16_closure_run_id}")
     console.print("current_phase=17 - Targeted Evidence Stabilization Layer")
     console.print(f"current_task={summary['current_task_name']}")
+    console.print(f"prior_gatekeeper_outcome={summary['prior_phase_final_gatekeeper_outcome']}")
     console.print(
-        "prior_gatekeeper_outcome="
-        f"{summary['prior_phase_final_gatekeeper_outcome']}"
-    )
-    console.print(
-        "progression_allowed="
-        f"{str(summary['prior_phase_final_progression_allowed']).lower()}"
+        f"progression_allowed={str(summary['prior_phase_final_progression_allowed']).lower()}"
     )
     console.print(
         "persona_reviews_allowed="
         f"{str(summary['prior_phase_final_persona_reviews_allowed']).lower()}"
     )
-    console.print(
-        f"workstream_rows={len(report.stabilization_workstream_matrix)}"
-    )
-    console.print(
-        f"priority_rows={len(report.evidence_stabilization_priority_matrix)}"
-    )
+    console.print(f"workstream_rows={len(report.stabilization_workstream_matrix)}")
+    console.print(f"priority_rows={len(report.evidence_stabilization_priority_matrix)}")
     console.print(f"roadmap_rows={len(report.phase_17_execution_roadmap)}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.plan_status}")
@@ -5534,14 +5133,10 @@ def build_residual_blocker_work_orders_command(
     try:
         files = write_residual_blocker_work_order_report(
             outputs_root=outputs_root,
-            stabilization_plan_run_id=(
-                None if auto_latest else stabilization_plan_run_id
-            ),
+            stabilization_plan_run_id=(None if auto_latest else stabilization_plan_run_id),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Residual blocker work-order packaging failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Residual blocker work-order packaging failed: {exc}") from exc
 
     report = files.report
     summary = report.work_order_package_summary
@@ -5566,19 +5161,13 @@ def build_residual_blocker_work_orders_command(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
-    console.print(
-        f"residual_work_order_package_run_id={report.residual_work_order_package_run_id}"
-    )
+    console.print(f"residual_work_order_package_run_id={report.residual_work_order_package_run_id}")
     console.print(f"stabilization_plan_run_id={report.stabilization_plan_run_id}")
     console.print("current_phase=17 - Targeted Evidence Stabilization Layer")
     console.print(f"current_task={summary['current_task_name']}")
     console.print(f"prior_gatekeeper_outcome={summary['prior_gatekeeper_outcome']}")
-    console.print(
-        f"progression_allowed={str(summary['progression_allowed']).lower()}"
-    )
-    console.print(
-        f"persona_reviews_allowed={str(summary['persona_reviews_allowed']).lower()}"
-    )
+    console.print(f"progression_allowed={str(summary['progression_allowed']).lower()}")
+    console.print(f"persona_reviews_allowed={str(summary['persona_reviews_allowed']).lower()}")
     console.print(f"work_order_rows={len(report.residual_blocker_work_order_matrix)}")
     console.print(f"dependency_rows={len(report.work_order_dependency_matrix)}")
     console.print(f"input_rows={len(report.work_order_input_requirements_matrix)}")
@@ -5618,8 +5207,7 @@ def execute_targeted_evidence_repairs_command(
     """Execute Task 127 targeted evidence repairs."""
     if bool(residual_work_order_package_run_id) == bool(auto_latest):
         raise typer.BadParameter(
-            "Provide exactly one of --residual-work-order-package-run-id or "
-            "--auto-latest."
+            "Provide exactly one of --residual-work-order-package-run-id or --auto-latest."
         )
     try:
         files = write_targeted_evidence_repairs_report(
@@ -5659,24 +5247,15 @@ def execute_targeted_evidence_repairs_command(
         table.add_row(label, value)
     console.print(table)
     console.print(f"targeted_repair_run_id={report.targeted_repair_run_id}")
-    console.print(
-        f"residual_work_order_package_run_id={report.residual_work_order_package_run_id}"
-    )
+    console.print(f"residual_work_order_package_run_id={report.residual_work_order_package_run_id}")
     console.print("current_phase=17 - Targeted Evidence Stabilization Layer")
     console.print(f"current_task={summary['current_task_name']}")
     console.print(f"prior_gatekeeper_outcome={summary['prior_gatekeeper_outcome']}")
-    console.print(
-        f"progression_allowed={str(summary['progression_allowed']).lower()}"
-    )
-    console.print(
-        f"persona_reviews_allowed={str(summary['persona_reviews_allowed']).lower()}"
-    )
+    console.print(f"progression_allowed={str(summary['progression_allowed']).lower()}")
+    console.print(f"persona_reviews_allowed={str(summary['persona_reviews_allowed']).lower()}")
     console.print(f"work_orders_total={summary['work_orders_total']}")
     console.print(f"work_orders_completed={summary['work_orders_completed']}")
-    console.print(
-        "work_orders_partially_completed="
-        f"{summary['work_orders_partially_completed']}"
-    )
+    console.print(f"work_orders_partially_completed={summary['work_orders_partially_completed']}")
     console.print(f"work_orders_blocked={summary['work_orders_blocked']}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.repair_execution_status}")
@@ -5722,9 +5301,7 @@ def run_stabilization_validation_trial_command(
             targeted_repair_run_id=(None if auto_latest else targeted_repair_run_id),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Stabilization validation trial failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Stabilization validation trial failed: {exc}") from exc
 
     report = files.report
     summary = report.validation_trial_summary
@@ -5754,24 +5331,16 @@ def run_stabilization_validation_trial_command(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
-    console.print(
-        f"stabilization_validation_run_id={report.stabilization_validation_run_id}"
-    )
+    console.print(f"stabilization_validation_run_id={report.stabilization_validation_run_id}")
     console.print(f"targeted_repair_run_id={report.targeted_repair_run_id}")
     console.print("current_phase=17 - Targeted Evidence Stabilization Layer")
     console.print(f"current_task={summary['current_task_name']}")
     console.print(f"prior_gatekeeper_outcome={summary['prior_gatekeeper_outcome']}")
-    console.print(
-        f"progression_allowed={str(summary['progression_allowed']).lower()}"
-    )
-    console.print(
-        f"persona_reviews_allowed={str(summary['persona_reviews_allowed']).lower()}"
-    )
+    console.print(f"progression_allowed={str(summary['progression_allowed']).lower()}")
+    console.print(f"persona_reviews_allowed={str(summary['persona_reviews_allowed']).lower()}")
     console.print(f"work_orders_total={summary['work_orders_total']}")
     console.print(f"work_orders_validated={summary['work_orders_validated']}")
-    console.print(
-        f"work_orders_partially_validated={summary['work_orders_partially_validated']}"
-    )
+    console.print(f"work_orders_partially_validated={summary['work_orders_partially_validated']}")
     console.print(f"work_orders_failed={summary['work_orders_failed']}")
     console.print(f"work_orders_not_testable={summary['work_orders_not_testable']}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
@@ -5864,31 +5433,18 @@ def compare_gatekeeper_stabilized_evidence_command(
         table.add_row(label, value)
     console.print(table)
     console.print(
-        "gatekeeper_stabilized_comparison_run_id="
-        f"{report.gatekeeper_stabilized_comparison_run_id}"
+        f"gatekeeper_stabilized_comparison_run_id={report.gatekeeper_stabilized_comparison_run_id}"
     )
-    console.print(
-        f"stabilization_validation_run_id={report.stabilization_validation_run_id}"
-    )
-    console.print(
-        f"gatekeeper_re_evaluation_run_id={report.gatekeeper_re_evaluation_run_id}"
-    )
+    console.print(f"stabilization_validation_run_id={report.stabilization_validation_run_id}")
+    console.print(f"gatekeeper_re_evaluation_run_id={report.gatekeeper_re_evaluation_run_id}")
     console.print("current_phase=17 - Targeted Evidence Stabilization Layer")
     console.print(f"current_task={summary['current_task_name']}")
-    console.print(
-        f"task_123_gatekeeper_outcome={summary['task_123_gatekeeper_outcome']}"
-    )
-    console.print(
-        f"progression_allowed={str(summary['progression_allowed']).lower()}"
-    )
-    console.print(
-        f"persona_reviews_allowed={str(summary['persona_reviews_allowed']).lower()}"
-    )
+    console.print(f"task_123_gatekeeper_outcome={summary['task_123_gatekeeper_outcome']}")
+    console.print(f"progression_allowed={str(summary['progression_allowed']).lower()}")
+    console.print(f"persona_reviews_allowed={str(summary['persona_reviews_allowed']).lower()}")
     console.print(f"blockers_compared={summary['blockers_compared']}")
     console.print(f"blockers_improved={summary['blockers_improved']}")
-    console.print(
-        f"blockers_partially_improved={summary['blockers_partially_improved']}"
-    )
+    console.print(f"blockers_partially_improved={summary['blockers_partially_improved']}")
     console.print(f"blockers_unresolved={summary['blockers_unresolved']}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.comparison_status}")
@@ -5926,8 +5482,7 @@ def run_gatekeeper_stabilization_re_review_command(
     """Execute Task 130 Gatekeeper stabilization re-review."""
     if bool(gatekeeper_stabilized_comparison_run_id) == bool(auto_latest):
         raise typer.BadParameter(
-            "Provide exactly one of --gatekeeper-stabilized-comparison-run-id "
-            "or --auto-latest."
+            "Provide exactly one of --gatekeeper-stabilized-comparison-run-id or --auto-latest."
         )
     try:
         files = write_gatekeeper_stabilization_re_review_report(
@@ -5937,9 +5492,7 @@ def run_gatekeeper_stabilization_re_review_command(
             ),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Gatekeeper stabilization re-review failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Gatekeeper stabilization re-review failed: {exc}") from exc
 
     report = files.report
     summary = report.re_review_summary
@@ -5987,8 +5540,7 @@ def run_gatekeeper_stabilization_re_review_command(
         f"{report.gatekeeper_stabilization_re_review_run_id}"
     )
     console.print(
-        "gatekeeper_stabilized_comparison_run_id="
-        f"{report.gatekeeper_stabilized_comparison_run_id}"
+        f"gatekeeper_stabilized_comparison_run_id={report.gatekeeper_stabilized_comparison_run_id}"
     )
     console.print(
         "baseline_gatekeeper_re_evaluation_run_id="
@@ -5996,20 +5548,15 @@ def run_gatekeeper_stabilization_re_review_command(
     )
     console.print("current_phase=17 - Targeted Evidence Stabilization Layer")
     console.print(f"current_task={summary['current_task_name']}")
+    console.print(f"baseline_gatekeeper_outcome={summary['baseline_gatekeeper_outcome']}")
     console.print(
-        f"baseline_gatekeeper_outcome={summary['baseline_gatekeeper_outcome']}"
+        f"new_gatekeeper_stabilization_outcome={summary['new_gatekeeper_stabilization_outcome']}"
     )
     console.print(
-        "new_gatekeeper_stabilization_outcome="
-        f"{summary['new_gatekeeper_stabilization_outcome']}"
+        f"progression_status_after_re_review={summary['progression_status_after_re_review']}"
     )
     console.print(
-        "progression_status_after_re_review="
-        f"{summary['progression_status_after_re_review']}"
-    )
-    console.print(
-        "persona_review_status_after_re_review="
-        f"{summary['persona_review_status_after_re_review']}"
+        f"persona_review_status_after_re_review={summary['persona_review_status_after_re_review']}"
     )
     console.print(f"outcome_confidence={summary['outcome_confidence']}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
@@ -6048,8 +5595,7 @@ def close_phase_17_command(
     """Execute Task 131 Phase 17 closure and next-step decision."""
     if bool(gatekeeper_stabilization_re_review_run_id) == bool(auto_latest):
         raise typer.BadParameter(
-            "Provide exactly one of --gatekeeper-stabilization-re-review-run-id "
-            "or --auto-latest."
+            "Provide exactly one of --gatekeeper-stabilization-re-review-run-id or --auto-latest."
         )
     try:
         files = write_phase_17_closure_report(
@@ -6097,19 +5643,13 @@ def close_phase_17_command(
     )
     console.print("current_phase=17 - Targeted Evidence Stabilization Layer")
     console.print(f"current_task={summary['current_task_name']}")
-    console.print(
-        f"phase_completion_status={summary['phase_completion_status']}"
-    )
+    console.print(f"phase_completion_status={summary['phase_completion_status']}")
     console.print(
         "final_gatekeeper_stabilization_outcome="
         f"{summary['final_gatekeeper_stabilization_outcome']}"
     )
-    console.print(
-        f"final_progression_status={summary['final_progression_status']}"
-    )
-    console.print(
-        f"final_persona_review_status={summary['final_persona_review_status']}"
-    )
+    console.print(f"final_progression_status={summary['final_progression_status']}")
+    console.print(f"final_persona_review_status={summary['final_persona_review_status']}")
     console.print(f"closure_status={report.closure_status}")
     console.print(f"recommended_next_phase={report.recommended_next_phase}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
@@ -6156,9 +5696,7 @@ def define_gatekeeper_return_package_plan_command(
             phase_17_closure_run_id=None if auto_latest else phase_17_closure_run_id,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Gatekeeper return package plan failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Gatekeeper return package plan failed: {exc}") from exc
 
     report = files.report
     summary = report.gatekeeper_return_plan_summary
@@ -6186,9 +5724,7 @@ def define_gatekeeper_return_package_plan_command(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
-    console.print(
-        f"gatekeeper_return_plan_run_id={report.gatekeeper_return_plan_run_id}"
-    )
+    console.print(f"gatekeeper_return_plan_run_id={report.gatekeeper_return_plan_run_id}")
     console.print(f"phase_17_closure_run_id={report.phase_17_closure_run_id}")
     console.print("current_phase=18 - Gatekeeper Return Package Layer")
     console.print(f"current_task={summary['current_task_name']}")
@@ -6196,18 +5732,10 @@ def define_gatekeeper_return_package_plan_command(
         "final_gatekeeper_stabilization_outcome="
         f"{summary['final_gatekeeper_stabilization_outcome']}"
     )
-    console.print(
-        f"final_progression_status={summary['final_progression_status']}"
-    )
-    console.print(
-        f"final_persona_review_status={summary['final_persona_review_status']}"
-    )
-    console.print(
-        f"component_rows={len(report.return_package_component_matrix)}"
-    )
-    console.print(
-        f"evidence_rows={len(report.return_package_evidence_inventory_matrix)}"
-    )
+    console.print(f"final_progression_status={summary['final_progression_status']}")
+    console.print(f"final_persona_review_status={summary['final_persona_review_status']}")
+    console.print(f"component_rows={len(report.return_package_component_matrix)}")
+    console.print(f"evidence_rows={len(report.return_package_evidence_inventory_matrix)}")
     console.print(f"roadmap_rows={len(report.phase_18_execution_roadmap)}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.plan_status}")
@@ -6250,14 +5778,10 @@ def build_gatekeeper_return_input_inventory_command(
     try:
         files = write_gatekeeper_return_input_inventory_report(
             outputs_root=outputs_root,
-            gatekeeper_return_plan_run_id=(
-                None if auto_latest else gatekeeper_return_plan_run_id
-            ),
+            gatekeeper_return_plan_run_id=(None if auto_latest else gatekeeper_return_plan_run_id),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Gatekeeper return input inventory failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Gatekeeper return input inventory failed: {exc}") from exc
 
     report = files.report
     summary = report.input_inventory_summary
@@ -6300,12 +5824,8 @@ def build_gatekeeper_return_input_inventory_command(
         "final_gatekeeper_stabilization_outcome="
         f"{summary['final_gatekeeper_stabilization_outcome']}"
     )
-    console.print(
-        f"final_progression_status={summary['final_progression_status']}"
-    )
-    console.print(
-        f"final_persona_review_status={summary['final_persona_review_status']}"
-    )
+    console.print(f"final_progression_status={summary['final_progression_status']}")
+    console.print(f"final_persona_review_status={summary['final_persona_review_status']}")
     console.print(f"component_inputs_total={summary['component_inputs_total']}")
     console.print(f"component_inputs_ready={summary['component_inputs_ready']}")
     console.print(f"evidence_artifacts_total={summary['evidence_artifacts_total']}")
@@ -6346,8 +5866,7 @@ def assemble_gatekeeper_return_package_command(
     """Execute Task 134 Gatekeeper return package assembly."""
     if bool(gatekeeper_return_input_inventory_run_id) == bool(auto_latest):
         raise typer.BadParameter(
-            "Provide exactly one of --gatekeeper-return-input-inventory-run-id "
-            "or --auto-latest."
+            "Provide exactly one of --gatekeeper-return-input-inventory-run-id or --auto-latest."
         )
     try:
         files = write_gatekeeper_return_package_report(
@@ -6357,9 +5876,7 @@ def assemble_gatekeeper_return_package_command(
             ),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Gatekeeper return package assembly failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Gatekeeper return package assembly failed: {exc}") from exc
 
     report = files.report
     summary = report.return_package_summary
@@ -6392,9 +5909,7 @@ def assemble_gatekeeper_return_package_command(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
-    console.print(
-        f"gatekeeper_return_package_run_id={report.gatekeeper_return_package_run_id}"
-    )
+    console.print(f"gatekeeper_return_package_run_id={report.gatekeeper_return_package_run_id}")
     console.print(
         "gatekeeper_return_input_inventory_run_id="
         f"{report.gatekeeper_return_input_inventory_run_id}"
@@ -6405,12 +5920,8 @@ def assemble_gatekeeper_return_package_command(
         "final_gatekeeper_stabilization_outcome="
         f"{summary['final_gatekeeper_stabilization_outcome']}"
     )
-    console.print(
-        f"final_progression_status={summary['final_progression_status']}"
-    )
-    console.print(
-        f"final_persona_review_status={summary['final_persona_review_status']}"
-    )
+    console.print(f"final_progression_status={summary['final_progression_status']}")
+    console.print(f"final_persona_review_status={summary['final_persona_review_status']}")
     console.print(f"assembly_status={report.assembly_status}")
     console.print(f"sections_total={summary['sections_total']}")
     console.print(f"sections_included={summary['sections_included']}")
@@ -6452,8 +5963,7 @@ def validate_gatekeeper_return_package_command(
     """Execute Task 135 Gatekeeper return package completeness validation."""
     if bool(gatekeeper_return_package_run_id) == bool(auto_latest):
         raise typer.BadParameter(
-            "Provide exactly one of --gatekeeper-return-package-run-id or "
-            "--auto-latest."
+            "Provide exactly one of --gatekeeper-return-package-run-id or --auto-latest."
         )
     try:
         files = write_gatekeeper_return_package_validation_report(
@@ -6463,9 +5973,7 @@ def validate_gatekeeper_return_package_command(
             ),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Gatekeeper return package validation failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Gatekeeper return package validation failed: {exc}") from exc
 
     report = files.report
     summary = report.package_validation_summary
@@ -6513,17 +6021,11 @@ def validate_gatekeeper_return_package_command(
         "final_gatekeeper_stabilization_outcome="
         f"{summary['final_gatekeeper_stabilization_outcome']}"
     )
-    console.print(
-        f"final_progression_status={summary['final_progression_status']}"
-    )
-    console.print(
-        f"final_persona_review_status={summary['final_persona_review_status']}"
-    )
+    console.print(f"final_progression_status={summary['final_progression_status']}")
+    console.print(f"final_persona_review_status={summary['final_persona_review_status']}")
     console.print(f"validation_status={report.validation_status}")
     console.print(f"required_sections_total={summary['required_sections_total']}")
-    console.print(
-        f"required_sections_satisfied={summary['required_sections_satisfied']}"
-    )
+    console.print(f"required_sections_satisfied={summary['required_sections_satisfied']}")
     console.print(f"evidence_refs_total={summary['evidence_refs_total']}")
     console.print(f"evidence_refs_validated={summary['evidence_refs_validated']}")
     console.print(f"blocking_findings_total={summary['blocking_findings_total']}")
@@ -6564,8 +6066,7 @@ def run_gatekeeper_return_review_command(
     """Execute Task 136 Gatekeeper return review."""
     if bool(gatekeeper_return_package_validation_run_id) == bool(auto_latest):
         raise typer.BadParameter(
-            "Provide exactly one of --gatekeeper-return-package-validation-run-id "
-            "or --auto-latest."
+            "Provide exactly one of --gatekeeper-return-package-validation-run-id or --auto-latest."
         )
     try:
         files = write_gatekeeper_return_review_report(
@@ -6607,9 +6108,7 @@ def run_gatekeeper_return_review_command(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
-    console.print(
-        f"gatekeeper_return_review_run_id={report.gatekeeper_return_review_run_id}"
-    )
+    console.print(f"gatekeeper_return_review_run_id={report.gatekeeper_return_review_run_id}")
     console.print(
         "gatekeeper_return_package_validation_run_id="
         f"{report.gatekeeper_return_package_validation_run_id}"
@@ -6617,18 +6116,11 @@ def run_gatekeeper_return_review_command(
     console.print("current_phase=18 - Gatekeeper Return Package Layer")
     console.print(f"current_task={summary['current_task_name']}")
     console.print(f"source_validation_status={summary['source_validation_status']}")
-    console.print(
-        f"blocking_findings_total={summary['source_blocking_findings_total']}"
-    )
+    console.print(f"blocking_findings_total={summary['source_blocking_findings_total']}")
     console.print(f"warning_findings_total={summary['source_warning_findings_total']}")
     console.print(f"gatekeeper_return_outcome={report.gatekeeper_return_outcome}")
-    console.print(
-        f"post_review_progression_status={report.post_review_progression_status}"
-    )
-    console.print(
-        "post_review_persona_review_status="
-        f"{report.post_review_persona_review_status}"
-    )
+    console.print(f"post_review_progression_status={report.post_review_progression_status}")
+    console.print(f"post_review_persona_review_status={report.post_review_persona_review_status}")
     console.print(f"outcome_confidence={summary['outcome_confidence']}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.review_status}")
@@ -6666,8 +6158,7 @@ def close_phase_18_command(
     """Execute Task 137 Phase 18 closure."""
     if bool(gatekeeper_return_review_run_id) == bool(auto_latest):
         raise typer.BadParameter(
-            "Provide exactly one of --gatekeeper-return-review-run-id or "
-            "--auto-latest."
+            "Provide exactly one of --gatekeeper-return-review-run-id or --auto-latest."
         )
     try:
         files = write_phase_18_closure_report(
@@ -6713,12 +6204,9 @@ def close_phase_18_command(
     console.print("current_phase=18 - Gatekeeper Return Package Layer")
     console.print(f"current_task={summary['current_task_name']}")
     console.print(f"phase_completion_status={summary['phase_completion_status']}")
+    console.print(f"final_gatekeeper_return_outcome={summary['final_gatekeeper_return_outcome']}")
     console.print(
-        f"final_gatekeeper_return_outcome={summary['final_gatekeeper_return_outcome']}"
-    )
-    console.print(
-        "final_post_review_progression_status="
-        f"{summary['final_post_review_progression_status']}"
+        f"final_post_review_progression_status={summary['final_post_review_progression_status']}"
     )
     console.print(
         "final_post_review_persona_review_status="
@@ -6767,14 +6255,10 @@ def define_limited_preparation_governance_plan_command(
     try:
         files = write_limited_preparation_governance_plan_report(
             outputs_root=outputs_root,
-            phase_18_closure_run_id=(
-                None if auto_latest else phase_18_closure_run_id
-            ),
+            phase_18_closure_run_id=(None if auto_latest else phase_18_closure_run_id),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Limited preparation governance plan failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Limited preparation governance plan failed: {exc}") from exc
 
     report = files.report
     summary = report.limited_preparation_plan_summary
@@ -6809,19 +6293,13 @@ def define_limited_preparation_governance_plan_command(
     for label, value in rows:
         table.add_row(label, value)
     console.print(table)
-    console.print(
-        f"limited_preparation_plan_run_id={report.limited_preparation_plan_run_id}"
-    )
+    console.print(f"limited_preparation_plan_run_id={report.limited_preparation_plan_run_id}")
     console.print(f"phase_18_closure_run_id={report.phase_18_closure_run_id}")
     console.print("current_phase=19 - Limited Preparation Governance Layer")
     console.print(f"current_task={summary['current_task_name']}")
+    console.print(f"source_gatekeeper_return_outcome={summary['source_gatekeeper_return_outcome']}")
     console.print(
-        "source_gatekeeper_return_outcome="
-        f"{summary['source_gatekeeper_return_outcome']}"
-    )
-    console.print(
-        "source_post_review_progression_status="
-        f"{summary['source_post_review_progression_status']}"
+        f"source_post_review_progression_status={summary['source_post_review_progression_status']}"
     )
     console.print(
         "source_post_review_persona_review_status="
@@ -6864,8 +6342,7 @@ def build_limited_preparation_artifact_inventory_command(
     """Execute Task 139 limited preparation artifact inventory."""
     if bool(limited_preparation_plan_run_id) == bool(auto_latest):
         raise typer.BadParameter(
-            "Provide exactly one of --limited-preparation-plan-run-id or "
-            "--auto-latest."
+            "Provide exactly one of --limited-preparation-plan-run-id or --auto-latest."
         )
     try:
         files = write_limited_preparation_artifact_inventory_report(
@@ -6875,9 +6352,7 @@ def build_limited_preparation_artifact_inventory_command(
             ),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Limited preparation artifact inventory failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Limited preparation artifact inventory failed: {exc}") from exc
 
     report = files.report
     summary = report.artifact_inventory_summary
@@ -6926,18 +6401,12 @@ def build_limited_preparation_artifact_inventory_command(
         "limited_preparation_artifact_inventory_run_id="
         f"{report.limited_preparation_artifact_inventory_run_id}"
     )
-    console.print(
-        f"limited_preparation_plan_run_id={report.limited_preparation_plan_run_id}"
-    )
+    console.print(f"limited_preparation_plan_run_id={report.limited_preparation_plan_run_id}")
     console.print("current_phase=19 - Limited Preparation Governance Layer")
     console.print(f"current_task={summary['current_task_name']}")
+    console.print(f"source_gatekeeper_return_outcome={summary['source_gatekeeper_return_outcome']}")
     console.print(
-        "source_gatekeeper_return_outcome="
-        f"{summary['source_gatekeeper_return_outcome']}"
-    )
-    console.print(
-        "source_post_review_progression_status="
-        f"{summary['source_post_review_progression_status']}"
+        f"source_post_review_progression_status={summary['source_post_review_progression_status']}"
     )
     console.print(
         "source_post_review_persona_review_status="
@@ -6945,13 +6414,8 @@ def build_limited_preparation_artifact_inventory_command(
     )
     console.print(f"artifact_inventory_status={report.artifact_inventory_status}")
     console.print(f"artifacts_total={summary['artifacts_total']}")
-    console.print(
-        f"artifacts_ready_for_assembly={summary['artifacts_ready_for_assembly']}"
-    )
-    console.print(
-        "artifacts_ready_with_warnings="
-        f"{summary['artifacts_ready_with_warnings']}"
-    )
+    console.print(f"artifacts_ready_for_assembly={summary['artifacts_ready_for_assembly']}")
+    console.print(f"artifacts_ready_with_warnings={summary['artifacts_ready_with_warnings']}")
     console.print(f"artifacts_blocked={summary['artifacts_blocked']}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.artifact_inventory_status}")
@@ -6973,8 +6437,12 @@ def assemble_limited_preparation_package_command(
     outputs_root: Annotated[
         Path,
         typer.Option(
-            "--outputs-root", exists=True, file_okay=False, dir_okay=True,
-            readable=True, writable=True,
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
             help="Root containing limited preparation package outputs.",
         ),
     ] = Path("data/outputs"),
@@ -7001,12 +6469,18 @@ def assemble_limited_preparation_package_command(
     table.add_column("Value")
     for label, value in (
         ("Limited Preparation Package Run ID", report.limited_preparation_package_run_id),
-        ("Limited Preparation Artifact Inventory Run ID", report.limited_preparation_artifact_inventory_run_id),
+        (
+            "Limited Preparation Artifact Inventory Run ID",
+            report.limited_preparation_artifact_inventory_run_id,
+        ),
         ("Current Phase", "19 - Limited Preparation Governance Layer"),
         ("Current Task", summary["current_task_name"]),
         ("Source Gatekeeper Return Outcome", summary["source_gatekeeper_return_outcome"]),
         ("Source Post-Review Progression Status", summary["source_post_review_progression_status"]),
-        ("Source Post-Review Persona Review Status", summary["source_post_review_persona_review_status"]),
+        (
+            "Source Post-Review Persona Review Status",
+            summary["source_post_review_persona_review_status"],
+        ),
         ("Source Artifact Inventory Status", summary["source_artifact_inventory_status"]),
         ("Package Assembly Status", report.package_assembly_status),
         ("Artifacts Total", str(summary["artifacts_total"])),
@@ -7020,12 +6494,18 @@ def assemble_limited_preparation_package_command(
         table.add_row(label, value)
     console.print(table)
     console.print(f"limited_preparation_package_run_id={report.limited_preparation_package_run_id}")
-    console.print(f"limited_preparation_artifact_inventory_run_id={report.limited_preparation_artifact_inventory_run_id}")
+    console.print(
+        f"limited_preparation_artifact_inventory_run_id={report.limited_preparation_artifact_inventory_run_id}"
+    )
     console.print("current_phase=19 - Limited Preparation Governance Layer")
     console.print(f"current_task={summary['current_task_name']}")
     console.print(f"source_gatekeeper_return_outcome={summary['source_gatekeeper_return_outcome']}")
-    console.print(f"source_post_review_progression_status={summary['source_post_review_progression_status']}")
-    console.print(f"source_post_review_persona_review_status={summary['source_post_review_persona_review_status']}")
+    console.print(
+        f"source_post_review_progression_status={summary['source_post_review_progression_status']}"
+    )
+    console.print(
+        f"source_post_review_persona_review_status={summary['source_post_review_persona_review_status']}"
+    )
     console.print(f"source_artifact_inventory_status={summary['source_artifact_inventory_status']}")
     console.print(f"package_assembly_status={report.package_assembly_status}")
     console.print(f"artifacts_total={summary['artifacts_total']}")
@@ -7034,6 +6514,102 @@ def assemble_limited_preparation_package_command(
     console.print(f"artifacts_blocked={summary['artifacts_blocked']}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.package_assembly_status}")
+
+
+@app.command("validate-limited-preparation-package")
+def validate_limited_preparation_package_command(
+    limited_preparation_package_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--limited-preparation-package-run-id",
+            help="Task 140 package used for Task 141 validation.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option("--auto-latest", help="Use the latest Task 140 package."),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing limited preparation package validation outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute Task 141 limited preparation package validation."""
+    if bool(limited_preparation_package_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --limited-preparation-package-run-id or --auto-latest."
+        )
+    try:
+        files = write_limited_preparation_package_validation_report(
+            outputs_root=outputs_root,
+            limited_preparation_package_run_id=(
+                None if auto_latest else limited_preparation_package_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(f"Limited preparation package validation failed: {exc}") from exc
+    report = files.report
+    summary = report.limited_preparation_package_validation_summary
+    table = Table(title="Limited Preparation Package Validation")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        (
+            "Limited Preparation Package Validation Run ID",
+            report.limited_preparation_package_validation_run_id,
+        ),
+        ("Limited Preparation Package Run ID", report.limited_preparation_package_run_id),
+        ("Current Phase", "19 - Limited Preparation Governance Layer"),
+        ("Current Task", summary["current_task_name"]),
+        ("Source Gatekeeper Return Outcome", summary["source_gatekeeper_return_outcome"]),
+        ("Source Post-Review Progression Status", summary["source_post_review_progression_status"]),
+        (
+            "Source Post-Review Persona Review Status",
+            summary["source_post_review_persona_review_status"],
+        ),
+        ("Source Package Assembly Status", summary["source_package_assembly_status"]),
+        ("Validation Status", report.validation_status),
+        ("Required Sections Total", str(summary["required_sections_total"])),
+        ("Required Sections Validated", str(summary["required_sections_validated"])),
+        ("Artifacts Total", str(summary["artifacts_total"])),
+        ("Artifacts Validated", str(summary["artifacts_validated"])),
+        ("Artifacts Validated With Warnings", str(summary["artifacts_validated_with_warnings"])),
+        ("Artifacts Failed", str(summary["artifacts_failed"])),
+        ("Blocking Findings Total", str(summary["blocking_findings_total"])),
+        ("Warning Findings Total", str(summary["warning_findings_total"])),
+        ("Recommended Next Task", report.recommended_next_task),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.validation_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        f"limited_preparation_package_validation_run_id={report.limited_preparation_package_validation_run_id}"
+    )
+    console.print(f"limited_preparation_package_run_id={report.limited_preparation_package_run_id}")
+    console.print("current_phase=19 - Limited Preparation Governance Layer")
+    console.print(f"current_task={summary['current_task_name']}")
+    console.print(f"validation_status={report.validation_status}")
+    console.print(f"required_sections_total={summary['required_sections_total']}")
+    console.print(f"required_sections_validated={summary['required_sections_validated']}")
+    console.print(f"artifacts_validated={summary['artifacts_validated']}")
+    console.print(
+        f"artifacts_validated_with_warnings={summary['artifacts_validated_with_warnings']}"
+    )
+    console.print(f"artifacts_failed={summary['artifacts_failed']}")
+    console.print(f"blocking_findings_total={summary['blocking_findings_total']}")
+    console.print(f"warning_findings_total={summary['warning_findings_total']}")
+    console.print(f"recommended_next_task={report.recommended_next_task}")
+    console.print(f"status={report.validation_status}")
 
 
 @app.command("run-historical-readiness-batch")
@@ -7140,9 +6716,7 @@ def run_historical_readiness_batch_command(
             "--trial-ledger",
             help="Output path for the exported readiness trial ledger.",
         ),
-    ] = Path(
-        "data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv"
-    ),
+    ] = Path("data/inputs/trial_ledgers/historical_readiness_trial_ledger.csv"),
     price_fixtures_path: Annotated[
         Path,
         typer.Option(
@@ -7181,9 +6755,7 @@ def run_historical_readiness_batch_command(
             batch_label=batch_label,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Historical readiness batch failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Historical readiness batch failed: {exc}") from exc
 
     table = Table(title="Historical Readiness Batch")
     table.add_column("Field")
@@ -7225,14 +6797,8 @@ def run_historical_readiness_batch_command(
     console.print(f"total_requested={result.total_requested}")
     console.print(f"total_completed={result.total_completed}")
     console.print(f"total_failed={result.total_failed}")
-    console.print(
-        f"trial_ledger_exported="
-        f"{str(result.trial_ledger_exported).lower()}"
-    )
-    console.print(
-        f"readiness_backtest_run="
-        f"{str(result.readiness_backtest_run).lower()}"
-    )
+    console.print(f"trial_ledger_exported={str(result.trial_ledger_exported).lower()}")
+    console.print(f"readiness_backtest_run={str(result.readiness_backtest_run).lower()}")
     console.print("status=completed")
 
 
@@ -7410,18 +6976,11 @@ def backtest_signals(
                 ),
                 (
                     "Missing Metadata Fields",
-                    ", ".join(
-                        result.metrics.get("missing_metadata_fields", [])
-                    )
-                    or "None",
+                    ", ".join(result.metrics.get("missing_metadata_fields", [])) or "None",
                 ),
                 (
                     "Metadata Attribution",
-                    (
-                        "available"
-                        if result.metrics.get("grouped_metrics")
-                        else "not available"
-                    ),
+                    ("available" if result.metrics.get("grouped_metrics") else "not available"),
                 ),
                 (
                     "Coverage Quality",
@@ -7447,9 +7006,7 @@ def backtest_signals(
                 ),
                 (
                     "Warning-Heavy Records",
-                    str(
-                        result.metrics.get("warning_heavy_record_count") or 0
-                    ),
+                    str(result.metrics.get("warning_heavy_record_count") or 0),
                 ),
                 ("Clean-Coverage Sensitivity", "available"),
                 (
@@ -7479,9 +7036,7 @@ def backtest_signals(
                 ),
                 (
                     "Delayed Anchor Materially Stronger",
-                    str(
-                        result.delayed_anchor_materially_stronger
-                    ).lower(),
+                    str(result.delayed_anchor_materially_stronger).lower(),
                 ),
                 (
                     "No-Delayed-Anchor Positive",
@@ -7557,8 +7112,7 @@ def compare_clean_coverage_runs(
         typer.Option(
             "--auto-latest",
             help=(
-                "Select the latest clean_not_available and clean-supported "
-                "readiness trial runs."
+                "Select the latest clean_not_available and clean-supported readiness trial runs."
             ),
         ),
     ] = False,
@@ -7566,14 +7120,9 @@ def compare_clean_coverage_runs(
     """Compare clean-coverage evidence before and after fixture improvements."""
     try:
         if auto_latest:
-            before_run_id, after_run_id = find_latest_clean_coverage_runs(
-                outputs_root
-            )
+            before_run_id, after_run_id = find_latest_clean_coverage_runs(outputs_root)
         elif not before_run_id or not after_run_id:
-            raise ValueError(
-                "Provide --before-run-id and --after-run-id, or use "
-                "--auto-latest."
-            )
+            raise ValueError("Provide --before-run-id and --after-run-id, or use --auto-latest.")
         files = write_clean_coverage_comparison_report(
             outputs_root=outputs_root,
             before_run_id=before_run_id,
@@ -7585,9 +7134,7 @@ def compare_clean_coverage_runs(
         KeyError,
         json.JSONDecodeError,
     ) as exc:
-        raise typer.BadParameter(
-            f"Clean coverage comparison failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Clean coverage comparison failed: {exc}") from exc
 
     report = files.report
     before = report.before_summary
@@ -7668,9 +7215,7 @@ def run_evidence_decision_gate(
         if auto_latest:
             backtest_run_id = find_latest_evidence_gate_backtest(outputs_root)
         elif not backtest_run_id:
-            raise ValueError(
-                "Provide --backtest-run-id or use --auto-latest."
-            )
+            raise ValueError("Provide --backtest-run-id or use --auto-latest.")
         files = write_evidence_decision_gate_report(
             outputs_root=outputs_root,
             backtest_run_id=backtest_run_id,
@@ -7681,16 +7226,11 @@ def run_evidence_decision_gate(
         KeyError,
         json.JSONDecodeError,
     ) as exc:
-        raise typer.BadParameter(
-            f"Evidence decision gate failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Evidence decision gate failed: {exc}") from exc
 
     report = files.report
     evidence = report.evidence_summary
-    criteria = {
-        item["criterion"]: item["status"]
-        for item in report.criteria_results
-    }
+    criteria = {item["criterion"]: item["status"] for item in report.criteria_results}
     clean_positive = criteria.get("clean_evidence_positive") == "pass"
     table = Table(title="Evidence Decision Gate")
     table.add_column("Field")
@@ -7749,9 +7289,7 @@ def generate_readiness_trial_decision_report(
     try:
         files = regenerate_readiness_trial_decision_report(backtest_folder)
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Decision report generation failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Decision report generation failed: {exc}") from exc
 
     table = Table(title="Readiness Trial Backtest Decision Report")
     table.add_column("Field")
@@ -7786,13 +7324,9 @@ def generate_readiness_trial_diagnostic_report(
 ) -> None:
     """Regenerate attribution diagnostics for a readiness trial."""
     try:
-        files = regenerate_readiness_trial_diagnostic_report(
-            backtest_folder
-        )
+        files = regenerate_readiness_trial_diagnostic_report(backtest_folder)
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
-        raise typer.BadParameter(
-            f"Diagnostic report generation failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Diagnostic report generation failed: {exc}") from exc
 
     table = Table(title="Readiness Trial Diagnostic Report")
     table.add_column("Field")
@@ -7838,11 +7372,7 @@ def validate_price_csv(
     ] = "csv",
 ) -> None:
     """Validate local price CSV files without running a backtest."""
-    ticker_list = [
-        ticker.strip().upper()
-        for ticker in tickers.split(",")
-        if ticker.strip()
-    ]
+    ticker_list = [ticker.strip().upper() for ticker in tickers.split(",") if ticker.strip()]
     if not ticker_list:
         raise typer.BadParameter("At least one ticker is required.")
     try:
@@ -7852,9 +7382,7 @@ def validate_price_csv(
             provider_name=price_provider,
         )
     except (OSError, ValueError) as exc:
-        raise typer.BadParameter(
-            f"Price CSV validation failed: {exc}"
-        ) from exc
+        raise typer.BadParameter(f"Price CSV validation failed: {exc}") from exc
 
     table = Table(title="Local Price CSV Validation")
     for column in (
@@ -7887,10 +7415,7 @@ def validate_price_csv(
                     f"rows={result.rows_count}",
                     f"min_date={result.min_date or 'missing'}",
                     f"max_date={result.max_date or 'missing'}",
-                    (
-                        "price_column_used="
-                        f"{result.price_column_used or 'missing'}"
-                    ),
+                    (f"price_column_used={result.price_column_used or 'missing'}"),
                     f"status={result.status}",
                 )
             )
@@ -7973,13 +7498,9 @@ def analyze_batch(
 ) -> None:
     """Run the existing analyze-stock pipeline for a batch of inputs."""
     if tickers is not None and intake_files is not None:
-        raise typer.BadParameter(
-            "Provide either --tickers or --intake-files, not both."
-        )
+        raise typer.BadParameter("Provide either --tickers or --intake-files, not both.")
     if tickers is None and intake_files is None:
-        raise typer.BadParameter(
-            "Provide one input mode: --tickers or --intake-files."
-        )
+        raise typer.BadParameter("Provide one input mode: --tickers or --intake-files.")
 
     results: list[BatchTickerResult] = []
     requested_tickers: list[str] = []
@@ -7987,11 +7508,7 @@ def analyze_batch(
     if tickers is not None:
         input_mode = "tickers"
         ticker_values = list(
-            dict.fromkeys(
-                item.strip().upper()
-                for item in tickers.split(",")
-                if item.strip()
-            )
+            dict.fromkeys(item.strip().upper() for item in tickers.split(",") if item.strip())
         )
         if not ticker_values:
             raise typer.BadParameter("--tickers must include at least one ticker.")
@@ -8021,14 +7538,10 @@ def analyze_batch(
     else:
         input_mode = "intake_files"
         intake_paths = [
-            Path(item.strip())
-            for item in (intake_files or "").split(",")
-            if item.strip()
+            Path(item.strip()) for item in (intake_files or "").split(",") if item.strip()
         ]
         if not intake_paths:
-            raise typer.BadParameter(
-                "--intake-files must include at least one path."
-            )
+            raise typer.BadParameter("--intake-files must include at least one path.")
         configured_outputs_root: Path | None = None
         for intake_path in intake_paths:
             result_ticker = intake_path.stem.upper()
@@ -8044,10 +7557,7 @@ def analyze_batch(
                     configured_outputs_root = intake.outputs_root
                     batch_outputs_root = intake.outputs_root
                 elif intake.outputs_root != configured_outputs_root:
-                    raise ValueError(
-                        "All intake files in a batch must use the same "
-                        "outputs_root."
-                    )
+                    raise ValueError("All intake files in a batch must use the same outputs_root.")
                 execution = execute_analyze_stock(
                     intake=intake,
                     input_mode="intake_file",
@@ -8137,13 +7647,11 @@ def analyze_batch(
     console.print(f"Signal Ledger: {signal_ledger_path}", soft_wrap=True)
     context = build_as_of_context(as_of_date)
     console.print(
-        "As-Of Date: "
-        f"{context.as_of_date.isoformat() if context.as_of_date else 'Not provided'}",
+        f"As-Of Date: {context.as_of_date.isoformat() if context.as_of_date else 'Not provided'}",
         soft_wrap=True,
     )
     console.print(
-        "Historical Mode: "
-        f"{'enabled' if context.historical_mode else 'disabled'}",
+        f"Historical Mode: {'enabled' if context.historical_mode else 'disabled'}",
         soft_wrap=True,
     )
     if bundle.completed_count == 0:
