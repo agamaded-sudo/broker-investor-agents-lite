@@ -1631,6 +1631,25 @@ review, run investor agents, recommend a company, rank companies, create
 allocation instructions, create rebalancing instructions, create trade signals,
 create execution instructions, validate a strategy, or enable auto-promotion.
 
+### Gatekeeper Return Package Plan
+
+The Gatekeeper Return Package Plan executes Task 132 and starts Phase 18. It
+consumes Phase 17 closure and defines the plan for a Gatekeeper return package,
+including package components, evidence inventory, residual risk disclosure,
+permission boundaries, and the Phase 18 roadmap.
+
+```powershell
+python -m broker_agents.cli define-gatekeeper-return-package-plan --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli define-gatekeeper-return-package-plan --phase-17-closure-run-id 20260619_062711 --outputs-root data/outputs
+```
+
+This is research-only planning. It does not build the final package, rerun
+Gatekeeper, run investor agents, allow actual persona review, recommend a
+company, rank companies, create allocation instructions, create rebalancing
+instructions, create trade signals, create execution instructions, validate a
+strategy, or enable auto-promotion.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision

@@ -70,6 +70,9 @@ from broker_agents.stabilization.gatekeeper_stabilization_re_review import (
 from broker_agents.stabilization.phase_17_closure import (
     write_phase_17_closure_report,
 )
+from broker_agents.gatekeeper_return.gatekeeper_return_package_plan import (
+    write_gatekeeper_return_package_plan_report,
+)
 from broker_agents.agents.bogle_agent import BogleAgent
 from broker_agents.agents.buffett_agent import BuffettAgent
 from broker_agents.agents.fisher_agent import FisherAgent
@@ -6087,6 +6090,103 @@ def close_phase_17_command(
     console.print(f"recommended_next_phase={report.recommended_next_phase}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.closure_status}")
+
+
+@app.command("define-gatekeeper-return-package-plan")
+def define_gatekeeper_return_package_plan_command(
+    phase_17_closure_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--phase-17-closure-run-id",
+            help="Task 131 Phase 17 closure run used for Task 132 planning.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest Phase 17 closure manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing Phase 17 closure and Gatekeeper return outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute Task 132 Gatekeeper return package plan."""
+    if bool(phase_17_closure_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --phase-17-closure-run-id or --auto-latest."
+        )
+    try:
+        files = write_gatekeeper_return_package_plan_report(
+            outputs_root=outputs_root,
+            phase_17_closure_run_id=None if auto_latest else phase_17_closure_run_id,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Gatekeeper return package plan failed: {exc}"
+        ) from exc
+
+    report = files.report
+    summary = report.gatekeeper_return_plan_summary
+    table = Table(title="Gatekeeper Return Package Plan")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Gatekeeper Return Plan Run ID", report.gatekeeper_return_plan_run_id),
+        ("Phase 17 Closure Run ID", report.phase_17_closure_run_id),
+        ("Current Phase", "18 - Gatekeeper Return Package Layer"),
+        ("Current Task", summary["current_task_name"]),
+        (
+            "Final Gatekeeper Stabilization Outcome",
+            summary["final_gatekeeper_stabilization_outcome"],
+        ),
+        ("Final Progression Status", summary["final_progression_status"]),
+        ("Final Persona Review Status", summary["final_persona_review_status"]),
+        ("Component Rows", str(len(report.return_package_component_matrix))),
+        ("Evidence Rows", str(len(report.return_package_evidence_inventory_matrix))),
+        ("Roadmap Rows", str(len(report.phase_18_execution_roadmap))),
+        ("Recommended Next Task", report.recommended_next_task),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.plan_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        f"gatekeeper_return_plan_run_id={report.gatekeeper_return_plan_run_id}"
+    )
+    console.print(f"phase_17_closure_run_id={report.phase_17_closure_run_id}")
+    console.print("current_phase=18 - Gatekeeper Return Package Layer")
+    console.print(f"current_task={summary['current_task_name']}")
+    console.print(
+        "final_gatekeeper_stabilization_outcome="
+        f"{summary['final_gatekeeper_stabilization_outcome']}"
+    )
+    console.print(
+        f"final_progression_status={summary['final_progression_status']}"
+    )
+    console.print(
+        f"final_persona_review_status={summary['final_persona_review_status']}"
+    )
+    console.print(
+        f"component_rows={len(report.return_package_component_matrix)}"
+    )
+    console.print(
+        f"evidence_rows={len(report.return_package_evidence_inventory_matrix)}"
+    )
+    console.print(f"roadmap_rows={len(report.phase_18_execution_roadmap)}")
+    console.print(f"recommended_next_task={report.recommended_next_task}")
+    console.print(f"status={report.plan_status}")
 
 
 @app.command("run-historical-readiness-batch")
