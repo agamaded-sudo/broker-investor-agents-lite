@@ -1781,6 +1781,25 @@ companies, create allocation instructions, create rebalancing instructions,
 create trade signals, create execution instructions, validate a strategy, or
 enable auto-promotion.
 
+### Limited Preparation Package Assembly
+
+The Limited Preparation Package Assembly executes Task 140. It consumes the
+Task 139 Limited Preparation Artifact Inventory, assembles the ten
+preparation-only artifact summaries, carries warnings forward, and creates the
+Task 141 validation handoff.
+
+```powershell
+python -m broker_agents.cli assemble-limited-preparation-package --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli assemble-limited-preparation-package --limited-preparation-artifact-inventory-run-id 20260619_120518 --outputs-root data/outputs
+```
+
+This is research-only package assembly. It does not validate the package, run
+Gatekeeper review, run investor agents, allow actual persona review, recommend
+a company, rank companies, create allocation instructions, create rebalancing
+instructions, create trade signals, create execution instructions, validate a
+strategy, or enable auto-promotion.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
