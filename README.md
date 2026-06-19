@@ -1688,6 +1688,25 @@ company, rank companies, create allocation instructions, create rebalancing
 instructions, create trade signals, create execution instructions, validate a
 strategy, or enable auto-promotion.
 
+### Gatekeeper Return Package Completeness Validation
+
+The Gatekeeper Return Package Completeness Validation executes Task 135. It
+consumes the Task 134 Gatekeeper Return Package and validates required sections,
+evidence references, residual risk disclosures, permission boundaries,
+limitations, safety boundaries, and the Task 136 handoff.
+
+```powershell
+python -m broker_agents.cli validate-gatekeeper-return-package --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli validate-gatekeeper-return-package --gatekeeper-return-package-run-id 20260619_081150 --outputs-root data/outputs
+```
+
+This is research-only completeness validation. It does not rerun Gatekeeper, run
+investor agents, allow actual persona review, recommend a company, rank
+companies, create allocation instructions, create rebalancing instructions,
+create trade signals, create execution instructions, validate a strategy, or
+enable auto-promotion.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision

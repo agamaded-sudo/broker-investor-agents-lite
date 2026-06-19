@@ -79,6 +79,9 @@ from broker_agents.gatekeeper_return.gatekeeper_return_input_inventory import (
 from broker_agents.gatekeeper_return.gatekeeper_return_package_assembly import (
     write_gatekeeper_return_package_report,
 )
+from broker_agents.gatekeeper_return.gatekeeper_return_package_validation import (
+    write_gatekeeper_return_package_validation_report,
+)
 from broker_agents.agents.bogle_agent import BogleAgent
 from broker_agents.agents.buffett_agent import BuffettAgent
 from broker_agents.agents.fisher_agent import FisherAgent
@@ -6400,6 +6403,118 @@ def assemble_gatekeeper_return_package_command(
     console.print(f"limitations_total={summary['limitations_total']}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.assembly_status}")
+
+
+@app.command("validate-gatekeeper-return-package")
+def validate_gatekeeper_return_package_command(
+    gatekeeper_return_package_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--gatekeeper-return-package-run-id",
+            help="Task 134 Gatekeeper return package used for Task 135 validation.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest Gatekeeper return package manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing Gatekeeper return package validation outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute Task 135 Gatekeeper return package completeness validation."""
+    if bool(gatekeeper_return_package_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --gatekeeper-return-package-run-id or "
+            "--auto-latest."
+        )
+    try:
+        files = write_gatekeeper_return_package_validation_report(
+            outputs_root=outputs_root,
+            gatekeeper_return_package_run_id=(
+                None if auto_latest else gatekeeper_return_package_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Gatekeeper return package validation failed: {exc}"
+        ) from exc
+
+    report = files.report
+    summary = report.package_validation_summary
+    table = Table(title="Gatekeeper Return Package Completeness Validation")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        (
+            "Gatekeeper Return Package Validation Run ID",
+            report.gatekeeper_return_package_validation_run_id,
+        ),
+        ("Gatekeeper Return Package Run ID", report.gatekeeper_return_package_run_id),
+        ("Current Phase", "18 - Gatekeeper Return Package Layer"),
+        ("Current Task", summary["current_task_name"]),
+        ("Source Assembly Status", summary["source_assembly_status"]),
+        (
+            "Final Gatekeeper Stabilization Outcome",
+            summary["final_gatekeeper_stabilization_outcome"],
+        ),
+        ("Final Progression Status", summary["final_progression_status"]),
+        ("Final Persona Review Status", summary["final_persona_review_status"]),
+        ("Validation Status", report.validation_status),
+        ("Required Sections Total", str(summary["required_sections_total"])),
+        ("Required Sections Satisfied", str(summary["required_sections_satisfied"])),
+        ("Evidence References Total", str(summary["evidence_refs_total"])),
+        ("Evidence References Validated", str(summary["evidence_refs_validated"])),
+        ("Blocking Findings Total", str(summary["blocking_findings_total"])),
+        ("Warning Findings Total", str(summary["warning_findings_total"])),
+        ("Recommended Next Task", report.recommended_next_task),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.validation_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        "gatekeeper_return_package_validation_run_id="
+        f"{report.gatekeeper_return_package_validation_run_id}"
+    )
+    console.print(f"gatekeeper_return_package_run_id={report.gatekeeper_return_package_run_id}")
+    console.print("current_phase=18 - Gatekeeper Return Package Layer")
+    console.print(f"current_task={summary['current_task_name']}")
+    console.print(f"source_assembly_status={summary['source_assembly_status']}")
+    console.print(
+        "final_gatekeeper_stabilization_outcome="
+        f"{summary['final_gatekeeper_stabilization_outcome']}"
+    )
+    console.print(
+        f"final_progression_status={summary['final_progression_status']}"
+    )
+    console.print(
+        f"final_persona_review_status={summary['final_persona_review_status']}"
+    )
+    console.print(f"validation_status={report.validation_status}")
+    console.print(f"required_sections_total={summary['required_sections_total']}")
+    console.print(
+        f"required_sections_satisfied={summary['required_sections_satisfied']}"
+    )
+    console.print(f"evidence_refs_total={summary['evidence_refs_total']}")
+    console.print(f"evidence_refs_validated={summary['evidence_refs_validated']}")
+    console.print(f"blocking_findings_total={summary['blocking_findings_total']}")
+    console.print(f"warning_findings_total={summary['warning_findings_total']}")
+    console.print(f"recommended_next_task={report.recommended_next_task}")
+    console.print(f"status={report.validation_status}")
 
 
 @app.command("run-historical-readiness-batch")
