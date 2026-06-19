@@ -91,6 +91,9 @@ from broker_agents.gatekeeper_return.phase_18_closure import (
 from broker_agents.limited_preparation.limited_preparation_governance_plan import (
     write_limited_preparation_governance_plan_report,
 )
+from broker_agents.limited_preparation.limited_preparation_artifact_inventory import (
+    write_limited_preparation_artifact_inventory_report,
+)
 from broker_agents.agents.bogle_agent import BogleAgent
 from broker_agents.agents.buffett_agent import BuffettAgent
 from broker_agents.agents.fisher_agent import FisherAgent
@@ -6824,6 +6827,131 @@ def define_limited_preparation_governance_plan_command(
     console.print(f"limited_preparation_status={report.limited_preparation_status}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.limited_preparation_status}")
+
+
+@app.command("build-limited-preparation-artifact-inventory")
+def build_limited_preparation_artifact_inventory_command(
+    limited_preparation_plan_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--limited-preparation-plan-run-id",
+            help="Task 138 Limited Preparation Governance Plan used for Task 139.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest Limited Preparation Governance Plan manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing limited preparation artifact inventory outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute Task 139 limited preparation artifact inventory."""
+    if bool(limited_preparation_plan_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --limited-preparation-plan-run-id or "
+            "--auto-latest."
+        )
+    try:
+        files = write_limited_preparation_artifact_inventory_report(
+            outputs_root=outputs_root,
+            limited_preparation_plan_run_id=(
+                None if auto_latest else limited_preparation_plan_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Limited preparation artifact inventory failed: {exc}"
+        ) from exc
+
+    report = files.report
+    summary = report.artifact_inventory_summary
+    table = Table(title="Limited Preparation Artifact Inventory")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        (
+            "Limited Preparation Artifact Inventory Run ID",
+            report.limited_preparation_artifact_inventory_run_id,
+        ),
+        ("Limited Preparation Plan Run ID", report.limited_preparation_plan_run_id),
+        ("Current Phase", "19 - Limited Preparation Governance Layer"),
+        ("Current Task", summary["current_task_name"]),
+        (
+            "Source Gatekeeper Return Outcome",
+            summary["source_gatekeeper_return_outcome"],
+        ),
+        (
+            "Source Post-Review Progression Status",
+            summary["source_post_review_progression_status"],
+        ),
+        (
+            "Source Post-Review Persona Review Status",
+            summary["source_post_review_persona_review_status"],
+        ),
+        ("Artifact Inventory Status", report.artifact_inventory_status),
+        ("Artifacts Total", str(summary["artifacts_total"])),
+        (
+            "Artifacts Ready For Assembly",
+            str(summary["artifacts_ready_for_assembly"]),
+        ),
+        (
+            "Artifacts Ready With Warnings",
+            str(summary["artifacts_ready_with_warnings"]),
+        ),
+        ("Artifacts Blocked", str(summary["artifacts_blocked"])),
+        ("Recommended Next Task", report.recommended_next_task),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.artifact_inventory_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        "limited_preparation_artifact_inventory_run_id="
+        f"{report.limited_preparation_artifact_inventory_run_id}"
+    )
+    console.print(
+        f"limited_preparation_plan_run_id={report.limited_preparation_plan_run_id}"
+    )
+    console.print("current_phase=19 - Limited Preparation Governance Layer")
+    console.print(f"current_task={summary['current_task_name']}")
+    console.print(
+        "source_gatekeeper_return_outcome="
+        f"{summary['source_gatekeeper_return_outcome']}"
+    )
+    console.print(
+        "source_post_review_progression_status="
+        f"{summary['source_post_review_progression_status']}"
+    )
+    console.print(
+        "source_post_review_persona_review_status="
+        f"{summary['source_post_review_persona_review_status']}"
+    )
+    console.print(f"artifact_inventory_status={report.artifact_inventory_status}")
+    console.print(f"artifacts_total={summary['artifacts_total']}")
+    console.print(
+        f"artifacts_ready_for_assembly={summary['artifacts_ready_for_assembly']}"
+    )
+    console.print(
+        "artifacts_ready_with_warnings="
+        f"{summary['artifacts_ready_with_warnings']}"
+    )
+    console.print(f"artifacts_blocked={summary['artifacts_blocked']}")
+    console.print(f"recommended_next_task={report.recommended_next_task}")
+    console.print(f"status={report.artifact_inventory_status}")
 
 
 @app.command("run-historical-readiness-batch")

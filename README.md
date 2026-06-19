@@ -1762,6 +1762,25 @@ allow actual persona review, recommend a company, rank companies, create
 allocation instructions, create rebalancing instructions, create trade signals,
 create execution instructions, validate a strategy, or enable auto-promotion.
 
+### Limited Preparation Artifact Inventory
+
+The Limited Preparation Artifact Inventory executes Task 139. It consumes the
+Task 138 Limited Preparation Governance Plan and inventories preparation-only
+artifacts, required inputs, prohibited content, readiness, assembly priority,
+warnings, and the Task 140 handoff.
+
+```powershell
+python -m broker_agents.cli build-limited-preparation-artifact-inventory --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli build-limited-preparation-artifact-inventory --limited-preparation-plan-run-id 20260619_112306 --outputs-root data/outputs
+```
+
+This is research-only artifact inventory. It does not assemble the package,
+run investor agents, allow actual persona review, recommend a company, rank
+companies, create allocation instructions, create rebalancing instructions,
+create trade signals, create execution instructions, validate a strategy, or
+enable auto-promotion.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
