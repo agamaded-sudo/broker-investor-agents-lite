@@ -88,6 +88,9 @@ from broker_agents.gatekeeper_return.gatekeeper_return_review import (
 from broker_agents.gatekeeper_return.phase_18_closure import (
     write_phase_18_closure_report,
 )
+from broker_agents.limited_preparation.limited_preparation_governance_plan import (
+    write_limited_preparation_governance_plan_report,
+)
 from broker_agents.agents.bogle_agent import BogleAgent
 from broker_agents.agents.buffett_agent import BuffettAgent
 from broker_agents.agents.fisher_agent import FisherAgent
@@ -6719,6 +6722,108 @@ def close_phase_18_command(
     console.print(f"recommended_next_phase={report.recommended_next_phase}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.closure_status}")
+
+
+@app.command("define-limited-preparation-governance-plan")
+def define_limited_preparation_governance_plan_command(
+    phase_18_closure_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--phase-18-closure-run-id",
+            help="Task 137 Phase 18 closure used for Task 138 governance planning.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest Phase 18 closure manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing limited preparation governance outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute Task 138 limited preparation governance planning."""
+    if bool(phase_18_closure_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --phase-18-closure-run-id or --auto-latest."
+        )
+    try:
+        files = write_limited_preparation_governance_plan_report(
+            outputs_root=outputs_root,
+            phase_18_closure_run_id=(
+                None if auto_latest else phase_18_closure_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Limited preparation governance plan failed: {exc}"
+        ) from exc
+
+    report = files.report
+    summary = report.limited_preparation_plan_summary
+    table = Table(title="Limited Preparation Governance Plan")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        (
+            "Limited Preparation Plan Run ID",
+            report.limited_preparation_plan_run_id,
+        ),
+        ("Phase 18 Closure Run ID", report.phase_18_closure_run_id),
+        ("Current Phase", "19 - Limited Preparation Governance Layer"),
+        ("Current Task", summary["current_task_name"]),
+        (
+            "Source Gatekeeper Return Outcome",
+            summary["source_gatekeeper_return_outcome"],
+        ),
+        (
+            "Source Post-Review Progression Status",
+            summary["source_post_review_progression_status"],
+        ),
+        (
+            "Source Post-Review Persona Review Status",
+            summary["source_post_review_persona_review_status"],
+        ),
+        ("Limited Preparation Status", report.limited_preparation_status),
+        ("Recommended Next Task", report.recommended_next_task),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.limited_preparation_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        f"limited_preparation_plan_run_id={report.limited_preparation_plan_run_id}"
+    )
+    console.print(f"phase_18_closure_run_id={report.phase_18_closure_run_id}")
+    console.print("current_phase=19 - Limited Preparation Governance Layer")
+    console.print(f"current_task={summary['current_task_name']}")
+    console.print(
+        "source_gatekeeper_return_outcome="
+        f"{summary['source_gatekeeper_return_outcome']}"
+    )
+    console.print(
+        "source_post_review_progression_status="
+        f"{summary['source_post_review_progression_status']}"
+    )
+    console.print(
+        "source_post_review_persona_review_status="
+        f"{summary['source_post_review_persona_review_status']}"
+    )
+    console.print(f"limited_preparation_status={report.limited_preparation_status}")
+    console.print(f"recommended_next_task={report.recommended_next_task}")
+    console.print(f"status={report.limited_preparation_status}")
 
 
 @app.command("run-historical-readiness-batch")

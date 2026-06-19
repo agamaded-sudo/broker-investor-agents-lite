@@ -1743,6 +1743,25 @@ actual persona review, recommend a company, rank companies, create allocation
 instructions, create rebalancing instructions, create trade signals, create
 execution instructions, validate a strategy, or enable auto-promotion.
 
+### Limited Preparation Governance Plan
+
+The Limited Preparation Governance Plan executes Task 138 and starts Phase 19.
+It consumes the Phase 18 Closure, defines what limited preparation means,
+records allowed preparation artifacts, preserves prohibited outputs, and
+requires future Gatekeeper approval before any actual persona review or
+investor-agent execution.
+
+```powershell
+python -m broker_agents.cli define-limited-preparation-governance-plan --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli define-limited-preparation-governance-plan --phase-18-closure-run-id 20260619_095701 --outputs-root data/outputs
+```
+
+This is research-only governance planning. It does not run investor agents,
+allow actual persona review, recommend a company, rank companies, create
+allocation instructions, create rebalancing instructions, create trade signals,
+create execution instructions, validate a strategy, or enable auto-promotion.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
