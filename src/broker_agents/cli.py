@@ -100,6 +100,9 @@ from broker_agents.limited_preparation.limited_preparation_package_assembly impo
 from broker_agents.limited_preparation.limited_preparation_package_validation import (
     write_limited_preparation_package_validation_report,
 )
+from broker_agents.limited_preparation.limited_preparation_gatekeeper_review import (
+    write_limited_preparation_gatekeeper_review_report,
+)
 from broker_agents.agents.bogle_agent import BogleAgent
 from broker_agents.agents.buffett_agent import BuffettAgent
 from broker_agents.agents.fisher_agent import FisherAgent
@@ -6610,6 +6613,126 @@ def validate_limited_preparation_package_command(
     console.print(f"warning_findings_total={summary['warning_findings_total']}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.validation_status}")
+
+
+
+
+def _print_key_value_table(title: str, values: dict[str, object]) -> None:
+    typer.echo(title)
+    for key, value in values.items():
+        typer.echo(f"{key}: {value}")
+
+
+@app.command("review-limited-preparation-package-gatekeeper")
+def review_limited_preparation_package_gatekeeper_command(
+    limited_preparation_package_validation_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--limited-preparation-package-validation-run-id",
+            help=(
+                "Limited Preparation Package Validation run ID. "
+                "Omit when using --auto-latest."
+            ),
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest Limited Preparation Package Validation manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            help="Root output directory.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    files = write_limited_preparation_gatekeeper_review_report(
+        outputs_root=outputs_root,
+        limited_preparation_package_validation_run_id=(
+            limited_preparation_package_validation_run_id
+        ),
+        auto_latest=auto_latest,
+    )
+    review = files.review
+
+    _print_key_value_table(
+        "Gatekeeper Review of Limited Preparation Package",
+        {
+            "Limited Preparation Gatekeeper Review Run ID": (
+                review.limited_preparation_gatekeeper_review_run_id
+            ),
+            "Limited Preparation Package Validation Run ID": (
+                review.limited_preparation_package_validation_run_id
+            ),
+            "Current Phase": review.current_phase,
+            "Current Task": review.current_task,
+            "Source Package Validation Status": (
+                review.source_package_validation_status
+            ),
+            "Source Blocking Findings Total": (
+                review.source_blocking_findings_total
+            ),
+            "Source Warning Findings Total": (
+                review.source_warning_findings_total
+            ),
+            "Gatekeeper Review Outcome": review.gatekeeper_review_outcome,
+            "Post-Review Progression Status": (
+                review.post_review_progression_status
+            ),
+            "Actual Persona Review Allowed": (
+                review.actual_persona_review_allowed
+            ),
+            "Investor Agents Allowed": review.investor_agents_allowed,
+            "Recommended Next Task": review.recommended_next_task,
+            "Report Path": files.markdown_path,
+            "Status": review.review_status,
+        },
+    )
+
+    typer.echo(
+        "limited_preparation_gatekeeper_review_run_id="
+        f"{review.limited_preparation_gatekeeper_review_run_id}"
+    )
+    typer.echo(
+        "limited_preparation_package_validation_run_id="
+        f"{review.limited_preparation_package_validation_run_id}"
+    )
+    typer.echo(f"current_phase={review.current_phase}")
+    typer.echo(f"current_task={review.current_task}")
+    typer.echo(
+        "source_package_validation_status="
+        f"{review.source_package_validation_status}"
+    )
+    typer.echo(
+        "source_blocking_findings_total="
+        f"{review.source_blocking_findings_total}"
+    )
+    typer.echo(
+        "source_warning_findings_total="
+        f"{review.source_warning_findings_total}"
+    )
+    typer.echo(
+        "gatekeeper_review_outcome="
+        f"{review.gatekeeper_review_outcome}"
+    )
+    typer.echo(
+        "post_review_progression_status="
+        f"{review.post_review_progression_status}"
+    )
+    typer.echo(
+        "actual_persona_review_allowed="
+        f"{str(review.actual_persona_review_allowed).lower()}"
+    )
+    typer.echo(
+        "investor_agents_allowed="
+        f"{str(review.investor_agents_allowed).lower()}"
+    )
+    typer.echo(f"recommended_next_task={review.recommended_next_task}")
+    typer.echo(f"status={review.review_status}")
 
 
 @app.command("run-historical-readiness-batch")
