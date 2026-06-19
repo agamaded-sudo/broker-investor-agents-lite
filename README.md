@@ -1725,6 +1725,24 @@ actual persona review, recommend a company, rank companies, create allocation
 instructions, create rebalancing instructions, create trade signals, create
 execution instructions, validate a strategy, or enable auto-promotion.
 
+### Phase 18 Closure & Next-Step Decision
+
+The Phase 18 Closure & Next-Step Decision executes Task 137. It consumes the
+Task 136 Gatekeeper Return Review, closes Phase 18, records the final
+Gatekeeper return outcome, preserves post-review permission boundaries, and
+recommends Phase 19 - Limited Preparation Governance Layer.
+
+```powershell
+python -m broker_agents.cli close-phase-18 --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli close-phase-18 --gatekeeper-return-review-run-id 20260619_091334 --outputs-root data/outputs
+```
+
+This is research-only phase closure. It does not run investor agents, allow
+actual persona review, recommend a company, rank companies, create allocation
+instructions, create rebalancing instructions, create trade signals, create
+execution instructions, validate a strategy, or enable auto-promotion.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
