@@ -1707,6 +1707,24 @@ companies, create allocation instructions, create rebalancing instructions,
 create trade signals, create execution instructions, validate a strategy, or
 enable auto-promotion.
 
+### Gatekeeper Return Review
+
+The Gatekeeper Return Review executes Task 136. It consumes the Task 135
+Gatekeeper Return Package Completeness Validation and performs a conservative
+Gatekeeper-only review of the validated return package, including warnings,
+residual risks, permission boundaries, and post-review scope.
+
+```powershell
+python -m broker_agents.cli run-gatekeeper-return-review --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli run-gatekeeper-return-review --gatekeeper-return-package-validation-run-id 20260619_083419 --outputs-root data/outputs
+```
+
+This is research-only Gatekeeper review. It does not run investor agents, allow
+actual persona review, recommend a company, rank companies, create allocation
+instructions, create rebalancing instructions, create trade signals, create
+execution instructions, validate a strategy, or enable auto-promotion.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision

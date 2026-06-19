@@ -82,6 +82,9 @@ from broker_agents.gatekeeper_return.gatekeeper_return_package_assembly import (
 from broker_agents.gatekeeper_return.gatekeeper_return_package_validation import (
     write_gatekeeper_return_package_validation_report,
 )
+from broker_agents.gatekeeper_return.gatekeeper_return_review import (
+    write_gatekeeper_return_review_report,
+)
 from broker_agents.agents.bogle_agent import BogleAgent
 from broker_agents.agents.buffett_agent import BuffettAgent
 from broker_agents.agents.fisher_agent import FisherAgent
@@ -6515,6 +6518,108 @@ def validate_gatekeeper_return_package_command(
     console.print(f"warning_findings_total={summary['warning_findings_total']}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.validation_status}")
+
+
+@app.command("run-gatekeeper-return-review")
+def run_gatekeeper_return_review_command(
+    gatekeeper_return_package_validation_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--gatekeeper-return-package-validation-run-id",
+            help="Task 135 Gatekeeper return package validation used for Task 136.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest Gatekeeper return package validation manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing Gatekeeper return review outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute Task 136 Gatekeeper return review."""
+    if bool(gatekeeper_return_package_validation_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --gatekeeper-return-package-validation-run-id "
+            "or --auto-latest."
+        )
+    try:
+        files = write_gatekeeper_return_review_report(
+            outputs_root=outputs_root,
+            gatekeeper_return_package_validation_run_id=(
+                None if auto_latest else gatekeeper_return_package_validation_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(f"Gatekeeper return review failed: {exc}") from exc
+
+    report = files.report
+    summary = report.gatekeeper_return_review_summary
+    table = Table(title="Gatekeeper Return Review")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        ("Gatekeeper Return Review Run ID", report.gatekeeper_return_review_run_id),
+        (
+            "Gatekeeper Return Package Validation Run ID",
+            report.gatekeeper_return_package_validation_run_id,
+        ),
+        ("Current Phase", "18 - Gatekeeper Return Package Layer"),
+        ("Current Task", summary["current_task_name"]),
+        ("Source Validation Status", summary["source_validation_status"]),
+        (
+            "Blocking Findings Total",
+            str(summary["source_blocking_findings_total"]),
+        ),
+        ("Warning Findings Total", str(summary["source_warning_findings_total"])),
+        ("Gatekeeper Return Outcome", report.gatekeeper_return_outcome),
+        ("Post-Review Progression Status", report.post_review_progression_status),
+        ("Post-Review Persona Review Status", report.post_review_persona_review_status),
+        ("Outcome Confidence", summary["outcome_confidence"]),
+        ("Recommended Next Task", report.recommended_next_task),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.review_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        f"gatekeeper_return_review_run_id={report.gatekeeper_return_review_run_id}"
+    )
+    console.print(
+        "gatekeeper_return_package_validation_run_id="
+        f"{report.gatekeeper_return_package_validation_run_id}"
+    )
+    console.print("current_phase=18 - Gatekeeper Return Package Layer")
+    console.print(f"current_task={summary['current_task_name']}")
+    console.print(f"source_validation_status={summary['source_validation_status']}")
+    console.print(
+        f"blocking_findings_total={summary['source_blocking_findings_total']}"
+    )
+    console.print(f"warning_findings_total={summary['source_warning_findings_total']}")
+    console.print(f"gatekeeper_return_outcome={report.gatekeeper_return_outcome}")
+    console.print(
+        f"post_review_progression_status={report.post_review_progression_status}"
+    )
+    console.print(
+        "post_review_persona_review_status="
+        f"{report.post_review_persona_review_status}"
+    )
+    console.print(f"outcome_confidence={summary['outcome_confidence']}")
+    console.print(f"recommended_next_task={report.recommended_next_task}")
+    console.print(f"status={report.review_status}")
 
 
 @app.command("run-historical-readiness-batch")
