@@ -73,6 +73,9 @@ from broker_agents.stabilization.phase_17_closure import (
 from broker_agents.gatekeeper_return.gatekeeper_return_package_plan import (
     write_gatekeeper_return_package_plan_report,
 )
+from broker_agents.gatekeeper_return.gatekeeper_return_input_inventory import (
+    write_gatekeeper_return_input_inventory_report,
+)
 from broker_agents.agents.bogle_agent import BogleAgent
 from broker_agents.agents.buffett_agent import BuffettAgent
 from broker_agents.agents.fisher_agent import FisherAgent
@@ -6187,6 +6190,107 @@ def define_gatekeeper_return_package_plan_command(
     console.print(f"roadmap_rows={len(report.phase_18_execution_roadmap)}")
     console.print(f"recommended_next_task={report.recommended_next_task}")
     console.print(f"status={report.plan_status}")
+
+
+@app.command("build-gatekeeper-return-input-inventory")
+def build_gatekeeper_return_input_inventory_command(
+    gatekeeper_return_plan_run_id: Annotated[
+        str | None,
+        typer.Option(
+            "--gatekeeper-return-plan-run-id",
+            help="Task 132 Gatekeeper return plan used for Task 133 inventory.",
+        ),
+    ] = None,
+    auto_latest: Annotated[
+        bool,
+        typer.Option(
+            "--auto-latest",
+            help="Use the latest Gatekeeper return package plan manifest.",
+        ),
+    ] = False,
+    outputs_root: Annotated[
+        Path,
+        typer.Option(
+            "--outputs-root",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            writable=True,
+            help="Root containing Gatekeeper return plan and inventory outputs.",
+        ),
+    ] = Path("data/outputs"),
+) -> None:
+    """Execute Task 133 Gatekeeper return package input inventory."""
+    if bool(gatekeeper_return_plan_run_id) == bool(auto_latest):
+        raise typer.BadParameter(
+            "Provide exactly one of --gatekeeper-return-plan-run-id or --auto-latest."
+        )
+    try:
+        files = write_gatekeeper_return_input_inventory_report(
+            outputs_root=outputs_root,
+            gatekeeper_return_plan_run_id=(
+                None if auto_latest else gatekeeper_return_plan_run_id
+            ),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"Gatekeeper return input inventory failed: {exc}"
+        ) from exc
+
+    report = files.report
+    summary = report.input_inventory_summary
+    table = Table(title="Gatekeeper Return Package Input Inventory")
+    table.add_column("Field")
+    table.add_column("Value")
+    rows = (
+        (
+            "Gatekeeper Return Input Inventory Run ID",
+            report.gatekeeper_return_input_inventory_run_id,
+        ),
+        ("Gatekeeper Return Plan Run ID", report.gatekeeper_return_plan_run_id),
+        ("Current Phase", "18 - Gatekeeper Return Package Layer"),
+        ("Current Task", summary["current_task_name"]),
+        (
+            "Final Gatekeeper Stabilization Outcome",
+            summary["final_gatekeeper_stabilization_outcome"],
+        ),
+        ("Final Progression Status", summary["final_progression_status"]),
+        ("Final Persona Review Status", summary["final_persona_review_status"]),
+        ("Component Inputs Total", str(summary["component_inputs_total"])),
+        ("Component Inputs Ready", str(summary["component_inputs_ready"])),
+        ("Evidence Artifacts Total", str(summary["evidence_artifacts_total"])),
+        ("Evidence Artifacts Ready", str(summary["evidence_artifacts_ready"])),
+        ("Recommended Next Task", report.recommended_next_task),
+        ("Report Path", str(files.markdown_path)),
+        ("Status", report.inventory_status),
+    )
+    for label, value in rows:
+        table.add_row(label, value)
+    console.print(table)
+    console.print(
+        "gatekeeper_return_input_inventory_run_id="
+        f"{report.gatekeeper_return_input_inventory_run_id}"
+    )
+    console.print(f"gatekeeper_return_plan_run_id={report.gatekeeper_return_plan_run_id}")
+    console.print("current_phase=18 - Gatekeeper Return Package Layer")
+    console.print(f"current_task={summary['current_task_name']}")
+    console.print(
+        "final_gatekeeper_stabilization_outcome="
+        f"{summary['final_gatekeeper_stabilization_outcome']}"
+    )
+    console.print(
+        f"final_progression_status={summary['final_progression_status']}"
+    )
+    console.print(
+        f"final_persona_review_status={summary['final_persona_review_status']}"
+    )
+    console.print(f"component_inputs_total={summary['component_inputs_total']}")
+    console.print(f"component_inputs_ready={summary['component_inputs_ready']}")
+    console.print(f"evidence_artifacts_total={summary['evidence_artifacts_total']}")
+    console.print(f"evidence_artifacts_ready={summary['evidence_artifacts_ready']}")
+    console.print(f"recommended_next_task={report.recommended_next_task}")
+    console.print(f"status={report.inventory_status}")
 
 
 @app.command("run-historical-readiness-batch")

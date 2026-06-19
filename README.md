@@ -1650,6 +1650,25 @@ company, rank companies, create allocation instructions, create rebalancing
 instructions, create trade signals, create execution instructions, validate a
 strategy, or enable auto-promotion.
 
+### Gatekeeper Return Package Input Inventory
+
+The Gatekeeper Return Package Input Inventory executes Task 133. It consumes
+the Task 132 Gatekeeper Return Package Plan, inventories planned components,
+maps evidence artifacts to local source files, checks source-run traceability,
+and prepares the Task 134 handoff for package assembly.
+
+```powershell
+python -m broker_agents.cli build-gatekeeper-return-input-inventory --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli build-gatekeeper-return-input-inventory --gatekeeper-return-plan-run-id 20260619_064951 --outputs-root data/outputs
+```
+
+This is research-only input inventory. It does not assemble the final package,
+rerun Gatekeeper, run investor agents, allow actual persona review, recommend a
+company, rank companies, create allocation instructions, create rebalancing
+instructions, create trade signals, create execution instructions, validate a
+strategy, or enable auto-promotion.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
