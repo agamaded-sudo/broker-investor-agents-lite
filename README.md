@@ -1613,6 +1613,24 @@ run actual persona review, recommend a company, rank companies, create
 allocation instructions, create rebalancing instructions, create trade signals,
 or create execution instructions.
 
+### Phase 17 Closure & Next-Step Decision
+
+The Phase 17 Closure & Next-Step Decision executes Task 131. It consumes the
+Task 130 Gatekeeper Stabilization Re-Review, closes the targeted evidence
+stabilization layer, preserves the limited Gatekeeper return package scope, and
+prepares the Task 132 handoff.
+
+```powershell
+python -m broker_agents.cli close-phase-17 --auto-latest --outputs-root data/outputs
+
+python -m broker_agents.cli close-phase-17 --gatekeeper-stabilization-re-review-run-id 20260618_213210 --outputs-root data/outputs
+```
+
+This is phase closure and next-step governance only. It does not allow persona
+review, run investor agents, recommend a company, rank companies, create
+allocation instructions, create rebalancing instructions, create trade signals,
+create execution instructions, validate a strategy, or enable auto-promotion.
+
 ### Readiness Trial Diagnostic Report
 
 Readiness trial backtests now create a diagnostic report beside the decision
