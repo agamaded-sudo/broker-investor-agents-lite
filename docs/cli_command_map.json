@@ -1,0 +1,834 @@
+{
+  "task": "Task 144-2C - Machine-readable CLI Command Map",
+  "source_file": "src\\broker_agents\\cli.py",
+  "inspection_method": "Python AST inspection of @app.command decorators; no CLI command execution.",
+  "command_count": 90,
+  "category_counts": {
+    "safe_status_documentation": 20,
+    "research_data_preparation": 38,
+    "blocked_high_risk_until_explicit_approval": 5,
+    "governance_only": 27
+  },
+  "current_safety_context": {
+    "phase_19_status": "closed_with_warnings",
+    "investor_agents_allowed": false,
+    "actual_persona_reviews_allowed": false,
+    "recommendations_allowed": false,
+    "rankings_allowed": false,
+    "allocations_allowed": false,
+    "trade_signals_allowed": false,
+    "auto_promotion_status": "disabled"
+  },
+  "commands": [
+    {
+      "command": "validate-pack",
+      "function": "validate_pack",
+      "line": 458,
+      "category": "safe_status_documentation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed as status, validation, audit, comparison, or documentation support. Still subject to safety review before operational use."
+    },
+    {
+      "command": "enrich-pack",
+      "function": "enrich_pack",
+      "line": 515,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "enrich-known-ticker",
+      "function": "enrich_known_ticker",
+      "line": 562,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "enrich-known-tickers",
+      "function": "enrich_known_tickers",
+      "line": 596,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "merge-sec-fixture",
+      "function": "merge_sec_fixture",
+      "line": 649,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "merge-market-fixture",
+      "function": "merge_market_fixture",
+      "line": 703,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "merge-historical-valuation-fixture",
+      "function": "merge_historical_valuation_fixture",
+      "line": 757,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "merge-growth-peg-fixture",
+      "function": "merge_growth_peg_fixture",
+      "line": 813,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "build-backoffice-report",
+      "function": "build_backoffice_report",
+      "line": 869,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "run-agent",
+      "function": "run_agent",
+      "line": 917,
+      "category": "blocked_high_risk_until_explicit_approval",
+      "allowed_now": false,
+      "requires_review": true,
+      "safety_note": "Blocked under current boundaries because the command may imply investor-agent execution, portfolio readiness, signal backtesting, or agent-level outputs."
+    },
+    {
+      "command": "run-all-agents",
+      "function": "run_all_agents",
+      "line": 975,
+      "category": "blocked_high_risk_until_explicit_approval",
+      "allowed_now": false,
+      "requires_review": true,
+      "safety_note": "Blocked under current boundaries because the command may imply investor-agent execution, portfolio readiness, signal backtesting, or agent-level outputs."
+    },
+    {
+      "command": "summarize-agents",
+      "function": "summarize_agents",
+      "line": 1030,
+      "category": "blocked_high_risk_until_explicit_approval",
+      "allowed_now": false,
+      "requires_review": true,
+      "safety_note": "Blocked under current boundaries because the command may imply investor-agent execution, portfolio readiness, signal backtesting, or agent-level outputs."
+    },
+    {
+      "command": "run-pipeline",
+      "function": "run_pipeline",
+      "line": 1083,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "run-enriched-pipeline",
+      "function": "run_enriched_pipeline",
+      "line": 1144,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "run-enriched-pipelines",
+      "function": "run_enriched_pipelines",
+      "line": 1214,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "compare-manual-enriched",
+      "function": "compare_manual_enriched",
+      "line": 1281,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "post-enrichment-gaps",
+      "function": "post_enrichment_gaps",
+      "line": 1325,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "human-review-queue",
+      "function": "human_review_queue",
+      "line": 1384,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "portfolio-readiness",
+      "function": "portfolio_readiness",
+      "line": 1461,
+      "category": "blocked_high_risk_until_explicit_approval",
+      "allowed_now": false,
+      "requires_review": true,
+      "safety_note": "Blocked under current boundaries because the command may imply investor-agent execution, portfolio readiness, signal backtesting, or agent-level outputs."
+    },
+    {
+      "command": "deal-intake",
+      "function": "deal_intake",
+      "line": 1538,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "deal-intakes",
+      "function": "deal_intakes",
+      "line": 1648,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "run-deal",
+      "function": "run_deal",
+      "line": 1741,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": true,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "analyze-stock",
+      "function": "analyze_stock",
+      "line": 1816,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": true,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "validate-historical-snapshot",
+      "function": "validate_historical_snapshot",
+      "line": 2066,
+      "category": "safe_status_documentation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed as status, validation, audit, comparison, or documentation support. Still subject to safety review before operational use."
+    },
+    {
+      "command": "validate-financials-csv",
+      "function": "validate_financials_csv",
+      "line": 2188,
+      "category": "safe_status_documentation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed as status, validation, audit, comparison, or documentation support. Still subject to safety review before operational use."
+    },
+    {
+      "command": "validate-financials-as-of",
+      "function": "validate_financials_as_of",
+      "line": 2289,
+      "category": "safe_status_documentation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed as status, validation, audit, comparison, or documentation support. Still subject to safety review before operational use."
+    },
+    {
+      "command": "validate-price-window",
+      "function": "validate_price_window",
+      "line": 2363,
+      "category": "safe_status_documentation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed as status, validation, audit, comparison, or documentation support. Still subject to safety review before operational use."
+    },
+    {
+      "command": "validate-historical-signal-candidate",
+      "function": "validate_historical_signal_candidate",
+      "line": 2431,
+      "category": "safe_status_documentation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed as status, validation, audit, comparison, or documentation support. Still subject to safety review before operational use."
+    },
+    {
+      "command": "show-historical-readiness-ledger",
+      "function": "show_historical_readiness_ledger",
+      "line": 2494,
+      "category": "safe_status_documentation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed as status, validation, audit, comparison, or documentation support. Still subject to safety review before operational use."
+    },
+    {
+      "command": "export-readiness-trial-ledger",
+      "function": "export_readiness_trial_ledger",
+      "line": 2556,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "validate-readiness-trial-ledger",
+      "function": "validate_readiness_trial_ledger_command",
+      "line": 2638,
+      "category": "safe_status_documentation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed as status, validation, audit, comparison, or documentation support. Still subject to safety review before operational use."
+    },
+    {
+      "command": "validate-expanded-ticker-coverage",
+      "function": "validate_expanded_ticker_coverage_command",
+      "line": 2684,
+      "category": "safe_status_documentation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed as status, validation, audit, comparison, or documentation support. Still subject to safety review before operational use."
+    },
+    {
+      "command": "validate-expanded-ticker-coverage-output",
+      "function": "validate_expanded_ticker_coverage_output_command",
+      "line": 2814,
+      "category": "safe_status_documentation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed as status, validation, audit, comparison, or documentation support. Still subject to safety review before operational use."
+    },
+    {
+      "command": "run-historical-readiness-multidate",
+      "function": "run_historical_readiness_multidate_command",
+      "line": 2900,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "run-expanded-ticker-readiness-trial",
+      "function": "run_expanded_ticker_readiness_trial_command",
+      "line": 3125,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "analyze-expanded-trial-results",
+      "function": "analyze_expanded_trial_results_command",
+      "line": 3314,
+      "category": "safe_status_documentation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed as status, validation, audit, comparison, or documentation support. Still subject to safety review before operational use."
+    },
+    {
+      "command": "build-research-evidence-scorecard",
+      "function": "build_research_evidence_scorecard_command",
+      "line": 3406,
+      "category": "safe_status_documentation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed as status, validation, audit, comparison, or documentation support. Still subject to safety review before operational use."
+    },
+    {
+      "command": "run-research-gatekeeper",
+      "function": "run_research_gatekeeper_command",
+      "line": 3508,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "build-investor-persona-attribution",
+      "function": "build_investor_persona_attribution_command",
+      "line": 3584,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "build-backoffice-evidence-quality-attribution",
+      "function": "build_backoffice_evidence_quality_attribution_command",
+      "line": 3667,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "build-backtest-driver-decomposition",
+      "function": "build_backtest_driver_decomposition_command",
+      "line": 3749,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "build-outlier-repair-path",
+      "function": "build_outlier_repair_path_command",
+      "line": 3828,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "build-walk-forward-repair-plan",
+      "function": "build_walk_forward_repair_plan_command",
+      "line": 3899,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "build-delayed-anchor-repair",
+      "function": "build_delayed_anchor_repair_command",
+      "line": 3969,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "build-metadata-diversity-recheck",
+      "function": "build_metadata_diversity_recheck_command",
+      "line": 4044,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "build-persona-evidence-pack-requirements",
+      "function": "build_persona_evidence_pack_requirements_command",
+      "line": 4123,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "build-bogle-benchmark-index-pack",
+      "function": "build_bogle_benchmark_index_pack_command",
+      "line": 4199,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "build-fisher-qualitative-growth-pack",
+      "function": "build_fisher_qualitative_growth_pack_command",
+      "line": 4273,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "build-buffett-munger-quality-risk-pack",
+      "function": "build_buffett_munger_quality_risk_pack_command",
+      "line": 4355,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "build-research-audit-trail-bundle",
+      "function": "build_research_audit_trail_bundle_command",
+      "line": 4432,
+      "category": "safe_status_documentation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed as status, validation, audit, comparison, or documentation support. Still subject to safety review before operational use."
+    },
+    {
+      "command": "build-re-run-re-gate-plan",
+      "function": "build_re_run_re_gate_plan_command",
+      "line": 4508,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "build-re-run-input-package",
+      "function": "build_re_run_input_package_command",
+      "line": 4586,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "execute-controlled-re-run-trial",
+      "function": "execute_controlled_re_run_trial_command",
+      "line": 4668,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "compare-pre-post-repair-evidence",
+      "function": "compare_pre_post_repair_evidence_command",
+      "line": 4750,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "run-gatekeeper-re-evaluation",
+      "function": "run_gatekeeper_re_evaluation_command",
+      "line": 4836,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "close-phase-16",
+      "function": "close_phase_16_command",
+      "line": 4926,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "define-targeted-evidence-stabilization-plan",
+      "function": "define_targeted_evidence_stabilization_plan_command",
+      "line": 5010,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "build-residual-blocker-work-orders",
+      "function": "build_residual_blocker_work_orders_command",
+      "line": 5103,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "execute-targeted-evidence-repairs",
+      "function": "execute_targeted_evidence_repairs_command",
+      "line": 5182,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "run-stabilization-validation-trial",
+      "function": "run_stabilization_validation_trial_command",
+      "line": 5268,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "compare-gatekeeper-stabilized-evidence",
+      "function": "compare_gatekeeper_stabilized_evidence_command",
+      "line": 5354,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "run-gatekeeper-stabilization-re-review",
+      "function": "run_gatekeeper_stabilization_re_review_command",
+      "line": 5457,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "close-phase-17",
+      "function": "close_phase_17_command",
+      "line": 5570,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "define-gatekeeper-return-package-plan",
+      "function": "define_gatekeeper_return_package_plan_command",
+      "line": 5663,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "build-gatekeeper-return-input-inventory",
+      "function": "build_gatekeeper_return_input_inventory_command",
+      "line": 5748,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "assemble-gatekeeper-return-package",
+      "function": "assemble_gatekeeper_return_package_command",
+      "line": 5841,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "validate-gatekeeper-return-package",
+      "function": "validate_gatekeeper_return_package_command",
+      "line": 5938,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "run-gatekeeper-return-review",
+      "function": "run_gatekeeper_return_review_command",
+      "line": 6041,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "close-phase-18",
+      "function": "close_phase_18_command",
+      "line": 6133,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "define-limited-preparation-governance-plan",
+      "function": "define_limited_preparation_governance_plan_command",
+      "line": 6225,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "build-limited-preparation-artifact-inventory",
+      "function": "build_limited_preparation_artifact_inventory_command",
+      "line": 6317,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "assemble-limited-preparation-package",
+      "function": "assemble_limited_preparation_package_command",
+      "line": 6428,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "validate-limited-preparation-package",
+      "function": "validate_limited_preparation_package_command",
+      "line": 6523,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "review-limited-preparation-package-gatekeeper",
+      "function": "review_limited_preparation_package_gatekeeper_command",
+      "line": 6627,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "run-historical-readiness-batch",
+      "function": "run_historical_readiness_batch_command",
+      "line": 6739,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "backtest-signals",
+      "function": "backtest_signals",
+      "line": 6929,
+      "category": "blocked_high_risk_until_explicit_approval",
+      "allowed_now": false,
+      "requires_review": true,
+      "safety_note": "Blocked under current boundaries because the command may imply investor-agent execution, portfolio readiness, signal backtesting, or agent-level outputs."
+    },
+    {
+      "command": "compare-clean-coverage-runs",
+      "function": "compare_clean_coverage_runs",
+      "line": 7207,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "run-evidence-decision-gate",
+      "function": "run_evidence_decision_gate",
+      "line": 7309,
+      "category": "governance_only",
+      "allowed_now": true,
+      "requires_review": true,
+      "safety_note": "Allowed only as non-actionable governance work. Must not create recommendations, rankings, allocations, trade signals, execution instructions, or actual persona reviews."
+    },
+    {
+      "command": "generate-readiness-trial-decision-report",
+      "function": "generate_readiness_trial_decision_report",
+      "line": 7397,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": true,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "generate-readiness-trial-diagnostic-report",
+      "function": "generate_readiness_trial_diagnostic_report",
+      "line": 7434,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "validate-price-csv",
+      "function": "validate_price_csv",
+      "line": 7470,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "analyze-batch",
+      "function": "analyze_batch",
+      "line": 7549,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": true,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "run-deals",
+      "function": "run_deals",
+      "line": 7785,
+      "category": "research_data_preparation",
+      "allowed_now": true,
+      "requires_review": true,
+      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+    },
+    {
+      "command": "review-reports",
+      "function": "review_reports",
+      "line": 7862,
+      "category": "safe_status_documentation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed as status, validation, audit, comparison, or documentation support. Still subject to safety review before operational use."
+    },
+    {
+      "command": "compare-summaries",
+      "function": "compare_summaries",
+      "line": 7914,
+      "category": "safe_status_documentation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed as status, validation, audit, comparison, or documentation support. Still subject to safety review before operational use."
+    },
+    {
+      "command": "compare-many",
+      "function": "compare_many",
+      "line": 7968,
+      "category": "safe_status_documentation",
+      "allowed_now": true,
+      "requires_review": true,
+      "safety_note": "Allowed as status, validation, audit, comparison, or documentation support. Still subject to safety review before operational use."
+    },
+    {
+      "command": "audit-candidates",
+      "function": "audit_candidates",
+      "line": 8044,
+      "category": "safe_status_documentation",
+      "allowed_now": true,
+      "requires_review": true,
+      "safety_note": "Allowed as status, validation, audit, comparison, or documentation support. Still subject to safety review before operational use."
+    },
+    {
+      "command": "missing-evidence",
+      "function": "missing_evidence",
+      "line": 8120,
+      "category": "safe_status_documentation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed as status, validation, audit, comparison, or documentation support. Still subject to safety review before operational use."
+    },
+    {
+      "command": "verify-sources",
+      "function": "verify_source_data",
+      "line": 8193,
+      "category": "safe_status_documentation",
+      "allowed_now": true,
+      "requires_review": false,
+      "safety_note": "Allowed as status, validation, audit, comparison, or documentation support. Still subject to safety review before operational use."
+    },
+    {
+      "command": "readiness-dashboard",
+      "function": "readiness_dashboard",
+      "line": 8239,
+      "category": "safe_status_documentation",
+      "allowed_now": true,
+      "requires_review": true,
+      "safety_note": "Allowed as status, validation, audit, comparison, or documentation support. Still subject to safety review before operational use."
+    }
+  ]
+}
