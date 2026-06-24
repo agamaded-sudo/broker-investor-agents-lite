@@ -5,8 +5,8 @@
   "command_count": 90,
   "category_counts": {
     "safe_status_documentation": 20,
-    "research_data_preparation": 38,
-    "blocked_high_risk_until_explicit_approval": 5,
+    "research_data_preparation": 33,
+    "blocked_high_risk_until_explicit_approval": 10,
     "governance_only": 27
   },
   "current_safety_context": {
@@ -213,19 +213,19 @@
       "command": "run-deal",
       "function": "run_deal",
       "line": 1741,
-      "category": "research_data_preparation",
-      "allowed_now": true,
+      "category": "blocked_high_risk_until_explicit_approval",
+      "allowed_now": false,
       "requires_review": true,
-      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+      "safety_note": "Blocked under current boundaries after ambiguous-command review because the command may execute broker-deal workflows, analyze-stock workflows, batch workflows, or generate decision-adjacent artifacts."
     },
     {
       "command": "analyze-stock",
       "function": "analyze_stock",
       "line": 1816,
-      "category": "research_data_preparation",
-      "allowed_now": true,
+      "category": "blocked_high_risk_until_explicit_approval",
+      "allowed_now": false,
       "requires_review": true,
-      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+      "safety_note": "Blocked under current boundaries after ambiguous-command review because the command may execute broker-deal workflows, analyze-stock workflows, batch workflows, or generate decision-adjacent artifacts."
     },
     {
       "command": "validate-historical-snapshot",
@@ -726,10 +726,10 @@
       "command": "generate-readiness-trial-decision-report",
       "function": "generate_readiness_trial_decision_report",
       "line": 7397,
-      "category": "research_data_preparation",
-      "allowed_now": true,
+      "category": "blocked_high_risk_until_explicit_approval",
+      "allowed_now": false,
       "requires_review": true,
-      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+      "safety_note": "Blocked under current boundaries after ambiguous-command review because the command may execute broker-deal workflows, analyze-stock workflows, batch workflows, or generate decision-adjacent artifacts."
     },
     {
       "command": "generate-readiness-trial-diagnostic-report",
@@ -753,19 +753,19 @@
       "command": "analyze-batch",
       "function": "analyze_batch",
       "line": 7549,
-      "category": "research_data_preparation",
-      "allowed_now": true,
+      "category": "blocked_high_risk_until_explicit_approval",
+      "allowed_now": false,
       "requires_review": true,
-      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+      "safety_note": "Blocked under current boundaries after ambiguous-command review because the command may execute broker-deal workflows, analyze-stock workflows, batch workflows, or generate decision-adjacent artifacts."
     },
     {
       "command": "run-deals",
       "function": "run_deals",
       "line": 7785,
-      "category": "research_data_preparation",
-      "allowed_now": true,
+      "category": "blocked_high_risk_until_explicit_approval",
+      "allowed_now": false,
       "requires_review": true,
-      "safety_note": "Allowed only for research, data preparation, evidence packaging, or non-actionable analysis. Must not be treated as an investor decision or recommendation workflow."
+      "safety_note": "Blocked under current boundaries after ambiguous-command review because the command may execute broker-deal workflows, analyze-stock workflows, batch workflows, or generate decision-adjacent artifacts."
     },
     {
       "command": "review-reports",
@@ -830,5 +830,17 @@
       "requires_review": true,
       "safety_note": "Allowed as status, validation, audit, comparison, or documentation support. Still subject to safety review before operational use."
     }
-  ]
+  ],
+  "review_update": {
+    "task": "Task 144-3C - Apply ambiguous CLI command review to command map",
+    "source_review_doc": "docs/task_144_3_ambiguous_cli_command_review.md",
+    "updated_commands": [
+      "analyze-batch",
+      "analyze-stock",
+      "generate-readiness-trial-decision-report",
+      "run-deal",
+      "run-deals"
+    ],
+    "note": "Updated machine-readable command map to match the documented ambiguous-command review. No CLI behavior was modified and no CLI command was executed."
+  }
 }
