@@ -24,6 +24,11 @@ from broker_agents.intake_to_package.readiness import (
     PackageReadinessWarning,
     build_package_readiness,
 )
+from broker_agents.intake_to_package.reporting import (
+    PackageReadinessReport,
+    build_package_readiness_report,
+    render_package_readiness_markdown,
+)
 
 __all__ = [
     "EvidenceChecklist",
@@ -36,13 +41,16 @@ __all__ = [
     "PackageReadiness",
     "PackageReadinessBlocker",
     "PackageReadinessLabel",
+    "PackageReadinessReport",
     "PackageReadinessSeverity",
     "PackageReadinessWarning",
     "VerificationStatus",
     "blocked_requested_outputs",
     "build_evidence_checklist",
     "build_package_readiness",
+    "build_package_readiness_report",
     "normalize_requested_outputs",
+    "render_package_readiness_markdown",
     "validate_intake",
 ]
 
