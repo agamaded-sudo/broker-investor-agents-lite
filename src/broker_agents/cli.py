@@ -1,4 +1,4 @@
-"""Command-line entry points for broker investor agents."""
+﻿"""Command-line entry points for broker investor agents."""
 
 import json
 from dataclasses import asdict
@@ -9,6 +9,7 @@ import typer
 import yaml
 from rich.console import Console
 from rich.table import Table
+from broker_agents.intake_to_package import write_package_readiness_artifacts
 
 from broker_agents.backoffice.data_validator import validate_backoffice_pack
 from broker_agents.backoffice.enrichment_pipeline import (
@@ -8296,6 +8297,67 @@ def readiness_dashboard(
     console.print(f"[bold]Readiness dashboard written to:[/bold] {output_path}")
 
 
+
+@app.command("intake-to-package")
+def intake_to_package(
+    company_name: str = typer.Option(..., "--company-name"),
+    ticker: str = typer.Option("", "--ticker"),
+    exchange: str = typer.Option("", "--exchange"),
+    listing_country: str = typer.Option("", "--listing-country"),
+    as_of_date: str = typer.Option(..., "--as-of-date"),
+    sector: str = typer.Option("", "--sector"),
+    industry: str = typer.Option("", "--industry"),
+    fiscal_period: str = typer.Option("", "--fiscal-period"),
+    requested_output: list[str] | None = typer.Option(
+        None,
+        "--requested-output",
+        help="Preparation-only requested output. Investment outputs remain blocked.",
+    ),
+    output_root: Path = typer.Option(
+        Path("data") / "outputs" / "intake_to_package",
+        "--output-root",
+    ),
+    run_id: str | None = typer.Option(None, "--run-id"),
+) -> None:
+    """Generate preparation-only Intake-to-Package readiness artifacts."""
+
+    payload: dict[str, object] = {
+        "company_name": company_name,
+        "ticker": ticker,
+        "exchange": exchange,
+        "listing_country": listing_country,
+        "as_of_date": as_of_date,
+        "requested_output": requested_output or ["package_readiness"],
+    }
+
+    if sector:
+        payload["sector"] = sector
+    if industry:
+        payload["industry"] = industry
+    if fiscal_period:
+        payload["fiscal_period"] = fiscal_period
+
+    bundle = write_package_readiness_artifacts(
+        payload,
+        output_root=output_root,
+        run_id=run_id,
+    )
+
+    safety_boundary = (
+        "Preparation-only output. No investor-agent execution, persona review, "
+        "recommendation, ranking, allocation, rebalancing, trade signal, "
+        "execution instruction, strategy validation, or auto-promotion."
+    )
+
+    console.print(safety_boundary)
+    console.print(f"run_id: {bundle.run_id}")
+    console.print(f"output_dir: {bundle.output_dir}")
+    console.print(f"markdown_path: {bundle.markdown_path}")
+    console.print(f"json_path: {bundle.json_path}")
+    console.print(f"manifest_path: {bundle.manifest_path}")
+    console.print(f"readiness_label: {bundle.report.readiness_label}")
+    console.print(f"human_review_required: {bundle.report.human_review_required}")
+    console.print(f"allowed_next_step: {bundle.report.allowed_next_step}")
 def main() -> None:
     """Run the Typer application."""
     app()
@@ -8303,3 +8365,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
