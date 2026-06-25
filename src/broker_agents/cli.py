@@ -8300,11 +8300,16 @@ def readiness_dashboard(
 
 @app.command("intake-to-package")
 def intake_to_package(
-    company_name: str = typer.Option(..., "--company-name"),
+    input_file: Path | None = typer.Option(
+        None,
+        "--input-file",
+        help="JSON intake payload file for one company.",
+    ),
+    company_name: str = typer.Option("", "--company-name"),
     ticker: str = typer.Option("", "--ticker"),
     exchange: str = typer.Option("", "--exchange"),
     listing_country: str = typer.Option("", "--listing-country"),
-    as_of_date: str = typer.Option(..., "--as-of-date"),
+    as_of_date: str = typer.Option("", "--as-of-date"),
     sector: str = typer.Option("", "--sector"),
     industry: str = typer.Option("", "--industry"),
     fiscal_period: str = typer.Option("", "--fiscal-period"),
@@ -8321,14 +8326,40 @@ def intake_to_package(
 ) -> None:
     """Generate preparation-only Intake-to-Package readiness artifacts."""
 
-    payload: dict[str, object] = {
-        "company_name": company_name,
-        "ticker": ticker,
-        "exchange": exchange,
-        "listing_country": listing_country,
-        "as_of_date": as_of_date,
-        "requested_output": requested_output or ["package_readiness"],
-    }
+    payload: dict[str, object] = {}
+
+    if input_file is not None:
+        loaded_payload = json.loads(input_file.read_text(encoding="utf-8"))
+        if not isinstance(loaded_payload, dict):
+            raise typer.BadParameter(
+                "input JSON must contain a single company intake object"
+            )
+        payload.update(loaded_payload)
+
+    if company_name:
+        payload["company_name"] = company_name
+    if ticker:
+        payload["ticker"] = ticker
+    if exchange:
+        payload["exchange"] = exchange
+    if listing_country:
+        payload["listing_country"] = listing_country
+    if as_of_date:
+        payload["as_of_date"] = as_of_date
+
+    if requested_output is not None:
+        payload["requested_output"] = requested_output
+    elif "requested_output" not in payload:
+        payload["requested_output"] = ["package_readiness"]
+
+    if not payload.get("company_name"):
+        raise typer.BadParameter(
+            "company_name is required unless provided in --input-file"
+        )
+    if not payload.get("as_of_date"):
+        raise typer.BadParameter(
+            "as_of_date is required unless provided in --input-file"
+        )
 
     if sector:
         payload["sector"] = sector
