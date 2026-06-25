@@ -303,3 +303,48 @@ def test_intake_to_package_cli_json_input_preserves_safety_boundary(
     assert "trade signal" in result.output
     assert "auto-promotion" in result.output
 
+
+
+def test_intake_to_package_cli_accepts_utf8_bom_json_input_file(
+    tmp_path: Path,
+) -> None:
+    input_file = tmp_path / "bom_intake.json"
+    input_file.write_bytes(
+        b"\xef\xbb\xbf"
+        b"{\n"
+        b'  "company_name": "Microsoft Corporation",\n'
+        b'  "ticker": "MSFT",\n'
+        b'  "exchange": "NASDAQ",\n'
+        b'  "listing_country": "United States",\n'
+        b'  "as_of_date": "2026-06-24",\n'
+        b'  "requested_output": ["package_readiness"]\n'
+        b"}\n"
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "intake-to-package",
+            "--input-file",
+            str(input_file),
+            "--output-root",
+            str(tmp_path / "outputs"),
+            "--run-id",
+            "bom_json_input_cli_run",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert (
+        tmp_path
+        / "outputs"
+        / "bom_json_input_cli_run"
+        / "package_readiness_report.md"
+    ).is_file()
+    assert (
+        tmp_path
+        / "outputs"
+        / "bom_json_input_cli_run"
+        / "package_readiness_report.json"
+    ).is_file()
+

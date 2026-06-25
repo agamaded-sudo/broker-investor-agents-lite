@@ -8329,7 +8329,7 @@ def intake_to_package(
     payload: dict[str, object] = {}
 
     if input_file is not None:
-        loaded_payload = json.loads(input_file.read_text(encoding="utf-8"))
+        loaded_payload = json.loads(input_file.read_text(encoding="utf-8-sig"))
         if not isinstance(loaded_payload, dict):
             raise typer.BadParameter(
                 "input JSON must contain a single company intake object"
