@@ -15,6 +15,10 @@ from broker_agents.company_selection.schema import (
     ManualCandidate,
     ManualCandidateList,
 )
+from broker_agents.company_selection.serialization import (
+    candidate_selection_record_to_payload,
+    routing_result_to_payload,
+)
 
 __all__ = [
     "CandidateRoutingResult",
@@ -22,5 +26,7 @@ __all__ = [
     "CandidateSelectionRecord",
     "ManualCandidate",
     "ManualCandidateList",
+    "candidate_selection_record_to_payload",
     "route_manual_priority_then_list_order",
+    "routing_result_to_payload",
 ]
