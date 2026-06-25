@@ -5,6 +5,12 @@ It does not scan live markets, produce recommendations, run investor agents,
 or aggregate reports.
 """
 
+from broker_agents.company_selection.json_io import (
+    read_candidate_selection_record_json,
+    read_manual_candidate_list_json,
+    write_candidate_selection_record_json,
+    write_routing_result_json,
+)
 from broker_agents.company_selection.routing import (
     CandidateRoutingResult,
     route_manual_priority_then_list_order,
@@ -27,6 +33,10 @@ __all__ = [
     "ManualCandidate",
     "ManualCandidateList",
     "candidate_selection_record_to_payload",
+    "read_candidate_selection_record_json",
+    "read_manual_candidate_list_json",
     "route_manual_priority_then_list_order",
     "routing_result_to_payload",
+    "write_candidate_selection_record_json",
+    "write_routing_result_json",
 ]
