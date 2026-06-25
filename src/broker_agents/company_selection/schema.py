@@ -1,6 +1,6 @@
 ﻿from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
@@ -504,3 +504,4 @@ class CandidateSelectionRecord:
             created_by=payload.get("created_by"),
             created_at=payload.get("created_at"),
         )
+
