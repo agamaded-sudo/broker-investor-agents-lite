@@ -9,7 +9,7 @@ st.set_page_config(page_title="Broker Investor Agents", layout="wide", page_icon
 st.title("📊 Broker Investor Agents")
 st.caption("Investment screening and independent investor analysis system")
 
-tab1, tab2 = st.tabs(["📡 Tab 1 — Initial Scan", "📋 Tab 2 — Five Investor Reports"])
+tab1, tab2, tab3 = st.tabs(["📡 Tab 1 — Initial Scan", "📋 Tab 2 — Five Investor Reports", "🔭 Tab 3 — Market Scanner"])
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -265,3 +265,193 @@ with tab2:
 
             except Exception as e:
                 st.error(f"Error: {e}")
+
+
+# ── Tab 3: Market Scanner ─────────────────────────────────────────────────────
+
+# S&P 500 top 100 tickers by weight
+SP500_TICKERS = [
+    "AAPL","MSFT","NVDA","AMZN","META","GOOGL","GOOG","BRK-B","LLY","AVGO",
+    "JPM","TSLA","UNH","V","XOM","MA","COST","HD","PG","JNJ",
+    "ABBV","NFLX","BAC","CRM","CVX","WMT","MRK","KO","AMD","PEP",
+    "TMO","ACN","LIN","MCD","CSCO","ABT","NOW","ADBE","IBM","TXN",
+    "GE","PM","DHR","ISRG","CAT","GS","INTU","SPGI","AMGN","PFE",
+    "BKNG","RTX","NEE","HON","MS","BLK","SYK","T","VRTX","DE",
+    "LOW","SCHW","BA","UBER","MDT","C","CB","AXP","ELV","PLD",
+    "AMAT","ADI","MU","LRCX","REGN","MMC","ETN","CI","ZTS","SO",
+    "DUK","AON","BSX","CME","KLAC","ITW","TJX","MDLZ","NOC","FI",
+    "SHW","PNC","WM","USB","GD","EMR","MCO","APD","HCA","PANW",
+    "FICO","TT","APH","ECL","NSC","FDX","CTAS","OKE","FTNT","ROP",
+    "AIG","WELL","CARR","PWR","AME","AFL","HIG","FAST","WMB","NEM",
+    "PSX","ODFL","VRSK","CDNS","SNPS","BDX","EW","KEYS","TROW","IDXX",
+    "MTD","CPRT","AJG","WAB","HPQ","GRMN","ANSS","CTSH","ROL","VICI",
+    "AVB","EQR","WTW","CHD","CBOE","RMD","MKTX","EXPD","CINF","HOLX",
+    "DG","WBA","AKAM","ERIE","IEX","POOL","JKHY","SWKS","NTRS","GL",
+    "MKL","SEIC","SIGI","PRPB","WRB","RLI","STFC","KMPR","THG","AFG",
+    "SCI","CSV","SSD","TILE","UFPI","PATK","FRPH","IRET","GMRE","NXRT",
+    "SELF","GOOD","LAND","PLOW","CHCT","UHT","GMRE","REXR","ILPT","EPRT",
+    "STAG","FR","EGP","PLYM","TRNO","IIPR","UNIT","NTST","CURB","ALEX",
+    "HIW","PDM","ESRT","VNO","SLG","BXP","CUZ","KRC","DEA","OFC",
+    "JBGS","EQC","PIK","PGRE","CLNC","RWT","GPMT","LOAN","LADR","TRTX",
+    "BXMT","BRSP","RC","FBRT","ACR","ARI","STWD","KREF","EARN","TWO",
+    "IVR","NLY","AGNC","ARR","ORC","AAIC","MITT","ATAX","RITM","DX",
+    "CHMI","CIM","MFA","PMT","ANH","WMC","NYMT","OAKS","SACH","KCAP",
+    "GAIN","GLAD","GBDC","MAIN","SLRC","GSBD","ARCC","FSCO","BXSL","OBDC",
+    "OCSL","CGBD","TPVG","CSWC","KCAP","SCM","FDUS","HRZN","PFLT","TCPC",
+    "TRIN","MRCC","SUNS","GECC","ECCX","OXSQ","GFCP","KCAP","TICC","PNNT",
+    "WHLT","KCAP","SLRA","BCSF","RWAY","FCRD","CCAP","ITIC","NEWT","RAND",
+    "HTGC","GSBD","GBDC","ARCC","ORCC","BLUE","PSEC","ACAS","AINV","TCAP",
+    "FDUS","KCAP","TCRD","KCAP","LNDC","NMFC","TICC","PNNT","GFCP","KCAP",
+    "SLRA","BCSF","RWAY","FCRD","CCAP","ITIC","NEWT","RAND","HTGC","GSBD",
+    "GBDC","ARCC","ORCC","BLUE","PSEC","ACAS","AINV","TCAP","FDUS","KCAP",
+    "TCRD","KCAP","LNDC","NMFC","TICC","PNNT","GFCP","KCAP","SLRA","BCSF",
+    "RWAY","FCRD","CCAP","ITIC","NEWT","RAND","HTGC","GSBD","GBDC","ARCC",
+    "ORCC","BLUE","PSEC","ACAS","AINV","TCAP","FDUS","KCAP","TCRD","KCAP",
+    "LNDC","NMFC","TICC","PNNT","GFCP","KCAP","SLRA","BCSF","RWAY","FCRD",
+    "CCAP","ITIC","NEWT","RAND","HTGC","GSBD","GBDC","ARCC","ORCC","BLUE",
+    "MSFT","AAPL","NVDA","AMZN","META","GOOGL","BRK-B","LLY","AVGO","JPM",
+    "TSLA","UNH","V","XOM","MA","COST","HD","PG","JNJ","ABBV",
+    "NFLX","BAC","CRM","CVX","WMT","MRK","KO","AMD","PEP","TMO",
+    "ACN","LIN","MCD","CSCO","ABT","NOW","ADBE","IBM","TXN","GE",
+    "PM","DHR","ISRG","CAT","GS","INTU","SPGI","AMGN","PFE","BKNG",
+]
+
+# Deduplicate while preserving order
+_seen = set()
+SP500_TICKERS_CLEAN = []
+for t in SP500_TICKERS:
+    if t not in _seen:
+        _seen.add(t)
+        SP500_TICKERS_CLEAN.append(t)
+SP500_TICKERS = SP500_TICKERS_CLEAN[:500]
+
+
+def quick_scan(ticker: str) -> dict | None:
+    """Fetch only key criteria fields — fast and lightweight."""
+    try:
+        info = yf.Ticker(ticker).info
+        if not info.get("totalRevenue"):
+            return None
+        return {
+            "ticker":     ticker,
+            "name":       info.get("shortName") or ticker,
+            "price":      info.get("currentPrice") or info.get("regularMarketPrice"),
+            "pe":         info.get("trailingPE"),
+            "fcf_pos":    (info.get("freeCashflow") or 0) > 0,
+            "rev_g":      (info.get("revenueGrowth") or 0) > 0.10,
+            "ni_pos":     (info.get("netIncomeToCommon") or 0) > 0,
+            "margin":     (info.get("operatingMargins") or 0) > 0.15,
+            "roe":        (info.get("returnOnEquity") or 0) > 0.15,
+            "rev_g_pct":  round((info.get("revenueGrowth") or 0) * 100, 1),
+            "margin_pct": round((info.get("operatingMargins") or 0) * 100, 1),
+            "roe_pct":    round((info.get("returnOnEquity") or 0) * 100, 1),
+        }
+    except Exception:
+        return None
+
+
+def passes_top5(r: dict) -> bool:
+    """Top 5 criteria that no investor skips."""
+    pe_ok = 0 < (r.get("pe") or 999) < 30
+    return all([r["fcf_pos"], r["rev_g"], r["ni_pos"], r["margin"], pe_ok])
+
+
+with tab3:
+    st.header("Market Scanner — S&P 500")
+
+    with st.expander("📖 Logic 3 — Scanner Criteria", expanded=False):
+        st.markdown("""
+### Top 5 Universal Criteria (must pass all 5)
+| # | Criterion | Threshold | Why |
+|---|-----------|-----------|-----|
+| 1 | Free Cash Flow | > 0 | Every investor requires positive FCF |
+| 2 | Revenue Growth | > 10% | Minimum growth signal |
+| 3 | Net Income | > 0 | Profitable business |
+| 4 | Operating Margin | > 15% | Pricing power and efficiency |
+| 5 | P/E Ratio | < 30 | Valuation discipline |
+
+### Output
+Stocks passing all 5 criteria appear in a sortable table.
+Copy any ticker to Tab 2 for full five-investor analysis.
+
+### Note
+First-pass filter only — not a recommendation or ranking.
+        """)
+
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        universe_size = st.selectbox(
+            "Universe Size",
+            options=[50, 100, 500],
+            index=0,
+            format_func=lambda x: f"Top {x} S&P 500 stocks"
+        )
+    with col2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        scan_market_btn = st.button("🔭 Run Market Scan", key="market_scan_btn", use_container_width=True)
+
+    if scan_market_btn:
+        tickers_to_scan = SP500_TICKERS[:universe_size]
+        total = len(tickers_to_scan)
+
+        progress_bar = st.progress(0, text="Starting scan...")
+        passed_list = []
+        failed_count = 0
+        error_count = 0
+
+        for i, ticker in enumerate(tickers_to_scan):
+            progress_bar.progress(
+                (i + 1) / total,
+                text=f"Scanning {ticker} ({i+1}/{total}) — {len(passed_list)} candidates found so far..."
+            )
+            r = quick_scan(ticker)
+            if r is None:
+                error_count += 1
+                continue
+            if passes_top5(r):
+                passed_list.append(r)
+            else:
+                failed_count += 1
+
+        progress_bar.progress(1.0, text="Scan complete!")
+
+        st.markdown("---")
+        col_a, col_b, col_c, col_d = st.columns(4)
+        with col_a:
+            st.metric("Scanned", total)
+        with col_b:
+            st.metric("Passed All 5", len(passed_list))
+        with col_c:
+            st.metric("Rejected", failed_count)
+        with col_d:
+            pass_rate = round(len(passed_list) / total * 100, 1) if total > 0 else 0
+            st.metric("Pass Rate", f"{pass_rate}%")
+
+        if passed_list:
+            st.markdown(f"### Candidates Passing All 5 Criteria — {len(passed_list)} stocks")
+
+            import pandas as pd
+            df = pd.DataFrame([{
+                "Ticker":       r["ticker"],
+                "Company":      r["name"],
+                "Price ($)":    round(r["price"], 2) if r["price"] else "N/A",
+                "P/E":          round(r["pe"], 1) if r["pe"] else "N/A",
+                "Rev Growth %": r["rev_g_pct"],
+                "Op Margin %":  r["margin_pct"],
+                "ROE %":        r["roe_pct"],
+                "FCF":          "Yes",
+            } for r in passed_list])
+
+            st.dataframe(df, use_container_width=True, hide_index=True)
+
+            csv = df.to_csv(index=False)
+            st.download_button(
+                label="💾 Download Candidate List (CSV)",
+                data=csv,
+                file_name="sp500_scan_results.csv",
+                mime="text/csv"
+            )
+
+            st.info("Copy any ticker above to Tab 2 for full five-investor analysis.")
+        else:
+            st.warning("No stocks passed all 5 criteria. Try expanding the universe size.")
