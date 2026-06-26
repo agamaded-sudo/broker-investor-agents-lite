@@ -248,6 +248,25 @@ def generate_input_yaml(ticker: str, info: dict, examples_root: Path) -> Path:
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+MARKET_SUFFIXES = {
+    ".SR": {"label": "Saudi (Tadawul)", "currency": "SAR", "symbol": "ر.س", "flag": "🇸🇦"},
+    ".QA": {"label": "Qatar (QSE)",     "currency": "QAR", "symbol": "ر.ق", "flag": "🇶🇦"},
+}
+
+def detect_market(ticker: str) -> dict:
+    """Return market metadata dict for a ticker based on its suffix."""
+    upper = ticker.upper()
+    for suffix, meta in MARKET_SUFFIXES.items():
+        if upper.endswith(suffix):
+            return meta
+    return {"label": "US Market", "currency": "USD", "symbol": "$", "flag": "🇺🇸"}
+
+def fmt_price(price, market: dict) -> str:
+    sym = market["symbol"]
+    if price is None:
+        return "N/A"
+    return f"{sym}{price:,.2f}" if market["currency"] == "USD" else f"{price:,.2f} {sym}"
+
 def get_info(ticker: str) -> dict:
     return yf.Ticker(ticker.upper()).info
 
@@ -357,19 +376,24 @@ with tab1:
 - Price down >25% from 52W High + Positive FCF + Growing Revenue
         """)
 
-    col1, col2 = st.columns([3, 1])
+    col1, col2, col3 = st.columns([3, 2, 1])
     with col1:
-        ticker_scan = st.text_input("Ticker Symbol", placeholder="e.g. AAPL", key="scan_ticker")
+        ticker_scan = st.text_input("Ticker Symbol", placeholder="e.g. AAPL or 2222.SR or QNBK.QA", key="scan_ticker")
     with col2:
+        if ticker_scan:
+            m = detect_market(ticker_scan)
+            st.markdown(f"<br><span style='font-size:0.9em'>{m['flag']} {m['label']} · {m['currency']}</span>", unsafe_allow_html=True)
+    with col3:
         st.markdown("<br>", unsafe_allow_html=True)
         scan_btn = st.button("🔍 Scan", key="scan_btn", use_container_width=True)
 
     if scan_btn and ticker_scan:
         with st.spinner(f"Scanning {ticker_scan.upper()}..."):
             try:
+                market_meta = detect_market(ticker_scan)
                 info = get_info(ticker_scan)
                 name = info.get("shortName") or ticker_scan.upper()
-                st.subheader(f"{name} ({ticker_scan.upper()})")
+                st.subheader(f"{name} ({ticker_scan.upper()})  {market_meta['flag']}")
 
                 # Gate 0
                 st.markdown("#### 🚦 Gate 0 — Hard Filters")
@@ -396,8 +420,7 @@ with tab1:
                 with col_b:
                     st.metric("Decision", decision)
                 with col_c:
-                    price_str = f"${price:.2f}" if price else "N/A"
-                    st.metric("Price", price_str)
+                    st.metric("Price", fmt_price(price, market_meta))
                 with col_d:
                     pe_str = f"{pe:.1f}" if pe else "N/A"
                     st.metric("P/E", pe_str)
@@ -524,8 +547,7 @@ with tab2:
 
 # ── Tab 3: Market Scanner ─────────────────────────────────────────────────────
 
-# S&P 500 top 100 tickers by weight
-SP500_TICKERS = [
+_SP500_RAW = [
     "AAPL","MSFT","NVDA","AMZN","META","GOOGL","GOOG","BRK-B","LLY","AVGO",
     "JPM","TSLA","UNH","V","XOM","MA","COST","HD","PG","JNJ",
     "ABBV","NFLX","BAC","CRM","CVX","WMT","MRK","KO","AMD","PEP",
@@ -536,52 +558,33 @@ SP500_TICKERS = [
     "AMAT","ADI","MU","LRCX","REGN","MMC","ETN","CI","ZTS","SO",
     "DUK","AON","BSX","CME","KLAC","ITW","TJX","MDLZ","NOC","FI",
     "SHW","PNC","WM","USB","GD","EMR","MCO","APD","HCA","PANW",
-    "FICO","TT","APH","ECL","NSC","FDX","CTAS","OKE","FTNT","ROP",
-    "AIG","WELL","CARR","PWR","AME","AFL","HIG","FAST","WMB","NEM",
-    "PSX","ODFL","VRSK","CDNS","SNPS","BDX","EW","KEYS","TROW","IDXX",
-    "MTD","CPRT","AJG","WAB","HPQ","GRMN","ANSS","CTSH","ROL","VICI",
-    "AVB","EQR","WTW","CHD","CBOE","RMD","MKTX","EXPD","CINF","HOLX",
-    "DG","WBA","AKAM","ERIE","IEX","POOL","JKHY","SWKS","NTRS","GL",
-    "MKL","SEIC","SIGI","PRPB","WRB","RLI","STFC","KMPR","THG","AFG",
-    "SCI","CSV","SSD","TILE","UFPI","PATK","FRPH","IRET","GMRE","NXRT",
-    "SELF","GOOD","LAND","PLOW","CHCT","UHT","GMRE","REXR","ILPT","EPRT",
-    "STAG","FR","EGP","PLYM","TRNO","IIPR","UNIT","NTST","CURB","ALEX",
-    "HIW","PDM","ESRT","VNO","SLG","BXP","CUZ","KRC","DEA","OFC",
-    "JBGS","EQC","PIK","PGRE","CLNC","RWT","GPMT","LOAN","LADR","TRTX",
-    "BXMT","BRSP","RC","FBRT","ACR","ARI","STWD","KREF","EARN","TWO",
-    "IVR","NLY","AGNC","ARR","ORC","AAIC","MITT","ATAX","RITM","DX",
-    "CHMI","CIM","MFA","PMT","ANH","WMC","NYMT","OAKS","SACH","KCAP",
-    "GAIN","GLAD","GBDC","MAIN","SLRC","GSBD","ARCC","FSCO","BXSL","OBDC",
-    "OCSL","CGBD","TPVG","CSWC","KCAP","SCM","FDUS","HRZN","PFLT","TCPC",
-    "TRIN","MRCC","SUNS","GECC","ECCX","OXSQ","GFCP","KCAP","TICC","PNNT",
-    "WHLT","KCAP","SLRA","BCSF","RWAY","FCRD","CCAP","ITIC","NEWT","RAND",
-    "HTGC","GSBD","GBDC","ARCC","ORCC","BLUE","PSEC","ACAS","AINV","TCAP",
-    "FDUS","KCAP","TCRD","KCAP","LNDC","NMFC","TICC","PNNT","GFCP","KCAP",
-    "SLRA","BCSF","RWAY","FCRD","CCAP","ITIC","NEWT","RAND","HTGC","GSBD",
-    "GBDC","ARCC","ORCC","BLUE","PSEC","ACAS","AINV","TCAP","FDUS","KCAP",
-    "TCRD","KCAP","LNDC","NMFC","TICC","PNNT","GFCP","KCAP","SLRA","BCSF",
-    "RWAY","FCRD","CCAP","ITIC","NEWT","RAND","HTGC","GSBD","GBDC","ARCC",
-    "ORCC","BLUE","PSEC","ACAS","AINV","TCAP","FDUS","KCAP","TCRD","KCAP",
-    "LNDC","NMFC","TICC","PNNT","GFCP","KCAP","SLRA","BCSF","RWAY","FCRD",
-    "CCAP","ITIC","NEWT","RAND","HTGC","GSBD","GBDC","ARCC","ORCC","BLUE",
-    "MSFT","AAPL","NVDA","AMZN","META","GOOGL","BRK-B","LLY","AVGO","JPM",
-    "TSLA","UNH","V","XOM","MA","COST","HD","PG","JNJ","ABBV",
-    "NFLX","BAC","CRM","CVX","WMT","MRK","KO","AMD","PEP","TMO",
-    "ACN","LIN","MCD","CSCO","ABT","NOW","ADBE","IBM","TXN","GE",
-    "PM","DHR","ISRG","CAT","GS","INTU","SPGI","AMGN","PFE","BKNG",
 ]
+_seen_sp: set = set()
+SP500_TICKERS: list[str] = []
+for _t in _SP500_RAW:
+    if _t not in _seen_sp:
+        _seen_sp.add(_t)
+        SP500_TICKERS.append(_t)
 
-# Deduplicate while preserving order
-_seen = set()
-SP500_TICKERS_CLEAN = []
-for t in SP500_TICKERS:
-    if t not in _seen:
-        _seen.add(t)
-        SP500_TICKERS_CLEAN.append(t)
-SP500_TICKERS = SP500_TICKERS_CLEAN[:500]
+SAUDI_TICKERS = [f"{n}.SR" for n in [
+    "2222","1120","2010","1180","2380","4200","7010","1211","2350","2330",
+    "1302","4030","2001","3010","1050","2020","4240","1020","3020","2060",
+    "4500","1010","2050","4001","2070","1030","2040","3050","4130","2080",
+]]
+
+QATAR_TICKERS = [f"{n}.QA" for n in [
+    "QNBK","QIBK","MARK","CBQK","DHBK","ORDS","IQCD","QGTS","IGRD","UDCD",
+    "NLCS","MCCS","QFLS","AKHI","BLDN","MPHC","GWCS","VFQS","SIIS","DBIS",
+]]
+
+MARKET_UNIVERSES = {
+    "🇺🇸 S&P 500 (US)":          {"tickers": SP500_TICKERS, "meta": detect_market("AAPL"),  "size_options": [50, 100]},
+    "🇸🇦 Saudi Market (Tadawul)": {"tickers": SAUDI_TICKERS, "meta": detect_market("2222.SR"), "size_options": [30]},
+    "🇶🇦 Qatar Market (QSE)":     {"tickers": QATAR_TICKERS, "meta": detect_market("QNBK.QA"), "size_options": [20]},
+}
 
 
-def quick_scan(ticker: str) -> dict | None:
+def quick_scan(ticker: str, market: dict) -> dict | None:
     """Fetch only key criteria fields — fast and lightweight."""
     try:
         info = yf.Ticker(ticker).info
@@ -591,6 +594,7 @@ def quick_scan(ticker: str) -> dict | None:
             "ticker":     ticker,
             "name":       info.get("shortName") or ticker,
             "price":      info.get("currentPrice") or info.get("regularMarketPrice"),
+            "currency":   market["symbol"],
             "pe":         info.get("trailingPE"),
             "fcf_pos":    (info.get("freeCashflow") or 0) > 0,
             "rev_g":      (info.get("revenueGrowth") or 0) > 0.10,
@@ -612,7 +616,7 @@ def passes_top5(r: dict) -> bool:
 
 
 with tab3:
-    st.header("Market Scanner — S&P 500")
+    st.header("Market Scanner")
 
     with st.expander("📖 Logic 3 — Scanner Criteria", expanded=False):
         st.markdown("""
@@ -633,20 +637,26 @@ Copy any ticker to Tab 2 for full five-investor analysis.
 First-pass filter only — not a recommendation or ranking.
         """)
 
-    col1, col2 = st.columns([2, 1])
+    col1, col2, col3 = st.columns([2, 2, 1])
     with col1:
+        market_choice = st.selectbox("Market", options=list(MARKET_UNIVERSES.keys()), key="market_choice")
+    with col2:
+        universe_cfg  = MARKET_UNIVERSES[market_choice]
+        size_options  = universe_cfg["size_options"]
         universe_size = st.selectbox(
             "Universe Size",
-            options=[50, 100, 500],
+            options=size_options,
             index=0,
-            format_func=lambda x: f"Top {x} S&P 500 stocks"
+            format_func=lambda x: f"Top {x} stocks",
+            key="universe_size",
         )
-    with col2:
+    with col3:
         st.markdown("<br>", unsafe_allow_html=True)
-        scan_market_btn = st.button("🔭 Run Market Scan", key="market_scan_btn", use_container_width=True)
+        scan_market_btn = st.button("🔭 Run Scan", key="market_scan_btn", use_container_width=True)
 
     if scan_market_btn:
-        tickers_to_scan = SP500_TICKERS[:universe_size]
+        scan_meta      = universe_cfg["meta"]
+        tickers_to_scan = universe_cfg["tickers"][:universe_size]
         total = len(tickers_to_scan)
 
         progress_bar = st.progress(0, text="Starting scan...")
@@ -659,7 +669,7 @@ First-pass filter only — not a recommendation or ranking.
                 (i + 1) / total,
                 text=f"Scanning {ticker} ({i+1}/{total}) — {len(passed_list)} candidates found so far..."
             )
-            r = quick_scan(ticker)
+            r = quick_scan(ticker, scan_meta)
             if r is None:
                 error_count += 1
                 continue
@@ -686,10 +696,11 @@ First-pass filter only — not a recommendation or ranking.
             st.markdown(f"### Candidates Passing All 5 Criteria — {len(passed_list)} stocks")
 
             import pandas as pd
+            price_col = f"Price ({scan_meta['currency']})"
             df = pd.DataFrame([{
                 "Ticker":       r["ticker"],
                 "Company":      r["name"],
-                "Price ($)":    round(r["price"], 2) if r["price"] else "N/A",
+                price_col:      round(r["price"], 2) if r["price"] else "N/A",
                 "P/E":          round(r["pe"], 1) if r["pe"] else "N/A",
                 "Rev Growth %": r["rev_g_pct"],
                 "Op Margin %":  r["margin_pct"],
@@ -703,10 +714,10 @@ First-pass filter only — not a recommendation or ranking.
             st.download_button(
                 label="💾 Download Candidate List (CSV)",
                 data=csv,
-                file_name="sp500_scan_results.csv",
+                file_name=f"{market_choice.split()[1].lower()}_scan_results.csv",
                 mime="text/csv"
             )
 
             st.info("Copy any ticker above to Tab 2 for full five-investor analysis.")
         else:
-            st.warning("No stocks passed all 5 criteria. Try expanding the universe size.")
+            st.warning("No stocks passed all 5 criteria.")
