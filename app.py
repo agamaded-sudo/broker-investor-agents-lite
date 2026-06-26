@@ -2,7 +2,10 @@ import streamlit as st
 import yfinance as yf
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
+
+import yaml
 
 st.set_page_config(page_title="Broker Investor Agents", layout="wide", page_icon="📊")
 
@@ -10,6 +13,231 @@ st.title("📊 Broker Investor Agents")
 st.caption("Investment screening and independent investor analysis system")
 
 tab1, tab2, tab3 = st.tabs(["📡 Tab 1 — Initial Scan", "📋 Tab 2 — Five Investor Reports", "🔭 Tab 3 — Market Scanner"])
+
+
+# ── YAML generator ────────────────────────────────────────────────────────────
+
+def generate_input_yaml(ticker: str, info: dict, examples_root: Path) -> Path:
+    """Generate a minimal valid input YAML for ticker and save to examples/."""
+    t = ticker.upper()
+    tl = ticker.lower()
+    today = date.today().isoformat()
+
+    name        = info.get("longName") or info.get("shortName") or t
+    exchange    = info.get("exchange") or "NYSE"
+    currency    = info.get("financialCurrency") or "USD"
+    sector      = info.get("sector") or "Unknown"
+    industry    = info.get("industry") or "Unknown"
+    fy_end      = info.get("lastFiscalYearEnd") or ""
+
+    revenue      = info.get("totalRevenue") or 0
+    gross_profit = info.get("grossProfits") or 0
+    op_income    = info.get("operatingIncome") or 0  # not always in info
+    net_income   = info.get("netIncomeToCommon") or 0
+    op_cf        = info.get("operatingCashflow") or 0
+    capex_raw    = info.get("capitalExpenditures") or 0
+    capex        = abs(capex_raw)
+    fcf          = info.get("freeCashflow") or 0
+    cash         = info.get("totalCash") or 0
+    total_assets = info.get("totalAssets") or 0
+    lt_debt      = info.get("totalDebt") or 0
+    equity       = info.get("bookValue", 0) * info.get("sharesOutstanding", 0) if info.get("bookValue") else 0
+    dividends    = info.get("dividendRate", 0) * info.get("sharesOutstanding", 0) if info.get("dividendRate") else 0
+
+    op_margin    = round((op_income / revenue), 3) if revenue else 0
+    net_margin   = round((net_income / revenue), 3) if revenue else 0
+    gross_margin = round((gross_profit / revenue), 3) if revenue else 0
+    fcf_margin   = round((fcf / revenue), 3) if revenue else 0
+    roe_proxy    = round((net_income / equity), 3) if equity else 0
+    de_ratio     = round((lt_debt / equity), 3) if equity else 0
+
+    market_cap   = info.get("marketCap") or 0
+    peers        = info.get("recommendationKey") and [] or []  # yfinance doesn't give peers directly
+
+    data = {
+        "metadata": {
+            "schema_name": "backoffice_data_pack_v2",
+            "schema_version": 2,
+            "company_name": name,
+            "ticker": t,
+            "analysis_date": today,
+            "latest_annual_period": "TTM",
+            "latest_quarterly_period": "Latest available",
+            "reporting_standard": "US GAAP",
+            "data_entry_mode": "auto_generated_yfinance",
+            "units": "millions_usd_except_per_share_and_percentages",
+            "notes": [
+                "Auto-generated from yfinance data. Values are trailing twelve months where available.",
+                "Not produced by manual research. Review before drawing investment conclusions.",
+            ],
+        },
+        "company_identity": {
+            "company_name": name,
+            "ticker": t,
+            "exchange": exchange,
+            "market": "USA",
+            "currency": currency,
+            "sector": sector,
+            "industry": industry,
+            "fiscal_year_end": fy_end,
+            "reporting_standard": "US GAAP",
+        },
+        "business_model": {
+            "summary": f"{name} operates in the {sector} sector ({industry}).",
+            "revenue_model": ["Details not available from automated data."],
+            "neutral_observations": ["Auto-generated placeholder — review with primary sources."],
+        },
+        "products_customers_revenue_segments": {
+            "segments": [{"name": "Total (single segment reported)", "revenue": round(revenue / 1e6, 1), "operating_income": round(op_income / 1e6, 1), "examples": []}],
+            "customer_groups": ["Details not available from automated data."],
+        },
+        "financial_statements_summary": {
+            "annual": {
+                "period": "TTM",
+                "revenue": round(revenue / 1e6, 1),
+                "gross_profit": round(gross_profit / 1e6, 1),
+                "operating_income": round(op_income / 1e6, 1),
+                "net_income": round(net_income / 1e6, 1),
+                "operating_cash_flow": round(op_cf / 1e6, 1),
+                "capex": round(capex / 1e6, 1),
+                "free_cash_flow": round(fcf / 1e6, 1),
+                "cash_and_short_term_investments": round(cash / 1e6, 1),
+                "total_assets": round(total_assets / 1e6, 1),
+                "long_term_debt": round(lt_debt / 1e6, 1),
+                "total_liabilities": None,
+                "shareholders_equity": round(equity / 1e6, 1),
+                "dividends_paid": round(dividends / 1e6, 1),
+                "share_repurchases": None,
+            },
+        },
+        "calculated_financial_metrics": {
+            "period": "TTM",
+            "gross_margin": gross_margin,
+            "operating_margin": op_margin,
+            "net_margin": net_margin,
+            "free_cash_flow_margin": fcf_margin,
+            "operating_cash_flow_margin": round(op_cf / revenue, 3) if revenue else 0,
+            "return_on_equity_proxy": roe_proxy,
+            "debt_to_equity": de_ratio,
+            "cash_to_long_term_debt": round(cash / lt_debt, 3) if lt_debt else None,
+            "notes": ["Auto-calculated from yfinance TTM figures."],
+        },
+        "quality_of_earnings": {
+            "observations": ["Auto-generated — manual review required."],
+            "gaps": ["Maintenance vs growth capex not disclosed.", "Customer retention/churn missing."],
+        },
+        "competitive_position_moat_indicators": {
+            "moat_sources": ["Details not available from automated data."],
+            "neutral_observations": ["Auto-generated placeholder — review with primary sources."],
+        },
+        "growth_drivers": {
+            "drivers": ["Details not available from automated data."],
+            "watch_items": ["Auto-generated placeholder — review with primary sources."],
+        },
+        "sector_specific_operating_kpis": {
+            "gaps": ["Sector KPIs not available from automated data."],
+        },
+        "management_ownership_incentives": {
+            "management_notes": ["Management details not available from automated data."],
+            "gaps": ["Management compensation details missing."],
+        },
+        "capital_allocation": {
+            "period": "TTM",
+            "dividends_paid": round(dividends / 1e6, 1),
+            "share_repurchases": None,
+            "capex": round(capex / 1e6, 1),
+            "observations": ["Auto-generated placeholder — review with primary sources."],
+        },
+        "capex_owner_earnings_proxy": {
+            "operating_cash_flow": round(op_cf / 1e6, 1),
+            "capex": round(capex / 1e6, 1),
+            "free_cash_flow": round(fcf / 1e6, 1),
+            "owner_earnings_proxy": round(fcf / 1e6, 1),
+            "caveat": "Maintenance versus growth capex not disclosed.",
+            "gaps": ["Maintenance vs growth capex not disclosed."],
+        },
+        "historical_valuation": {
+            "current_snapshot_only": True,
+            "pe_5y_median": None,
+            "pe_10y_median": None,
+            "p_fcf_5y_median": None,
+            "p_fcf_10y_median": None,
+            "ev_ebitda_5y_median": None,
+            "ev_ebitda_10y_median": None,
+            "valuation_history_confidence": "low_auto_generated",
+            "observations": ["Historical valuation not available from automated data."],
+            "gaps": ["5Y/10Y valuation data validation required."],
+        },
+        "peer_comparison": {
+            "status": "incomplete",
+            "candidate_peers": [],
+            "observations": ["Peer comparison not available from automated data."],
+            "gaps": ["Peer comparison incomplete."],
+        },
+        "valuation_snapshot": {
+            "status": "market_data_yfinance",
+            "market_cap": round(market_cap / 1e6, 1),
+            "observations": ["Market cap sourced from yfinance."],
+        },
+        "risk_register": {
+            "risks": [
+                {"name": "Auto-generated placeholder", "description": "Risks require manual research.", "severity": "unknown"},
+            ],
+        },
+        "scuttlebutt": {
+            "status": "weak_unavailable",
+            "observations": ["Not available from automated data."],
+            "gaps": ["Scuttlebutt weak/unavailable."],
+        },
+        "market_awareness": {
+            "observations": ["Auto-generated — review current market data."],
+            "missing_items": ["Current share price.", "Enterprise value.", "Analyst expectations."],
+        },
+        "index_benchmark_alternative": {
+            "benchmark_candidates": ["SPY", "VTI"],
+            "observations": ["Index comparison not available from automated data."],
+            "gaps": ["Index weights missing."],
+        },
+        "portfolio_context_form": {
+            "status": "missing",
+            "observations": ["No portfolio context provided."],
+            "gaps": ["Portfolio context missing."],
+        },
+        "investor_data_map": {
+            "buffett": {"relevant_sections": ["business_model", "calculated_financial_metrics", "quality_of_earnings", "competitive_position_moat_indicators", "capex_owner_earnings_proxy", "valuation_snapshot"]},
+            "munger": {"relevant_sections": ["business_model", "competitive_position_moat_indicators", "management_ownership_incentives", "risk_register"]},
+            "fisher": {"relevant_sections": ["growth_drivers", "sector_specific_operating_kpis", "scuttlebutt", "management_ownership_incentives"]},
+            "lynch": {"relevant_sections": ["products_customers_revenue_segments", "financial_statements_summary", "calculated_financial_metrics", "peer_comparison"]},
+            "bogle": {"relevant_sections": ["index_benchmark_alternative", "market_awareness", "portfolio_context_form"]},
+        },
+        "sources_confidence_data_gaps": {
+            "source_log": [
+                {
+                    "source_id": f"{tl}_yfinance_auto",
+                    "source_name": f"{t} yfinance auto-fetch",
+                    "source_type": "vendor",
+                    "retrieved_at": today,
+                    "confidence": "medium",
+                    "confidence_score": 0.60,
+                    "freshness": "current",
+                    "notes": "Auto-generated from yfinance TTM data. Not validated against primary sources.",
+                }
+            ],
+            "known_gaps": [
+                "Valuation history not available.",
+                "Peer comparison incomplete.",
+                "Scuttlebutt weak/unavailable.",
+                "Management compensation details missing.",
+                "Customer retention/churn missing.",
+                "Portfolio context missing.",
+            ],
+        },
+    }
+
+    out_path = examples_root / f"{tl}_input.yaml"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(yaml.dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    return out_path
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -230,7 +458,18 @@ with tab2:
     if rep_btn and ticker_rep:
         with st.spinner(f"Running full analysis for {ticker_rep.upper()} — this may take a minute..."):
             try:
-                project_root = Path(__file__).parent
+                project_root  = Path(__file__).parent
+                examples_root = project_root / "examples"
+                ticker_up     = ticker_rep.upper()
+                ticker_lw     = ticker_rep.lower()
+                yaml_path     = examples_root / f"{ticker_lw}_input.yaml"
+
+                if not yaml_path.exists():
+                    st.info(f"No input file found for {ticker_up} — fetching data from yfinance to auto-generate it...")
+                    yf_info = yf.Ticker(ticker_up).info
+                    generate_input_yaml(ticker_up, yf_info, examples_root)
+                    st.success(f"Generated {yaml_path.name}")
+
                 result = subprocess.run(
                     [
                         sys.executable, "-m", "broker_agents.cli", "analyze-stock",
@@ -243,7 +482,6 @@ with tab2:
                     capture_output=True, text=True, cwd=str(project_root)
                 )
 
-                ticker_up   = ticker_rep.upper()
                 report_path = project_root / f"data/outputs/{ticker_up}/deal_package/{ticker_up.lower()}_broker_deal_package.md"
 
                 if report_path.exists():

@@ -1,0 +1,213 @@
+metadata:
+  schema_name: backoffice_data_pack_v2
+  schema_version: 2
+  company_name: The Coca-Cola Company
+  ticker: KO
+  analysis_date: '2026-06-26'
+  latest_annual_period: TTM
+  latest_quarterly_period: Latest available
+  reporting_standard: US GAAP
+  data_entry_mode: auto_generated_yfinance
+  units: millions_usd_except_per_share_and_percentages
+  notes:
+  - Auto-generated from yfinance data. Values are trailing twelve months where available.
+  - Not produced by manual research. Review before drawing investment conclusions.
+company_identity:
+  company_name: The Coca-Cola Company
+  ticker: KO
+  exchange: NYQ
+  market: USA
+  currency: USD
+  sector: Consumer Defensive
+  industry: Beverages - Non-Alcoholic
+  fiscal_year_end: 1767139200
+  reporting_standard: US GAAP
+business_model:
+  summary: The Coca-Cola Company operates in the Consumer Defensive sector (Beverages
+    - Non-Alcoholic).
+  revenue_model:
+  - Details not available from automated data.
+  neutral_observations:
+  - Auto-generated placeholder — review with primary sources.
+products_customers_revenue_segments:
+  segments:
+  - name: Total (single segment reported)
+    revenue: 49284.0
+    operating_income: 0.0
+    examples: []
+  customer_groups:
+  - Details not available from automated data.
+financial_statements_summary:
+  annual:
+    period: TTM
+    revenue: 49284.0
+    gross_profit: 30430.0
+    operating_income: 0.0
+    net_income: 13701.0
+    operating_cash_flow: 14631.0
+    capex: 0.0
+    free_cash_flow: 3124.3
+    cash_and_short_term_investments: 13820.0
+    total_assets: 0.0
+    long_term_debt: 44647.0
+    total_liabilities: null
+    shareholders_equity: 33628.2
+    dividends_paid: 9121.3
+    share_repurchases: null
+calculated_financial_metrics:
+  period: TTM
+  gross_margin: 0.617
+  operating_margin: 0.0
+  net_margin: 0.278
+  free_cash_flow_margin: 0.063
+  operating_cash_flow_margin: 0.297
+  return_on_equity_proxy: 0.407
+  debt_to_equity: 1.328
+  cash_to_long_term_debt: 0.31
+  notes:
+  - Auto-calculated from yfinance TTM figures.
+quality_of_earnings:
+  observations:
+  - Auto-generated — manual review required.
+  gaps:
+  - Maintenance vs growth capex not disclosed.
+  - Customer retention/churn missing.
+competitive_position_moat_indicators:
+  moat_sources:
+  - Details not available from automated data.
+  neutral_observations:
+  - Auto-generated placeholder — review with primary sources.
+growth_drivers:
+  drivers:
+  - Details not available from automated data.
+  watch_items:
+  - Auto-generated placeholder — review with primary sources.
+sector_specific_operating_kpis:
+  gaps:
+  - Sector KPIs not available from automated data.
+management_ownership_incentives:
+  management_notes:
+  - Management details not available from automated data.
+  gaps:
+  - Management compensation details missing.
+capital_allocation:
+  period: TTM
+  dividends_paid: 9121.3
+  share_repurchases: null
+  capex: 0.0
+  observations:
+  - Auto-generated placeholder — review with primary sources.
+capex_owner_earnings_proxy:
+  operating_cash_flow: 14631.0
+  capex: 0.0
+  free_cash_flow: 3124.3
+  owner_earnings_proxy: 3124.3
+  caveat: Maintenance versus growth capex not disclosed.
+  gaps:
+  - Maintenance vs growth capex not disclosed.
+historical_valuation:
+  current_snapshot_only: true
+  pe_5y_median: null
+  pe_10y_median: null
+  p_fcf_5y_median: null
+  p_fcf_10y_median: null
+  ev_ebitda_5y_median: null
+  ev_ebitda_10y_median: null
+  valuation_history_confidence: low_auto_generated
+  observations:
+  - Historical valuation not available from automated data.
+  gaps:
+  - 5Y/10Y valuation data validation required.
+peer_comparison:
+  status: incomplete
+  candidate_peers: []
+  observations:
+  - Peer comparison not available from automated data.
+  gaps:
+  - Peer comparison incomplete.
+valuation_snapshot:
+  status: market_data_yfinance
+  market_cap: 350458.7
+  observations:
+  - Market cap sourced from yfinance.
+risk_register:
+  risks:
+  - name: Auto-generated placeholder
+    description: Risks require manual research.
+    severity: unknown
+scuttlebutt:
+  status: weak_unavailable
+  observations:
+  - Not available from automated data.
+  gaps:
+  - Scuttlebutt weak/unavailable.
+market_awareness:
+  observations:
+  - Auto-generated — review current market data.
+  missing_items:
+  - Current share price.
+  - Enterprise value.
+  - Analyst expectations.
+index_benchmark_alternative:
+  benchmark_candidates:
+  - SPY
+  - VTI
+  observations:
+  - Index comparison not available from automated data.
+  gaps:
+  - Index weights missing.
+portfolio_context_form:
+  status: missing
+  observations:
+  - No portfolio context provided.
+  gaps:
+  - Portfolio context missing.
+investor_data_map:
+  buffett:
+    relevant_sections:
+    - business_model
+    - calculated_financial_metrics
+    - quality_of_earnings
+    - competitive_position_moat_indicators
+    - capex_owner_earnings_proxy
+    - valuation_snapshot
+  munger:
+    relevant_sections:
+    - business_model
+    - competitive_position_moat_indicators
+    - management_ownership_incentives
+    - risk_register
+  fisher:
+    relevant_sections:
+    - growth_drivers
+    - sector_specific_operating_kpis
+    - scuttlebutt
+    - management_ownership_incentives
+  lynch:
+    relevant_sections:
+    - products_customers_revenue_segments
+    - financial_statements_summary
+    - calculated_financial_metrics
+    - peer_comparison
+  bogle:
+    relevant_sections:
+    - index_benchmark_alternative
+    - market_awareness
+    - portfolio_context_form
+sources_confidence_data_gaps:
+  source_log:
+  - source_id: ko_yfinance_auto
+    source_name: KO yfinance auto-fetch
+    source_type: vendor
+    retrieved_at: '2026-06-26'
+    confidence: medium
+    confidence_score: 0.6
+    freshness: current
+    notes: Auto-generated from yfinance TTM data. Not validated against primary sources.
+  known_gaps:
+  - Valuation history not available.
+  - Peer comparison incomplete.
+  - Scuttlebutt weak/unavailable.
+  - Management compensation details missing.
+  - Customer retention/churn missing.
+  - Portfolio context missing.
