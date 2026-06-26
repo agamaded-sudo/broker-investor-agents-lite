@@ -15,6 +15,35 @@ sys.path.insert(0, str(_SRC))
 
 st.set_page_config(page_title="Broker Investor Agents", layout="wide", page_icon="📊")
 
+# ── Auth gate ─────────────────────────────────────────────────────────────────
+
+def _required_password() -> str | None:
+    """Return APP_PASSWORD from secrets, or None if not configured (local dev)."""
+    try:
+        return st.secrets.get("APP_PASSWORD") or None
+    except Exception:
+        return None
+
+if not st.session_state.get("authenticated"):
+    required = _required_password()
+    if required is None:
+        st.session_state["authenticated"] = True
+    else:
+        _, col, _ = st.columns([1, 1, 1])
+        with col:
+            st.markdown("<br><br>", unsafe_allow_html=True)
+            st.markdown("## 📊 Broker Investor Agents")
+            st.caption("Investment screening and independent investor analysis system")
+            st.markdown("<br>", unsafe_allow_html=True)
+            pwd = st.text_input("Password", type="password", key="_login_pwd")
+            if st.button("Login", use_container_width=True):
+                if pwd == required:
+                    st.session_state["authenticated"] = True
+                    st.rerun()
+                else:
+                    st.error("Incorrect password")
+        st.stop()
+
 st.title("📊 Broker Investor Agents")
 st.caption("Investment screening and independent investor analysis system")
 
