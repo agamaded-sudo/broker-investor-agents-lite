@@ -18,7 +18,7 @@ st.set_page_config(page_title="Broker Investor Agents", layout="wide", page_icon
 st.title("📊 Broker Investor Agents")
 st.caption("Investment screening and independent investor analysis system")
 
-tab1, tab2, tab3 = st.tabs(["📡 Tab 1 — Initial Scan", "📋 Tab 2 — Five Investor Reports", "🔭 Tab 3 — Market Scanner"])
+tab1, tab2, tab3 = st.tabs(["🔭 Tab 1 — Market Scanner", "📡 Tab 2 — Initial Scan", "📋 Tab 3 — Five Investor Reports"])
 
 
 # ── YAML generator ────────────────────────────────────────────────────────────
@@ -330,7 +330,7 @@ def golden_triggers(info: dict) -> list[str]:
 
 # ── Tab 1: Initial Scan ───────────────────────────────────────────────────────
 
-with tab1:
+with tab2:
     st.header("Initial Scan — Opportunity Scout")
 
     with st.expander("📖 Logic 1 — Screening Rules", expanded=False):
@@ -449,7 +449,7 @@ with tab1:
 
 # ── Tab 2: Five Investor Reports ──────────────────────────────────────────────
 
-with tab2:
+with tab3:
     st.header("Five Investor Reports")
 
     with st.expander("📖 Logic 2 — How Reports Are Generated", expanded=False):
@@ -517,32 +517,161 @@ with tab2:
                     financials_provider="sec_fixture",
                 )
                 intake = with_financials_provider(intake, intake.financials_provider, intake.financials_root)
-
-                execution  = execute_analyze_stock(intake=intake, input_mode="ticker")
-                report_path = (
-                    execution.workflow_result.deal_output_dir
-                    / f"{ticker_lw}_broker_deal_package.md"
-                )
-
-                if report_path.exists():
-                    report_text = report_path.read_text(encoding="utf-8")
-                    st.success(f"Analysis complete for {ticker_up}")
-                    st.markdown("---")
-                    st.markdown(report_text)
-                    st.markdown("---")
-                    st.download_button(
-                        label="💾 Download Report",
-                        data=report_text,
-                        file_name=f"{ticker_up}_broker_report.md",
-                        mime="text/markdown"
-                    )
-                else:
-                    st.warning(f"Analysis ran but report file not found at {report_path}")
+                execution = execute_analyze_stock(intake=intake, input_mode="ticker")
 
             except Exception as e:
                 st.error(f"Error: {e}")
                 import traceback
                 st.code(traceback.format_exc())
+                execution = None
+
+        # ── Visual display (outside spinner so it renders properly) ──────────
+        if execution is not None:
+            pkg   = execution.package_payload
+            es    = pkg.get("executive_summary", {})
+            resps = pkg.get("investor_responses", [])
+            svm   = pkg.get("source_verification_matrix", {})
+            wop   = pkg.get("backoffice_work_order_plan", {})
+
+            company  = es.get("company_name") or ticker_up
+            readiness = es.get("backoffice_readiness_label", "Unknown")
+            src_status = es.get("source_verification_status", "unknown")
+            n_responses = es.get("total_investor_responses", len(resps))
+
+            # ── 1. Summary card ──────────────────────────────────────────────
+            readiness_lower = readiness.lower()
+            if "ready" in readiness_lower and "needs" not in readiness_lower and "not" not in readiness_lower:
+                card_color, badge_bg = "#1a4731", "#22c55e"
+            elif "needs work" in readiness_lower or "partial" in readiness_lower:
+                card_color, badge_bg = "#4a3800", "#f59e0b"
+            else:
+                card_color, badge_bg = "#4a1010", "#ef4444"
+
+            st.markdown(f"""
+<div style="background:{card_color};border-radius:12px;padding:24px 28px;margin-bottom:20px">
+  <div style="font-size:2rem;font-weight:700;color:#f8fafc">{ticker_up} &nbsp;<span style="font-size:1rem;font-weight:400;color:#cbd5e1">{company}</span></div>
+  <div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+    <span style="background:{badge_bg};color:#0f172a;border-radius:6px;padding:4px 12px;font-weight:600;font-size:0.9rem">{readiness}</span>
+    <span style="color:#94a3b8;font-size:0.9rem">Source verification: <strong style="color:#e2e8f0">{src_status}</strong></span>
+    <span style="color:#94a3b8;font-size:0.9rem">Investor responses: <strong style="color:#e2e8f0">{n_responses}</strong></span>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+            # ── 2. Investor decision cards ───────────────────────────────────
+            INVESTOR_ICONS = {
+                "buffett": "🏦", "munger": "🧠", "fisher": "🔬",
+                "lynch":   "📊", "bogle":  "📈",
+            }
+            INTEREST_COLORS = {
+                "High Interest":       ("#14532d", "#22c55e"),
+                "Conditional Interest":("#14532d", "#4ade80"),
+                "Watchlist Interest":  ("#713f12", "#fbbf24"),
+                "Needs More Evidence": ("#7c2d12", "#fb923c"),
+                "Low Interest":        ("#7f1d1d", "#f87171"),
+                "Not Interested":      ("#3b0764", "#c084fc"),
+            }
+
+            st.markdown("### Investor Decisions")
+            cols = st.columns(len(resps) if resps else 1)
+            for col, r in zip(cols, resps):
+                investor   = r.get("investor", "?")
+                icon       = INVESTOR_ICONS.get(investor.lower(), "👤")
+                level      = r.get("interest_level", "Unknown")
+                decision   = r.get("final_decision", "—")
+                concern    = r.get("main_concern", "—")
+                bg, badge  = INTEREST_COLORS.get(level, ("#1e293b", "#94a3b8"))
+                with col:
+                    st.markdown(f"""
+<div style="background:{bg};border-radius:10px;padding:16px;height:100%">
+  <div style="font-size:1.5rem">{icon}</div>
+  <div style="font-weight:700;color:#f1f5f9;margin:4px 0">{investor.capitalize()}</div>
+  <span style="background:{badge};color:#0f172a;border-radius:4px;padding:2px 8px;font-size:0.78rem;font-weight:600">{level}</span>
+  <div style="color:#cbd5e1;font-size:0.82rem;margin-top:8px"><strong>Decision:</strong> {decision}</div>
+  <div style="color:#94a3b8;font-size:0.78rem;margin-top:4px"><strong>Concern:</strong> {concern}</div>
+</div>
+""", unsafe_allow_html=True)
+
+            st.markdown("")  # spacer
+
+            # ── 3. Expandable sections ───────────────────────────────────────
+
+            # Source Verification Matrix
+            svm_cats = svm.get("categories", [])
+            if svm_cats:
+                with st.expander("🔍 Source Verification Matrix", expanded=False):
+                    import pandas as pd
+                    svm_rows = [{
+                        "Category":      c.get("category", ""),
+                        "Status":        c.get("status", ""),
+                        "Blocks Promo":  "🚫 Yes" if c.get("blocks_promotion") else "✅ No",
+                        "Broker Action": c.get("broker_action", ""),
+                    } for c in svm_cats]
+                    st.dataframe(pd.DataFrame(svm_rows), use_container_width=True, hide_index=True)
+
+            # Per-investor full details
+            st.markdown("### Investor Full Details")
+            for r in resps:
+                investor = r.get("investor", "?")
+                icon     = INVESTOR_ICONS.get(investor.lower(), "👤")
+                level    = r.get("interest_level", "")
+                with st.expander(f"{icon} {investor.capitalize()} — {level}", expanded=False):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        st.markdown(f"**Final Decision:** {r.get('final_decision','—')}")
+                        st.markdown(f"**Interest Type:** {r.get('interest_type','—')}")
+                        st.markdown(f"**Confidence:** {r.get('confidence','—')}")
+                        st.markdown(f"**Main Positive Reason:** {r.get('main_positive_reason','—')}")
+                    with c2:
+                        st.markdown(f"**Main Concern:** {r.get('main_concern','—')}")
+                        st.markdown(f"**Required Evidence:** {r.get('required_evidence_before_serious_interest','—')}")
+                        st.markdown(f"**Safety Note:** {r.get('safety_note','—')}")
+                    items = r.get("broker_follow_up_items") or []
+                    if items:
+                        st.markdown("**Broker Follow-Up Items:**")
+                        for item in items:
+                            st.write(f"• {item}")
+                    # Full response letter
+                    letter_path = execution.workflow_result.investor_response_letter_paths.get(investor.lower())
+                    if letter_path and Path(letter_path).exists():
+                        with st.expander(f"📄 Full Response Letter — {investor.capitalize()}", expanded=False):
+                            st.markdown(Path(letter_path).read_text(encoding="utf-8"))
+
+            # Backoffice Work Orders
+            work_orders = wop.get("work_orders", [])
+            if work_orders:
+                with st.expander(f"🔧 Backoffice Work Orders ({len(work_orders)} total)", expanded=False):
+                    import pandas as pd
+                    wo_rows = [{
+                        "ID":           wo.get("work_order_id", ""),
+                        "Evidence":     wo.get("evidence_item", ""),
+                        "Priority":     wo.get("priority", ""),
+                        "Blocks Promo": "🚫" if wo.get("blocks_promotion") else "✅",
+                        "Investors":    ", ".join(wo.get("related_investors") or []),
+                        "Action":       wo.get("suggested_backoffice_action", ""),
+                    } for wo in work_orders]
+                    st.dataframe(pd.DataFrame(wo_rows), use_container_width=True, hide_index=True)
+
+            # Next Actions
+            next_actions = es.get("backoffice_next_actions") or []
+            if next_actions:
+                with st.expander("📋 Next Actions", expanded=False):
+                    for action in next_actions:
+                        st.write(f"• {action}")
+
+            # ── 4. Download ──────────────────────────────────────────────────
+            report_path = (
+                execution.workflow_result.deal_output_dir
+                / f"{ticker_lw}_broker_deal_package.md"
+            )
+            if report_path.exists():
+                st.markdown("---")
+                st.download_button(
+                    label="💾 Download Full Report (.md)",
+                    data=report_path.read_text(encoding="utf-8"),
+                    file_name=f"{ticker_up}_broker_report.md",
+                    mime="text/markdown"
+                )
 
 
 # ── Tab 3: Market Scanner ─────────────────────────────────────────────────────
@@ -615,7 +744,7 @@ def passes_top5(r: dict) -> bool:
     return all([r["fcf_pos"], r["rev_g"], r["ni_pos"], r["margin"], pe_ok])
 
 
-with tab3:
+with tab1:
     st.header("Market Scanner")
 
     with st.expander("📖 Logic 3 — Scanner Criteria", expanded=False):
