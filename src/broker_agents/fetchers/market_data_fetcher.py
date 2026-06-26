@@ -110,3 +110,38 @@ class MarketDataFetcher:
             source_url=str(raw.get("source_url") or ""),
             confidence=str(raw.get("confidence") or "medium"),
         )
+
+
+def fetch_live_market_data(ticker: str) -> MarketDataSnapshot:
+    """Fetch live market data from Yahoo Finance via yfinance."""
+    try:
+        import yfinance as yf
+    except ImportError as exc:
+        raise ImportError("yfinance is required: pip install yfinance") from exc
+
+    t = yf.Ticker(ticker.upper())
+    info = t.info
+    from datetime import date
+
+    return MarketDataSnapshot(
+        ticker=ticker.upper(),
+        company_name=str(info.get("shortName") or info.get("longName") or ""),
+        as_of_date=str(date.today()),
+        currency=str(info.get("currency") or "USD"),
+        current_price=_number(info.get("currentPrice") or info.get("regularMarketPrice")),
+        market_cap=_number(info.get("marketCap")),
+        enterprise_value=_number(info.get("enterpriseValue")),
+        pe=_number(info.get("trailingPE")),
+        forward_pe=_number(info.get("forwardPE")),
+        p_fcf=_number(info.get("priceToFreeCashflows")),
+        ps=_number(info.get("priceToSalesTrailing12Months")),
+        pb=_number(info.get("priceToBook")),
+        ev_revenue=_number(info.get("enterpriseToRevenue")),
+        ev_ebitda=_number(info.get("enterpriseToEbitda")),
+        ev_ebit=None,
+        fcf_yield=None,
+        dividend_yield=_number(info.get("dividendYield")),
+        source_name="Yahoo Finance (yfinance)",
+        source_url=f"https://finance.yahoo.com/quote/{ticker.upper()}",
+        confidence="live",
+    )

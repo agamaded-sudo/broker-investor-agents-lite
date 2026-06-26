@@ -142,7 +142,15 @@ def run_backoffice_enrichment_pipeline(
         applied.append("official_financials")
 
     if market_fixture_path is None:
-        skipped.append("market_data")
+        try:
+            from broker_agents.fetchers.market_data_fetcher import fetch_live_market_data
+            _t = str((pack.get("company_identity") or pack.get("metadata") or {}).get("ticker") or input_path.stem).upper()
+            snapshot = fetch_live_market_data(_t)
+            pack = merge_market_data_into_pack(pack, snapshot)
+            applied.append("market_data")
+        except Exception as _exc:
+            warnings.append(f"Live market data fetch failed: {_exc}")
+            skipped.append("market_data")
     else:
         path = _require_fixture(Path(market_fixture_path), "Market data")
         snapshot = MarketDataFetcher().map_fixture_to_market_data(
