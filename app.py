@@ -335,19 +335,97 @@ def golden_triggers(info: dict) -> list[str]:
 
 # ── Portfolio log helpers ─────────────────────────────────────────────────────
 
-_PORTFOLIO_LOG = Path(__file__).resolve().parent / "data" / "portfolio_log.json"
+import base64
+import json
+import requests as _requests
 
-def _load_portfolio() -> list[dict]:
+_PORTFOLIO_LOG  = Path(__file__).resolve().parent / "data" / "portfolio_log.json"
+_GH_REPO        = "agamaded-sudo/broker-investor-agents-lite"
+_GH_FILE_PATH   = "data/portfolio_log.json"
+_GH_API_URL     = f"https://api.github.com/repos/{_GH_REPO}/contents/{_GH_FILE_PATH}"
+
+
+def _gh_token() -> str | None:
+    """Return GitHub token from Streamlit secrets, or None if absent."""
+    try:
+        return st.secrets.get("GITHUB_TOKEN")
+    except Exception:
+        return None
+
+
+def _gh_headers(token: str) -> dict:
+    return {"Authorization": f"token {token}", "Accept": "application/vnd.github+json"}
+
+
+def _gh_fetch() -> tuple[list[dict], str | None]:
+    """Fetch portfolio JSON from GitHub. Returns (entries, sha)."""
+    token = _gh_token()
+    if not token:
+        return [], None
+    try:
+        resp = _requests.get(_GH_API_URL, headers=_gh_headers(token), timeout=10)
+        if resp.status_code == 404:
+            return [], None
+        resp.raise_for_status()
+        data = resp.json()
+        content = base64.b64decode(data["content"]).decode("utf-8")
+        return json.loads(content), data["sha"]
+    except Exception:
+        return [], None
+
+
+def _gh_push(entries: list[dict], sha: str | None, commit_msg: str) -> bool:
+    """Push updated portfolio JSON to GitHub. Returns True on success."""
+    token = _gh_token()
+    if not token:
+        return False
+    try:
+        content_b64 = base64.b64encode(
+            json.dumps(entries, indent=2, ensure_ascii=False).encode("utf-8")
+        ).decode("ascii")
+        body: dict = {"message": commit_msg, "content": content_b64}
+        if sha:
+            body["sha"] = sha
+        resp = _requests.put(_GH_API_URL, headers=_gh_headers(token), json=body, timeout=15)
+        resp.raise_for_status()
+        return True
+    except Exception:
+        return False
+
+
+@st.cache_data(ttl=60)
+def _load_portfolio_cached() -> tuple[list[dict], str | None]:
+    """Load from GitHub (preferred) then fall back to local file. Cached 60 s."""
+    entries, sha = _gh_fetch()
+    if entries:
+        # Keep local copy in sync so CLI tools still work
+        _PORTFOLIO_LOG.parent.mkdir(parents=True, exist_ok=True)
+        _PORTFOLIO_LOG.write_text(json.dumps(entries, indent=2, ensure_ascii=False), encoding="utf-8")
+        return entries, sha
+    # GitHub not available — use local file
     if _PORTFOLIO_LOG.exists():
         try:
-            return json.loads(_PORTFOLIO_LOG.read_text(encoding="utf-8"))
+            return json.loads(_PORTFOLIO_LOG.read_text(encoding="utf-8")), None
         except Exception:
-            return []
-    return []
+            pass
+    return [], None
 
-def _save_portfolio(entries: list[dict]) -> None:
+
+def _load_portfolio() -> list[dict]:
+    entries, _ = _load_portfolio_cached()
+    return list(entries)
+
+
+def _save_portfolio(entries: list[dict], commit_msg: str = "Portfolio update") -> None:
+    """Write local file, push to GitHub, then bust the cache."""
     _PORTFOLIO_LOG.parent.mkdir(parents=True, exist_ok=True)
     _PORTFOLIO_LOG.write_text(json.dumps(entries, indent=2, ensure_ascii=False), encoding="utf-8")
+    # Fetch current SHA before pushing (cache may be stale)
+    _, sha = _gh_fetch()
+    _gh_push(entries, sha, commit_msg)
+    # Invalidate cache so next _load_portfolio_cached() re-fetches
+    _load_portfolio_cached.clear()
+
 
 def _portfolio_should_save(score: int, triggers: list[str], investor_decisions: dict[str, str]) -> tuple[bool, list[str]]:
     """Return (should_save, reasons) based on auto-save criteria."""
@@ -363,23 +441,22 @@ def _portfolio_should_save(score: int, triggers: list[str], investor_decisions: 
         reasons.append(f"golden_triggers={len(triggers)}")
     return bool(reasons), reasons
 
+
 def _upsert_portfolio_entry(entry: dict) -> str:
     """Insert or update an entry; return 'added' or 'updated'."""
     entries = _load_portfolio()
     for i, e in enumerate(entries):
         if e.get("ticker") == entry["ticker"]:
-            # Preserve human-edited fields
             entry.setdefault("status", e.get("status", "watching"))
             entry.setdefault("notes", e.get("notes", ""))
             entries[i] = entry
-            _save_portfolio(entries)
+            msg = f"Portfolio update: {entry['ticker']} {entry.get('status','watching')} {entry.get('date_added','')}"
+            _save_portfolio(entries, msg)
             return "updated"
     entries.append(entry)
-    _save_portfolio(entries)
+    msg = f"Portfolio update: {entry['ticker']} added {entry.get('date_added','')}"
+    _save_portfolio(entries, msg)
     return "added"
-
-
-import json  # needed for portfolio log
 
 # ── Tab 1: Initial Scan ───────────────────────────────────────────────────────
 
@@ -1045,7 +1122,7 @@ with tab4:
                         use_container_width=True,
                     ):
                         entries[idx]["status"] = next_status
-                        _save_portfolio(entries)
+                        _save_portfolio(entries, f"Portfolio update: {ticker} status→{next_status} {date.today()}")
                         st.rerun()
                 with c2:
                     new_note = st.text_input(
@@ -1057,7 +1134,7 @@ with tab4:
                     )
                     if new_note != e.get("notes", ""):
                         entries[idx]["notes"] = new_note
-                        _save_portfolio(entries)
+                        _save_portfolio(entries, f"Portfolio update: {ticker} notes {date.today()}")
                 with c3:
                     if st.button(
                         "🗑️ Remove",
@@ -1066,7 +1143,7 @@ with tab4:
                         type="secondary",
                     ):
                         entries[idx]["status"] = "removed"
-                        _save_portfolio(entries)
+                        _save_portfolio(entries, f"Portfolio update: {ticker} removed {date.today()}")
                         st.rerun()
 
                 st.markdown(
