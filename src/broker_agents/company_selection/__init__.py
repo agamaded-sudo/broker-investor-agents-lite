@@ -25,6 +25,9 @@ from broker_agents.company_selection.serialization import (
     candidate_selection_record_to_payload,
     routing_result_to_payload,
 )
+from broker_agents.company_selection.workflow import (
+    select_candidate_from_manual_list_json,
+)
 
 __all__ = [
     "CandidateRoutingResult",
@@ -37,6 +40,7 @@ __all__ = [
     "read_manual_candidate_list_json",
     "route_manual_priority_then_list_order",
     "routing_result_to_payload",
+    "select_candidate_from_manual_list_json",
     "write_candidate_selection_record_json",
     "write_routing_result_json",
 ]
