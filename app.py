@@ -1,11 +1,17 @@
 import streamlit as st
 import yfinance as yf
-import subprocess
 import sys
 from datetime import date
 from pathlib import Path
 
 import yaml
+
+# Ensure the repo's src/ tree is first on sys.path so all broker_agents
+# imports resolve to the local source, not the potentially stale site-packages.
+_SRC = Path(__file__).resolve().parent / "src"
+if str(_SRC) in sys.path:
+    sys.path.remove(str(_SRC))
+sys.path.insert(0, str(_SRC))
 
 st.set_page_config(page_title="Broker Investor Agents", layout="wide", page_icon="📊")
 
@@ -458,8 +464,17 @@ with tab2:
     if rep_btn and ticker_rep:
         with st.spinner(f"Running full analysis for {ticker_rep.upper()} — this may take a minute..."):
             try:
-                project_root  = Path(__file__).parent
+                from broker_agents.deals.analyze_stock_intake import (
+                    build_ticker_analyze_stock_intake,
+                    with_financials_provider,
+                )
+                from broker_agents.deals.analyze_stock_runner import execute_analyze_stock
+
+                project_root  = Path(__file__).resolve().parent
                 examples_root = project_root / "examples"
+                outputs_root  = project_root / "data" / "outputs"
+                fixtures_root = project_root / "tests" / "fixtures"
+                portfolio_ctx = project_root / "examples" / "portfolio_context.yaml"
                 ticker_up     = ticker_rep.upper()
                 ticker_lw     = ticker_rep.lower()
                 yaml_path     = examples_root / f"{ticker_lw}_input.yaml"
@@ -470,19 +485,21 @@ with tab2:
                     generate_input_yaml(ticker_up, yf_info, examples_root)
                     st.success(f"Generated {yaml_path.name}")
 
-                result = subprocess.run(
-                    [
-                        sys.executable, "-m", "broker_agents.cli", "analyze-stock",
-                        "--ticker", ticker_rep.upper(),
-                        "--examples-root", str(project_root / "examples"),
-                        "--outputs-root", str(project_root / "data/outputs"),
-                        "--fixtures-root", str(project_root / "tests/fixtures"),
-                        "--portfolio-context", str(project_root / "examples/portfolio_context.yaml"),
-                    ],
-                    capture_output=True, text=True, cwd=str(project_root)
+                intake = build_ticker_analyze_stock_intake(
+                    ticker=ticker_up,
+                    examples_root=examples_root,
+                    outputs_root=outputs_root,
+                    fixtures_root=fixtures_root,
+                    portfolio_context=portfolio_ctx if portfolio_ctx.exists() else None,
+                    financials_provider="sec_fixture",
                 )
+                intake = with_financials_provider(intake, intake.financials_provider, intake.financials_root)
 
-                report_path = project_root / f"data/outputs/{ticker_up}/deal_package/{ticker_up.lower()}_broker_deal_package.md"
+                execution  = execute_analyze_stock(intake=intake, input_mode="ticker")
+                report_path = (
+                    execution.workflow_result.deal_output_dir
+                    / f"{ticker_lw}_broker_deal_package.md"
+                )
 
                 if report_path.exists():
                     report_text = report_path.read_text(encoding="utf-8")
@@ -497,12 +514,12 @@ with tab2:
                         mime="text/markdown"
                     )
                 else:
-                    st.warning("Analysis completed but report file not found")
-                    if result.stderr:
-                        st.code(result.stderr)
+                    st.warning(f"Analysis ran but report file not found at {report_path}")
 
             except Exception as e:
                 st.error(f"Error: {e}")
+                import traceback
+                st.code(traceback.format_exc())
 
 
 # ── Tab 3: Market Scanner ─────────────────────────────────────────────────────
