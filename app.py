@@ -18,7 +18,12 @@ st.set_page_config(page_title="Broker Investor Agents", layout="wide", page_icon
 st.title("📊 Broker Investor Agents")
 st.caption("Investment screening and independent investor analysis system")
 
-tab1, tab2, tab3 = st.tabs(["🔭 Tab 1 — Market Scanner", "📡 Tab 2 — Initial Scan", "📋 Tab 3 — Five Investor Reports"])
+tab1, tab2, tab3, tab4 = st.tabs([
+    "🔭 Tab 1 — Market Scanner",
+    "📡 Tab 2 — Initial Scan",
+    "📋 Tab 3 — Five Investor Reports",
+    "📁 Tab 4 — Portfolio Manager",
+])
 
 
 # ── YAML generator ────────────────────────────────────────────────────────────
@@ -328,6 +333,54 @@ def golden_triggers(info: dict) -> list[str]:
     return triggers
 
 
+# ── Portfolio log helpers ─────────────────────────────────────────────────────
+
+_PORTFOLIO_LOG = Path(__file__).resolve().parent / "data" / "portfolio_log.json"
+
+def _load_portfolio() -> list[dict]:
+    if _PORTFOLIO_LOG.exists():
+        try:
+            return json.loads(_PORTFOLIO_LOG.read_text(encoding="utf-8"))
+        except Exception:
+            return []
+    return []
+
+def _save_portfolio(entries: list[dict]) -> None:
+    _PORTFOLIO_LOG.parent.mkdir(parents=True, exist_ok=True)
+    _PORTFOLIO_LOG.write_text(json.dumps(entries, indent=2, ensure_ascii=False), encoding="utf-8")
+
+def _portfolio_should_save(score: int, triggers: list[str], investor_decisions: dict[str, str]) -> tuple[bool, list[str]]:
+    """Return (should_save, reasons) based on auto-save criteria."""
+    reasons: list[str] = []
+    if score >= 6:
+        reasons.append("score>=6")
+    if investor_decisions.get("munger", "").lower().startswith("conditional interest"):
+        reasons.append("munger=conditional")
+    buffett = investor_decisions.get("buffett", "").lower()
+    if any(k in buffett for k in ("conditional interest", "watchlist interest", "high interest")):
+        reasons.append("buffett>=watchlist")
+    if len(triggers) >= 2:
+        reasons.append(f"golden_triggers={len(triggers)}")
+    return bool(reasons), reasons
+
+def _upsert_portfolio_entry(entry: dict) -> str:
+    """Insert or update an entry; return 'added' or 'updated'."""
+    entries = _load_portfolio()
+    for i, e in enumerate(entries):
+        if e.get("ticker") == entry["ticker"]:
+            # Preserve human-edited fields
+            entry.setdefault("status", e.get("status", "watching"))
+            entry.setdefault("notes", e.get("notes", ""))
+            entries[i] = entry
+            _save_portfolio(entries)
+            return "updated"
+    entries.append(entry)
+    _save_portfolio(entries)
+    return "added"
+
+
+import json  # needed for portfolio log
+
 # ── Tab 1: Initial Scan ───────────────────────────────────────────────────────
 
 with tab2:
@@ -443,6 +496,12 @@ with tab2:
                     for t in triggers:
                         st.write(f"• {t}")
 
+                # Cache for portfolio auto-save in Tab 3
+                st.session_state[f"scan_{ticker_scan.upper()}"] = {
+                    "score": score, "triggers": triggers, "price": price,
+                    "market": market_meta,
+                }
+
             except Exception as e:
                 st.error(f"Error: {e}")
 
@@ -533,10 +592,43 @@ with tab3:
             svm   = pkg.get("source_verification_matrix", {})
             wop   = pkg.get("backoffice_work_order_plan", {})
 
-            company  = es.get("company_name") or ticker_up
+            company   = es.get("company_name") or ticker_up
             readiness = es.get("backoffice_readiness_label", "Unknown")
             src_status = es.get("source_verification_status", "unknown")
             n_responses = es.get("total_investor_responses", len(resps))
+
+            # ── Auto-save to portfolio log ───────────────────────────────────
+            inv_decisions = {r["investor"].lower(): r.get("interest_level", "") for r in resps}
+            scan_cache    = st.session_state.get(f"scan_{ticker_up}", {})
+            opp_score     = scan_cache.get("score", 0)
+            gt_list       = scan_cache.get("triggers", [])
+            price_at_analysis = scan_cache.get("price") or (
+                yf.Ticker(ticker_up).info.get("currentPrice")
+                or yf.Ticker(ticker_up).info.get("regularMarketPrice")
+            )
+            mkt = scan_cache.get("market") or detect_market(ticker_up)
+            should_save, save_reasons = _portfolio_should_save(opp_score, gt_list, inv_decisions)
+            if should_save:
+                entry = {
+                    "ticker":              ticker_up,
+                    "company":             company,
+                    "date_added":          date.today().isoformat(),
+                    "market":              mkt.get("label", "US"),
+                    "currency":            mkt.get("currency", "USD"),
+                    "price_at_analysis":   round(float(price_at_analysis), 2) if price_at_analysis else None,
+                    "opportunity_score":   opp_score,
+                    "golden_triggers":     len(gt_list),
+                    "buffett_decision":    inv_decisions.get("buffett", ""),
+                    "munger_decision":     inv_decisions.get("munger", ""),
+                    "fisher_decision":     inv_decisions.get("fisher", ""),
+                    "lynch_decision":      inv_decisions.get("lynch", ""),
+                    "bogle_decision":      inv_decisions.get("bogle", ""),
+                    "save_reason":         save_reasons,
+                    "status":              "watching",
+                    "notes":               "",
+                }
+                action = _upsert_portfolio_entry(entry)
+                st.toast(f"{ticker_up} {action} in portfolio log", icon="📁")
 
             # ── 1. Summary card ──────────────────────────────────────────────
             readiness_lower = readiness.lower()
@@ -850,3 +942,148 @@ First-pass filter only — not a recommendation or ranking.
             st.info("Copy any ticker above to Tab 2 for full five-investor analysis.")
         else:
             st.warning("No stocks passed all 5 criteria.")
+
+
+# ── Tab 4: Portfolio Manager ──────────────────────────────────────────────────
+
+STATUS_COLORS = {
+    "watching": ("#1e3a5f", "#60a5fa"),
+    "bought":   ("#14532d", "#4ade80"),
+    "sold":     ("#3b0764", "#c084fc"),
+    "removed":  ("#374151", "#9ca3af"),
+}
+STATUS_CYCLE = {"watching": "bought", "bought": "sold", "sold": "removed", "removed": "watching"}
+
+with tab4:
+    st.header("Portfolio Manager")
+    st.caption("Stocks auto-logged after Tab 3 analysis meets quality criteria. Persists between sessions (resets on redeployment).")
+
+    import pandas as pd
+
+    entries = _load_portfolio()
+
+    # ── 1. Summary ────────────────────────────────────────────────────────────
+    if not entries:
+        st.info("No stocks logged yet. Run a full analysis in Tab 3 — stocks that meet quality criteria are auto-saved here.")
+    else:
+        active = [e for e in entries if e.get("status") != "removed"]
+        col_a, col_b, col_c, col_d = st.columns(4)
+        with col_a:
+            st.metric("Total Watched", len(active))
+        with col_b:
+            markets = {}
+            for e in active:
+                m = e.get("market", "US")
+                markets[m] = markets.get(m, 0) + 1
+            st.metric("Markets", "  ·  ".join(f"{v} {k.split('(')[0].strip()}" for k, v in markets.items()))
+        with col_c:
+            statuses = {}
+            for e in active:
+                s = e.get("status", "watching")
+                statuses[s] = statuses.get(s, 0) + 1
+            st.metric("By Status", "  ·  ".join(f"{v} {s}" for s, v in statuses.items()))
+        with col_d:
+            st.metric("Total (incl. removed)", len(entries))
+
+        st.markdown("---")
+
+        # ── 2. Watchlist table with live prices ───────────────────────────────
+        st.markdown("### Watchlist")
+
+        @st.cache_data(ttl=300)
+        def _fetch_current_price(ticker: str) -> float | None:
+            try:
+                info = yf.Ticker(ticker).info
+                return info.get("currentPrice") or info.get("regularMarketPrice")
+            except Exception:
+                return None
+
+        table_rows = []
+        for e in entries:
+            curr_price = _fetch_current_price(e["ticker"])
+            ref_price  = e.get("price_at_analysis")
+            if curr_price and ref_price:
+                chg = round((curr_price - ref_price) / ref_price * 100, 1)
+                chg_str = f"+{chg}%" if chg >= 0 else f"{chg}%"
+            else:
+                chg_str = "N/A"
+            table_rows.append({
+                "Ticker":        e["ticker"],
+                "Company":       e.get("company", ""),
+                "Market":        e.get("market", ""),
+                "Added":         e.get("date_added", ""),
+                "Price @ Analysis": e.get("price_at_analysis", ""),
+                "Current Price": round(curr_price, 2) if curr_price else "N/A",
+                "Change %":      chg_str,
+                "Opp Score":     e.get("opportunity_score", ""),
+                "Buffett":       e.get("buffett_decision", ""),
+                "Munger":        e.get("munger_decision", ""),
+                "Status":        e.get("status", "watching"),
+            })
+
+        df_watch = pd.DataFrame(table_rows)
+        st.dataframe(df_watch, use_container_width=True, hide_index=True)
+
+        # ── 3. Per-stock actions ──────────────────────────────────────────────
+        st.markdown("### Actions")
+        for idx, e in enumerate(entries):
+            ticker  = e["ticker"]
+            status  = e.get("status", "watching")
+            bg, bdg = STATUS_COLORS.get(status, ("#1e293b", "#94a3b8"))
+
+            with st.expander(
+                f"**{ticker}** — {e.get('company','')}  ·  "
+                f"{'🟢' if status=='watching' else '💰' if status=='bought' else '📤' if status=='sold' else '🗑️'} {status}",
+                expanded=False,
+            ):
+                c1, c2, c3 = st.columns([2, 3, 2])
+                with c1:
+                    next_status = STATUS_CYCLE[status]
+                    if st.button(
+                        f"Advance → {next_status}",
+                        key=f"adv_{ticker}_{idx}",
+                        use_container_width=True,
+                    ):
+                        entries[idx]["status"] = next_status
+                        _save_portfolio(entries)
+                        st.rerun()
+                with c2:
+                    new_note = st.text_input(
+                        "Notes",
+                        value=e.get("notes", ""),
+                        key=f"note_{ticker}_{idx}",
+                        label_visibility="collapsed",
+                        placeholder="Add notes...",
+                    )
+                    if new_note != e.get("notes", ""):
+                        entries[idx]["notes"] = new_note
+                        _save_portfolio(entries)
+                with c3:
+                    if st.button(
+                        "🗑️ Remove",
+                        key=f"rm_{ticker}_{idx}",
+                        use_container_width=True,
+                        type="secondary",
+                    ):
+                        entries[idx]["status"] = "removed"
+                        _save_portfolio(entries)
+                        st.rerun()
+
+                st.markdown(
+                    f"**Save reasons:** {', '.join(e.get('save_reason') or [])}  ·  "
+                    f"**Score:** {e.get('opportunity_score','—')}  ·  "
+                    f"**Golden triggers:** {e.get('golden_triggers','—')}  ·  "
+                    f"**Fisher:** {e.get('fisher_decision','—')}  ·  "
+                    f"**Lynch:** {e.get('lynch_decision','—')}  ·  "
+                    f"**Bogle:** {e.get('bogle_decision','—')}"
+                )
+
+        # ── 4. Export ─────────────────────────────────────────────────────────
+        st.markdown("---")
+        csv_export = pd.DataFrame(entries).to_csv(index=False)
+        st.download_button(
+            label="💾 Export Full Portfolio Log (CSV)",
+            data=csv_export,
+            file_name="portfolio_log.csv",
+            mime="text/csv",
+        )
