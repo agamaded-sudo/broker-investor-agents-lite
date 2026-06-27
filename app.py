@@ -108,25 +108,23 @@ if st.session_state["lang"] == "ar":
 </style>
 """, unsafe_allow_html=True)
 
-# ── Title + language toggle ───────────────────────────────────────────────────
+# ── Title ────────────────────────────────────────────────────────────────────
 
-_title_col, _lang_col = st.columns([9, 1])
-with _title_col:
-    st.title("📊 Broker Investor Agents")
-    st.caption(t("Investment screening and independent investor analysis system"))
-with _lang_col:
-    st.markdown("<br>", unsafe_allow_html=True)
-    _btn_label = "🌐 عربي" if st.session_state["lang"] == "en" else "🌐 English"
+st.title("📊 Broker Investor Agents")
+st.caption(t("Investment screening and independent investor analysis system"))
+
+# ── Language toggle — full-width row, always visible ─────────────────────────
+
+_btn_label = "🌐 Switch to Arabic / عربي" if st.session_state["lang"] == "en" else "🌐 Switch to English"
+_lc1, _lc2, _lc3 = st.columns([1, 2, 1])
+with _lc2:
     if st.button(_btn_label, use_container_width=True, key="_lang_toggle"):
         st.session_state["lang"] = "ar" if st.session_state["lang"] == "en" else "en"
-        # Clear translation cache on switch
         for _k in list(st.session_state.keys()):
             if _k.startswith("tr_"):
                 del st.session_state[_k]
         st.rerun()
 
-# ── DEBUG (remove after confirming translation works) ─────────────────────────
-st.write(f"DEBUG: lang={st.session_state.get('lang')}, key_loaded={bool(_anthropic_api_key())}")
 if st.session_state.get("_translation_error"):
     st.warning(f"Translation error: {st.session_state['_translation_error']}")
 
