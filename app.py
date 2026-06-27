@@ -1,10 +1,13 @@
 import streamlit as st
 import yfinance as yf
 import sys
+import os
 from datetime import date
 from pathlib import Path
 
 import yaml
+import anthropic as _anthropic
+from dotenv import load_dotenv
 
 # Ensure the repo's src/ tree is first on sys.path so all broker_agents
 # imports resolve to the local source, not the potentially stale site-packages.
@@ -12,6 +15,8 @@ _SRC = Path(__file__).resolve().parent / "src"
 if str(_SRC) in sys.path:
     sys.path.remove(str(_SRC))
 sys.path.insert(0, str(_SRC))
+
+load_dotenv(".env.local")
 
 st.set_page_config(page_title="Broker Investor Agents", layout="wide", page_icon="📊")
 
@@ -44,14 +49,71 @@ if not st.session_state.get("authenticated"):
                     st.error("Incorrect password")
         st.stop()
 
-st.title("📊 Broker Investor Agents")
-st.caption("Investment screening and independent investor analysis system")
+# ── Language support ──────────────────────────────────────────────────────────
+
+if "lang" not in st.session_state:
+    st.session_state["lang"] = "en"
+
+
+def translate_to_arabic(text: str) -> str:
+    client = _anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    msg = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=500,
+        messages=[{"role": "user", "content": f"Translate this investment/financial text to Arabic. Return ONLY the Arabic translation, nothing else: {text}"}],
+    )
+    return msg.content[0].text.strip()
+
+
+def t(text: str) -> str:
+    """Return text translated to Arabic when lang='ar', otherwise return as-is."""
+    if st.session_state.get("lang") != "ar":
+        return text
+    cache_key = f"tr_{hash(text)}"
+    if cache_key not in st.session_state:
+        try:
+            st.session_state[cache_key] = translate_to_arabic(text)
+        except Exception:
+            st.session_state[cache_key] = text
+    return st.session_state[cache_key]
+
+
+# RTL CSS injection for Arabic
+if st.session_state["lang"] == "ar":
+    st.markdown("""
+<style>
+    .stMarkdown p, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3,
+    .stMarkdown h4, .stMarkdown li, .stMarkdown td, .stMarkdown th,
+    [data-testid="stMetricLabel"], [data-testid="stMetricValue"],
+    [data-testid="stExpander"] summary, .stCaption, .stAlert p {
+        direction: rtl;
+        text-align: right;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# ── Title + language toggle ───────────────────────────────────────────────────
+
+_title_col, _lang_col = st.columns([9, 1])
+with _title_col:
+    st.title("📊 Broker Investor Agents")
+    st.caption(t("Investment screening and independent investor analysis system"))
+with _lang_col:
+    st.markdown("<br>", unsafe_allow_html=True)
+    _btn_label = "🌐 عربي" if st.session_state["lang"] == "en" else "🌐 English"
+    if st.button(_btn_label, use_container_width=True, key="_lang_toggle"):
+        st.session_state["lang"] = "ar" if st.session_state["lang"] == "en" else "en"
+        # Clear translation cache on switch
+        for _k in list(st.session_state.keys()):
+            if _k.startswith("tr_"):
+                del st.session_state[_k]
+        st.rerun()
 
 tab1, tab2, tab3, tab4 = st.tabs([
-    "🔭 Tab 1 — Market Scanner",
-    "📡 Tab 2 — Initial Scan",
-    "📋 Tab 3 — Five Investor Reports",
-    "📁 Tab 4 — Portfolio Manager",
+    t("🔭 Tab 1 — Market Scanner"),
+    t("📡 Tab 2 — Initial Scan"),
+    t("📋 Tab 3 — Five Investor Reports"),
+    t("📁 Tab 4 — Portfolio Manager"),
 ])
 
 
@@ -59,11 +121,11 @@ tab1, tab2, tab3, tab4 = st.tabs([
 
 def generate_input_yaml(ticker: str, info: dict, examples_root: Path) -> Path:
     """Generate a minimal valid input YAML for ticker and save to examples/."""
-    t = ticker.upper()
+    tk = ticker.upper()
     tl = ticker.lower()
     today = date.today().isoformat()
 
-    name        = info.get("longName") or info.get("shortName") or t
+    name        = info.get("longName") or info.get("shortName") or tk
     exchange    = info.get("exchange") or "NYSE"
     currency    = info.get("financialCurrency") or "USD"
     sector      = info.get("sector") or "Unknown"
@@ -72,7 +134,7 @@ def generate_input_yaml(ticker: str, info: dict, examples_root: Path) -> Path:
 
     revenue      = info.get("totalRevenue") or 0
     gross_profit = info.get("grossProfits") or 0
-    op_income    = info.get("operatingIncome") or 0  # not always in info
+    op_income    = info.get("operatingIncome") or 0
     net_income   = info.get("netIncomeToCommon") or 0
     op_cf        = info.get("operatingCashflow") or 0
     capex_raw    = info.get("capitalExpenditures") or 0
@@ -92,14 +154,13 @@ def generate_input_yaml(ticker: str, info: dict, examples_root: Path) -> Path:
     de_ratio     = round((lt_debt / equity), 3) if equity else 0
 
     market_cap   = info.get("marketCap") or 0
-    peers        = info.get("recommendationKey") and [] or []  # yfinance doesn't give peers directly
 
     data = {
         "metadata": {
             "schema_name": "backoffice_data_pack_v2",
             "schema_version": 2,
             "company_name": name,
-            "ticker": t,
+            "ticker": tk,
             "analysis_date": today,
             "latest_annual_period": "TTM",
             "latest_quarterly_period": "Latest available",
@@ -113,7 +174,7 @@ def generate_input_yaml(ticker: str, info: dict, examples_root: Path) -> Path:
         },
         "company_identity": {
             "company_name": name,
-            "ticker": t,
+            "ticker": tk,
             "exchange": exchange,
             "market": "USA",
             "currency": currency,
@@ -254,7 +315,7 @@ def generate_input_yaml(ticker: str, info: dict, examples_root: Path) -> Path:
             "source_log": [
                 {
                     "source_id": f"{tl}_yfinance_auto",
-                    "source_name": f"{t} yfinance auto-fetch",
+                    "source_name": f"{tk} yfinance auto-fetch",
                     "source_type": "vendor",
                     "retrieved_at": today,
                     "confidence": "medium",
@@ -490,9 +551,9 @@ def _upsert_portfolio_entry(entry: dict) -> str:
 # ── Tab 1: Initial Scan ───────────────────────────────────────────────────────
 
 with tab2:
-    st.header("Initial Scan — Opportunity Scout")
+    st.header(t("Initial Scan — Opportunity Scout"))
 
-    with st.expander("📖 Logic 1 — Screening Rules", expanded=False):
+    with st.expander(t("📖 Logic 1 — Screening Rules"), expanded=False):
         st.markdown("""
 ### Gate 0 — Hard Filters (instant reject if any fails)
 | # | Rule |
@@ -537,14 +598,14 @@ with tab2:
 
     col1, col2, col3 = st.columns([3, 2, 1])
     with col1:
-        ticker_scan = st.text_input("Ticker Symbol", placeholder="e.g. AAPL or 2222.SR or QNBK.QA", key="scan_ticker")
+        ticker_scan = st.text_input(t("Ticker Symbol"), placeholder="e.g. AAPL or 2222.SR or QNBK.QA", key="scan_ticker")
     with col2:
         if ticker_scan:
             m = detect_market(ticker_scan)
             st.markdown(f"<br><span style='font-size:0.9em'>{m['flag']} {m['label']} · {m['currency']}</span>", unsafe_allow_html=True)
     with col3:
         st.markdown("<br>", unsafe_allow_html=True)
-        scan_btn = st.button("🔍 Scan", key="scan_btn", use_container_width=True)
+        scan_btn = st.button(t("🔍 Scan"), key="scan_btn", use_container_width=True)
 
     if scan_btn and ticker_scan:
         with st.spinner(f"Scanning {ticker_scan.upper()}..."):
@@ -555,52 +616,52 @@ with tab2:
                 st.subheader(f"{name} ({ticker_scan.upper()})  {market_meta['flag']}")
 
                 # Gate 0
-                st.markdown("#### 🚦 Gate 0 — Hard Filters")
+                st.markdown(f"#### 🚦 {t('Gate 0 — Hard Filters')}")
                 gate_ok, gate_issues = gate0(info)
                 if gate_ok:
-                    st.success("Passed Gate 0 — Stock is listed, tradable, and has financial data")
+                    st.success(t("Passed Gate 0 — Stock is listed, tradable, and has financial data"))
                 else:
-                    st.error("Failed Gate 0 — Stock rejected")
+                    st.error(t("Failed Gate 0 — Stock rejected"))
                     for issue in gate_issues:
                         st.write(f"• {issue}")
                     st.stop()
 
                 # Score
-                st.markdown("#### 📈 Opportunity Score")
+                st.markdown(f"#### 📈 {t('Opportunity Score')}")
                 score, passed, failed = opportunity_score(info)
 
                 price = info.get("currentPrice") or info.get("regularMarketPrice")
                 pe    = info.get("trailingPE")
-                decision = "✅ Pass" if score >= 8 else "👁 Watchlist" if score >= 6 else "❌ Reject"
+                decision = t("✅ Pass") if score >= 8 else t("👁 Watchlist") if score >= 6 else t("❌ Reject")
 
                 col_a, col_b, col_c, col_d = st.columns(4)
                 with col_a:
-                    st.metric("Score", f"{score} / 10")
+                    st.metric(t("Score"), f"{score} / 10")
                 with col_b:
-                    st.metric("Decision", decision)
+                    st.metric(t("Decision"), decision)
                 with col_c:
-                    st.metric("Price", fmt_price(price, market_meta))
+                    st.metric(t("Price"), fmt_price(price, market_meta))
                 with col_d:
                     pe_str = f"{pe:.1f}" if pe else "N/A"
                     st.metric("P/E", pe_str)
 
                 col_p, col_f = st.columns(2)
                 with col_p:
-                    st.markdown("**✅ Passed Criteria**")
+                    st.markdown(f"**{t('✅ Passed Criteria')}**")
                     for p in passed:
                         st.write(f"• {p}")
                 with col_f:
-                    st.markdown("**❌ Failed Criteria**")
+                    st.markdown(f"**{t('❌ Failed Criteria')}**")
                     for f in failed:
                         st.write(f"• {f}")
 
                 # Golden Triggers
                 triggers = golden_triggers(info)
                 if triggers:
-                    st.markdown("#### 🌟 Golden Triggers Detected")
-                    st.info("Strong signals found — stock qualifies even without a full score")
-                    for t in triggers:
-                        st.write(f"• {t}")
+                    st.markdown(f"#### 🌟 {t('Golden Triggers Detected')}")
+                    st.info(t("Strong signals found — stock qualifies even without a full score"))
+                    for trig in triggers:
+                        st.write(f"• {trig}")
 
                 # Cache for portfolio auto-save in Tab 3
                 st.session_state[f"scan_{ticker_scan.upper()}"] = {
@@ -615,9 +676,9 @@ with tab2:
 # ── Tab 2: Five Investor Reports ──────────────────────────────────────────────
 
 with tab3:
-    st.header("Five Investor Reports")
+    st.header(t("Five Investor Reports"))
 
-    with st.expander("📖 Logic 2 — How Reports Are Generated", expanded=False):
+    with st.expander(t("📖 Logic 2 — How Reports Are Generated"), expanded=False):
         st.markdown("""
 ### Pipeline
 1. **Input** — Ticker symbol entered by user
@@ -644,10 +705,10 @@ with tab3:
 
     col1, col2 = st.columns([3, 1])
     with col1:
-        ticker_rep = st.text_input("Ticker Symbol", placeholder="e.g. MSFT", key="rep_ticker")
+        ticker_rep = st.text_input(t("Ticker Symbol"), placeholder="e.g. MSFT", key="rep_ticker")
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
-        rep_btn = st.button("📋 Analyze", key="rep_btn", use_container_width=True)
+        rep_btn = st.button(t("📋 Analyze"), key="rep_btn", use_container_width=True)
 
     if rep_btn and ticker_rep:
         with st.spinner(f"Running full analysis for {ticker_rep.upper()} — this may take a minute..."):
@@ -749,9 +810,9 @@ with tab3:
 <div style="background:{card_color};border-radius:12px;padding:24px 28px;margin-bottom:20px">
   <div style="font-size:2rem;font-weight:700;color:#f8fafc">{ticker_up} &nbsp;<span style="font-size:1rem;font-weight:400;color:#cbd5e1">{company}</span></div>
   <div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
-    <span style="background:{badge_bg};color:#0f172a;border-radius:6px;padding:4px 12px;font-weight:600;font-size:0.9rem">{readiness}</span>
-    <span style="color:#94a3b8;font-size:0.9rem">Source verification: <strong style="color:#e2e8f0">{src_status}</strong></span>
-    <span style="color:#94a3b8;font-size:0.9rem">Investor responses: <strong style="color:#e2e8f0">{n_responses}</strong></span>
+    <span style="background:{badge_bg};color:#0f172a;border-radius:6px;padding:4px 12px;font-weight:600;font-size:0.9rem">{t(readiness)}</span>
+    <span style="color:#94a3b8;font-size:0.9rem">{t('Source verification')}: <strong style="color:#e2e8f0">{src_status}</strong></span>
+    <span style="color:#94a3b8;font-size:0.9rem">{t('Investor responses')}: <strong style="color:#e2e8f0">{n_responses}</strong></span>
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -770,7 +831,7 @@ with tab3:
                 "Not Interested":      ("#3b0764", "#c084fc"),
             }
 
-            st.markdown("### Investor Decisions")
+            st.markdown(f"### {t('Investor Decisions')}")
             cols = st.columns(len(resps) if resps else 1)
             for col, r in zip(cols, resps):
                 investor   = r.get("investor", "?")
@@ -783,10 +844,10 @@ with tab3:
                     st.markdown(f"""
 <div style="background:{bg};border-radius:10px;padding:16px;height:100%">
   <div style="font-size:1.5rem">{icon}</div>
-  <div style="font-weight:700;color:#f1f5f9;margin:4px 0">{investor.capitalize()}</div>
-  <span style="background:{badge};color:#0f172a;border-radius:4px;padding:2px 8px;font-size:0.78rem;font-weight:600">{level}</span>
-  <div style="color:#cbd5e1;font-size:0.82rem;margin-top:8px"><strong>Decision:</strong> {decision}</div>
-  <div style="color:#94a3b8;font-size:0.78rem;margin-top:4px"><strong>Concern:</strong> {concern}</div>
+  <div style="font-weight:700;color:#f1f5f9;margin:4px 0">{t(investor.capitalize())}</div>
+  <span style="background:{badge};color:#0f172a;border-radius:4px;padding:2px 8px;font-size:0.78rem;font-weight:600">{t(level)}</span>
+  <div style="color:#cbd5e1;font-size:0.82rem;margin-top:8px"><strong>{t('Decision')}:</strong> {t(decision)}</div>
+  <div style="color:#94a3b8;font-size:0.78rem;margin-top:4px"><strong>{t('Concern')}:</strong> {t(concern)}</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -797,65 +858,65 @@ with tab3:
             # Source Verification Matrix
             svm_cats = svm.get("categories", [])
             if svm_cats:
-                with st.expander("🔍 Source Verification Matrix", expanded=False):
+                with st.expander(t("🔍 Source Verification Matrix"), expanded=False):
                     import pandas as pd
                     svm_rows = [{
-                        "Category":      c.get("category", ""),
-                        "Status":        c.get("status", ""),
-                        "Blocks Promo":  "🚫 Yes" if c.get("blocks_promotion") else "✅ No",
-                        "Broker Action": c.get("broker_action", ""),
+                        t("Category"):      c.get("category", ""),
+                        t("Status"):        c.get("status", ""),
+                        t("Blocks Promo"):  "🚫 Yes" if c.get("blocks_promotion") else "✅ No",
+                        t("Broker Action"): c.get("broker_action", ""),
                     } for c in svm_cats]
                     st.dataframe(pd.DataFrame(svm_rows), use_container_width=True, hide_index=True)
 
             # Per-investor full details
-            st.markdown("### Investor Full Details")
+            st.markdown(f"### {t('Investor Full Details')}")
             for r in resps:
                 investor = r.get("investor", "?")
                 icon     = INVESTOR_ICONS.get(investor.lower(), "👤")
                 level    = r.get("interest_level", "")
-                with st.expander(f"{icon} {investor.capitalize()} — {level}", expanded=False):
+                with st.expander(f"{icon} {t(investor.capitalize())} — {t(level)}", expanded=False):
                     c1, c2 = st.columns(2)
                     with c1:
-                        st.markdown(f"**Final Decision:** {r.get('final_decision','—')}")
-                        st.markdown(f"**Interest Type:** {r.get('interest_type','—')}")
-                        st.markdown(f"**Confidence:** {r.get('confidence','—')}")
-                        st.markdown(f"**Main Positive Reason:** {r.get('main_positive_reason','—')}")
+                        st.markdown(f"**{t('Final Decision')}:** {t(r.get('final_decision','—'))}")
+                        st.markdown(f"**{t('Interest Type')}:** {r.get('interest_type','—')}")
+                        st.markdown(f"**{t('Confidence')}:** {r.get('confidence','—')}")
+                        st.markdown(f"**{t('Main Positive Reason')}:** {t(r.get('main_positive_reason','—'))}")
                     with c2:
-                        st.markdown(f"**Main Concern:** {r.get('main_concern','—')}")
-                        st.markdown(f"**Required Evidence:** {r.get('required_evidence_before_serious_interest','—')}")
-                        st.markdown(f"**Safety Note:** {r.get('safety_note','—')}")
+                        st.markdown(f"**{t('Main Concern')}:** {t(r.get('main_concern','—'))}")
+                        st.markdown(f"**{t('Required Evidence')}:** {t(r.get('required_evidence_before_serious_interest','—'))}")
+                        st.markdown(f"**{t('Safety Note')}:** {t(r.get('safety_note','—'))}")
                     items = r.get("broker_follow_up_items") or []
                     if items:
-                        st.markdown("**Broker Follow-Up Items:**")
+                        st.markdown(f"**{t('Broker Follow-Up Items')}:**")
                         for item in items:
-                            st.write(f"• {item}")
+                            st.write(f"• {t(item)}")
                     # Full response letter
                     letter_path = execution.workflow_result.investor_response_letter_paths.get(investor.lower())
                     if letter_path and Path(letter_path).exists():
-                        with st.expander(f"📄 Full Response Letter — {investor.capitalize()}", expanded=False):
+                        with st.expander(f"📄 {t('Full Response Letter')} — {t(investor.capitalize())}", expanded=False):
                             st.markdown(Path(letter_path).read_text(encoding="utf-8"))
 
             # Backoffice Work Orders
             work_orders = wop.get("work_orders", [])
             if work_orders:
-                with st.expander(f"🔧 Backoffice Work Orders ({len(work_orders)} total)", expanded=False):
+                with st.expander(f"🔧 {t('Backoffice Work Orders')} ({len(work_orders)} {t('total')})", expanded=False):
                     import pandas as pd
                     wo_rows = [{
-                        "ID":           wo.get("work_order_id", ""),
-                        "Evidence":     wo.get("evidence_item", ""),
-                        "Priority":     wo.get("priority", ""),
-                        "Blocks Promo": "🚫" if wo.get("blocks_promotion") else "✅",
-                        "Investors":    ", ".join(wo.get("related_investors") or []),
-                        "Action":       wo.get("suggested_backoffice_action", ""),
+                        t("ID"):           wo.get("work_order_id", ""),
+                        t("Evidence"):     wo.get("evidence_item", ""),
+                        t("Priority"):     wo.get("priority", ""),
+                        t("Blocks Promo"): "🚫" if wo.get("blocks_promotion") else "✅",
+                        t("Investors"):    ", ".join(wo.get("related_investors") or []),
+                        t("Action"):       wo.get("suggested_backoffice_action", ""),
                     } for wo in work_orders]
                     st.dataframe(pd.DataFrame(wo_rows), use_container_width=True, hide_index=True)
 
             # Next Actions
             next_actions = es.get("backoffice_next_actions") or []
             if next_actions:
-                with st.expander("📋 Next Actions", expanded=False):
+                with st.expander(f"📋 {t('Next Actions')}", expanded=False):
                     for action in next_actions:
-                        st.write(f"• {action}")
+                        st.write(f"• {t(action)}")
 
             # ── 4. Download ──────────────────────────────────────────────────
             report_path = (
@@ -865,7 +926,7 @@ with tab3:
             if report_path.exists():
                 st.markdown("---")
                 st.download_button(
-                    label="💾 Download Full Report (.md)",
+                    label=t("💾 Download Full Report (.md)"),
                     data=report_path.read_text(encoding="utf-8"),
                     file_name=f"{ticker_up}_broker_report.md",
                     mime="text/markdown"
@@ -888,10 +949,10 @@ _SP500_RAW = [
 ]
 _seen_sp: set = set()
 SP500_TICKERS: list[str] = []
-for _t in _SP500_RAW:
-    if _t not in _seen_sp:
-        _seen_sp.add(_t)
-        SP500_TICKERS.append(_t)
+for _sp in _SP500_RAW:
+    if _sp not in _seen_sp:
+        _seen_sp.add(_sp)
+        SP500_TICKERS.append(_sp)
 
 SAUDI_TICKERS = [f"{n}.SR" for n in [
     "2222","1120","2010","1180","2380","4200","7010","1211","2350","2330",
@@ -943,9 +1004,9 @@ def passes_top5(r: dict) -> bool:
 
 
 with tab1:
-    st.header("Market Scanner")
+    st.header(t("Market Scanner"))
 
-    with st.expander("📖 Logic 3 — Scanner Criteria", expanded=False):
+    with st.expander(t("📖 Logic 3 — Scanner Criteria"), expanded=False):
         st.markdown("""
 ### Top 5 Universal Criteria (must pass all 5)
 | # | Criterion | Threshold | Why |
@@ -966,27 +1027,27 @@ First-pass filter only — not a recommendation or ranking.
 
     col1, col2, col3 = st.columns([2, 2, 1])
     with col1:
-        market_choice = st.selectbox("Market", options=list(MARKET_UNIVERSES.keys()), key="market_choice")
+        market_choice = st.selectbox(t("Market"), options=list(MARKET_UNIVERSES.keys()), key="market_choice")
     with col2:
         universe_cfg  = MARKET_UNIVERSES[market_choice]
         size_options  = universe_cfg["size_options"]
         universe_size = st.selectbox(
-            "Universe Size",
+            t("Universe Size"),
             options=size_options,
             index=0,
-            format_func=lambda x: f"Top {x} stocks",
+            format_func=lambda x: f"{t('Top')} {x} {t('stocks')}",
             key="universe_size",
         )
     with col3:
         st.markdown("<br>", unsafe_allow_html=True)
-        scan_market_btn = st.button("🔭 Run Scan", key="market_scan_btn", use_container_width=True)
+        scan_market_btn = st.button(t("🔭 Run Scan"), key="market_scan_btn", use_container_width=True)
 
     if scan_market_btn:
         scan_meta      = universe_cfg["meta"]
         tickers_to_scan = universe_cfg["tickers"][:universe_size]
         total = len(tickers_to_scan)
 
-        progress_bar = st.progress(0, text="Starting scan...")
+        progress_bar = st.progress(0, text=t("Starting scan..."))
         passed_list = []
         failed_count = 0
         error_count = 0
@@ -1005,49 +1066,49 @@ First-pass filter only — not a recommendation or ranking.
             else:
                 failed_count += 1
 
-        progress_bar.progress(1.0, text="Scan complete!")
+        progress_bar.progress(1.0, text=t("Scan complete!"))
 
         st.markdown("---")
         col_a, col_b, col_c, col_d = st.columns(4)
         with col_a:
-            st.metric("Scanned", total)
+            st.metric(t("Scanned"), total)
         with col_b:
-            st.metric("Passed All 5", len(passed_list))
+            st.metric(t("Passed All 5"), len(passed_list))
         with col_c:
-            st.metric("Rejected", failed_count)
+            st.metric(t("Rejected"), failed_count)
         with col_d:
             pass_rate = round(len(passed_list) / total * 100, 1) if total > 0 else 0
-            st.metric("Pass Rate", f"{pass_rate}%")
+            st.metric(t("Pass Rate"), f"{pass_rate}%")
 
         if passed_list:
-            st.markdown(f"### Candidates Passing All 5 Criteria — {len(passed_list)} stocks")
+            st.markdown(f"### {t('Candidates Passing All 5 Criteria')} — {len(passed_list)} {t('stocks')}")
 
             import pandas as pd
-            price_col = f"Price ({scan_meta['currency']})"
+            price_col = f"{t('Price')} ({scan_meta['currency']})"
             df = pd.DataFrame([{
-                "Ticker":       r["ticker"],
-                "Company":      r["name"],
-                price_col:      round(r["price"], 2) if r["price"] else "N/A",
-                "P/E":          round(r["pe"], 1) if r["pe"] else "N/A",
-                "Rev Growth %": r["rev_g_pct"],
-                "Op Margin %":  r["margin_pct"],
-                "ROE %":        r["roe_pct"],
-                "FCF":          "Yes",
+                t("Ticker"):       r["ticker"],
+                t("Company"):      r["name"],
+                price_col:         round(r["price"], 2) if r["price"] else "N/A",
+                "P/E":             round(r["pe"], 1) if r["pe"] else "N/A",
+                t("Rev Growth %"): r["rev_g_pct"],
+                t("Op Margin %"):  r["margin_pct"],
+                t("ROE %"):        r["roe_pct"],
+                t("FCF"):          t("Yes"),
             } for r in passed_list])
 
             st.dataframe(df, use_container_width=True, hide_index=True)
 
             csv = df.to_csv(index=False)
             st.download_button(
-                label="💾 Download Candidate List (CSV)",
+                label=t("💾 Download Candidate List (CSV)"),
                 data=csv,
                 file_name=f"{market_choice.split()[1].lower()}_scan_results.csv",
                 mime="text/csv"
             )
 
-            st.info("Copy any ticker above to Tab 2 for full five-investor analysis.")
+            st.info(t("Copy any ticker above to Tab 2 for full five-investor analysis."))
         else:
-            st.warning("No stocks passed all 5 criteria.")
+            st.warning(t("No stocks passed all 5 criteria."))
 
 
 # ── Tab 4: Portfolio Manager ──────────────────────────────────────────────────
@@ -1061,8 +1122,8 @@ STATUS_COLORS = {
 STATUS_CYCLE = {"watching": "bought", "bought": "sold", "sold": "removed", "removed": "watching"}
 
 with tab4:
-    st.header("Portfolio Manager")
-    st.caption("Stocks auto-logged after Tab 3 analysis meets quality criteria. Persists between sessions (resets on redeployment).")
+    st.header(t("Portfolio Manager"))
+    st.caption(t("Stocks auto-logged after Tab 3 analysis meets quality criteria. Persists between sessions (resets on redeployment)."))
 
     import pandas as pd
 
@@ -1070,31 +1131,31 @@ with tab4:
 
     # ── 1. Summary ────────────────────────────────────────────────────────────
     if not entries:
-        st.info("No stocks logged yet. Run a full analysis in Tab 3 — stocks that meet quality criteria are auto-saved here.")
+        st.info(t("No stocks logged yet. Run a full analysis in Tab 3 — stocks that meet quality criteria are auto-saved here."))
     else:
         active = [e for e in entries if e.get("status") != "removed"]
         col_a, col_b, col_c, col_d = st.columns(4)
         with col_a:
-            st.metric("Total Watched", len(active))
+            st.metric(t("Total Watched"), len(active))
         with col_b:
             markets = {}
             for e in active:
                 m = e.get("market", "US")
                 markets[m] = markets.get(m, 0) + 1
-            st.metric("Markets", "  ·  ".join(f"{v} {k.split('(')[0].strip()}" for k, v in markets.items()))
+            st.metric(t("Markets"), "  ·  ".join(f"{v} {k.split('(')[0].strip()}" for k, v in markets.items()))
         with col_c:
             statuses = {}
             for e in active:
                 s = e.get("status", "watching")
                 statuses[s] = statuses.get(s, 0) + 1
-            st.metric("By Status", "  ·  ".join(f"{v} {s}" for s, v in statuses.items()))
+            st.metric(t("By Status"), "  ·  ".join(f"{v} {s}" for s, v in statuses.items()))
         with col_d:
-            st.metric("Total (incl. removed)", len(entries))
+            st.metric(t("Total (incl. removed)"), len(entries))
 
         st.markdown("---")
 
         # ── 2. Watchlist table with live prices ───────────────────────────────
-        st.markdown("### Watchlist")
+        st.markdown(f"### {t('Watchlist')}")
 
         @st.cache_data(ttl=300)
         def _fetch_current_price(ticker: str) -> float | None:
@@ -1114,24 +1175,24 @@ with tab4:
             else:
                 chg_str = "N/A"
             table_rows.append({
-                "Ticker":        e["ticker"],
-                "Company":       e.get("company", ""),
-                "Market":        e.get("market", ""),
-                "Added":         e.get("date_added", ""),
-                "Price @ Analysis": e.get("price_at_analysis", ""),
-                "Current Price": round(curr_price, 2) if curr_price else "N/A",
-                "Change %":      chg_str,
-                "Opp Score":     e.get("opportunity_score", ""),
-                "Buffett":       e.get("buffett_decision", ""),
-                "Munger":        e.get("munger_decision", ""),
-                "Status":        e.get("status", "watching"),
+                t("Ticker"):           e["ticker"],
+                t("Company"):          e.get("company", ""),
+                t("Market"):           e.get("market", ""),
+                t("Added"):            e.get("date_added", ""),
+                t("Price @ Analysis"): e.get("price_at_analysis", ""),
+                t("Current Price"):    round(curr_price, 2) if curr_price else "N/A",
+                t("Change %"):         chg_str,
+                t("Opp Score"):        e.get("opportunity_score", ""),
+                t("Buffett"):          e.get("buffett_decision", ""),
+                t("Munger"):           e.get("munger_decision", ""),
+                t("Status"):           e.get("status", "watching"),
             })
 
         df_watch = pd.DataFrame(table_rows)
         st.dataframe(df_watch, use_container_width=True, hide_index=True)
 
         # ── 3. Per-stock actions ──────────────────────────────────────────────
-        st.markdown("### Actions")
+        st.markdown(f"### {t('Actions')}")
         for idx, e in enumerate(entries):
             ticker  = e["ticker"]
             status  = e.get("status", "watching")
@@ -1139,14 +1200,14 @@ with tab4:
 
             with st.expander(
                 f"**{ticker}** — {e.get('company','')}  ·  "
-                f"{'🟢' if status=='watching' else '💰' if status=='bought' else '📤' if status=='sold' else '🗑️'} {status}",
+                f"{'🟢' if status=='watching' else '💰' if status=='bought' else '📤' if status=='sold' else '🗑️'} {t(status)}",
                 expanded=False,
             ):
                 c1, c2, c3 = st.columns([2, 3, 2])
                 with c1:
                     next_status = STATUS_CYCLE[status]
                     if st.button(
-                        f"Advance → {next_status}",
+                        f"{t('Advance')} → {t(next_status)}",
                         key=f"adv_{ticker}_{idx}",
                         use_container_width=True,
                     ):
@@ -1155,18 +1216,18 @@ with tab4:
                         st.rerun()
                 with c2:
                     new_note = st.text_input(
-                        "Notes",
+                        t("Notes"),
                         value=e.get("notes", ""),
                         key=f"note_{ticker}_{idx}",
                         label_visibility="collapsed",
-                        placeholder="Add notes...",
+                        placeholder=t("Add notes..."),
                     )
                     if new_note != e.get("notes", ""):
                         entries[idx]["notes"] = new_note
                         _save_portfolio(entries, f"Portfolio update: {ticker} notes {date.today()}")
                 with c3:
                     if st.button(
-                        "🗑️ Remove",
+                        t("🗑️ Remove"),
                         key=f"rm_{ticker}_{idx}",
                         use_container_width=True,
                         type="secondary",
@@ -1176,9 +1237,9 @@ with tab4:
                         st.rerun()
 
                 st.markdown(
-                    f"**Save reasons:** {', '.join(e.get('save_reason') or [])}  ·  "
-                    f"**Score:** {e.get('opportunity_score','—')}  ·  "
-                    f"**Golden triggers:** {e.get('golden_triggers','—')}  ·  "
+                    f"**{t('Save reasons')}:** {', '.join(e.get('save_reason') or [])}  ·  "
+                    f"**{t('Score')}:** {e.get('opportunity_score','—')}  ·  "
+                    f"**{t('Golden triggers')}:** {e.get('golden_triggers','—')}  ·  "
                     f"**Fisher:** {e.get('fisher_decision','—')}  ·  "
                     f"**Lynch:** {e.get('lynch_decision','—')}  ·  "
                     f"**Bogle:** {e.get('bogle_decision','—')}"
@@ -1188,7 +1249,7 @@ with tab4:
         st.markdown("---")
         csv_export = pd.DataFrame(entries).to_csv(index=False)
         st.download_button(
-            label="💾 Export Full Portfolio Log (CSV)",
+            label=t("💾 Export Full Portfolio Log (CSV)"),
             data=csv_export,
             file_name="portfolio_log.csv",
             mime="text/csv",
