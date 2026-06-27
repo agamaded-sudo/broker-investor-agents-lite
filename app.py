@@ -108,25 +108,31 @@ if st.session_state["lang"] == "ar":
 </style>
 """, unsafe_allow_html=True)
 
-# ── Title ────────────────────────────────────────────────────────────────────
+# ── Sidebar language toggle ───────────────────────────────────────────────────
 
-st.title("📊 Broker Investor Agents")
-st.caption(t("Investment screening and independent investor analysis system"))
-
-# ── Language toggle — full-width row, always visible ─────────────────────────
-
-_btn_label = "🌐 Switch to Arabic / عربي" if st.session_state["lang"] == "en" else "🌐 Switch to English"
-_lc1, _lc2, _lc3 = st.columns([1, 2, 1])
-with _lc2:
-    if st.button(_btn_label, use_container_width=True, key="_lang_toggle"):
-        st.session_state["lang"] = "ar" if st.session_state["lang"] == "en" else "en"
+st.sidebar.markdown("### 🌐 Language")
+if st.session_state.get("lang", "en") == "en":
+    if st.sidebar.button("Switch to Arabic / عربي"):
+        st.session_state["lang"] = "ar"
+        for _k in list(st.session_state.keys()):
+            if _k.startswith("tr_"):
+                del st.session_state[_k]
+        st.rerun()
+else:
+    if st.sidebar.button("Switch to English"):
+        st.session_state["lang"] = "en"
         for _k in list(st.session_state.keys()):
             if _k.startswith("tr_"):
                 del st.session_state[_k]
         st.rerun()
 
 if st.session_state.get("_translation_error"):
-    st.warning(f"Translation error: {st.session_state['_translation_error']}")
+    st.sidebar.warning(f"Translation error: {st.session_state['_translation_error']}")
+
+# ── Title ────────────────────────────────────────────────────────────────────
+
+st.title("📊 Broker Investor Agents")
+st.caption(t("Investment screening and independent investor analysis system"))
 
 tab1, tab2, tab3, tab4 = st.tabs([
     t("🔭 Tab 1 — Market Scanner"),
