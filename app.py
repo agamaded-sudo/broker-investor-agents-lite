@@ -6,8 +6,18 @@ from datetime import date
 from pathlib import Path
 
 import yaml
-import anthropic as _anthropic
-from dotenv import load_dotenv
+
+try:
+    import anthropic as _anthropic
+    ANTHROPIC_AVAILABLE = True
+except ImportError:
+    ANTHROPIC_AVAILABLE = False
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parent / ".env.local")
+except ImportError:
+    pass
 
 # Ensure the repo's src/ tree is first on sys.path so all broker_agents
 # imports resolve to the local source, not the potentially stale site-packages.
@@ -16,12 +26,10 @@ if str(_SRC) in sys.path:
     sys.path.remove(str(_SRC))
 sys.path.insert(0, str(_SRC))
 
-load_dotenv(Path(__file__).resolve().parent / ".env.local")
-
 st.set_page_config(page_title="Broker Investor Agents", layout="wide", page_icon="📊")
 
 # ── DEBUG: sidebar + main-area button (remove once confirmed working) ─────────
-st.sidebar.write("SIDEBAR TEST")
+st.sidebar.write(f"SIDEBAR TEST | anthropic={ANTHROPIC_AVAILABLE}")
 if st.button("🌐 EN/AR"):
     if st.session_state.get("lang", "en") == "en":
         st.session_state["lang"] = "ar"
@@ -76,6 +84,8 @@ def _anthropic_api_key() -> str | None:
 
 
 def translate_to_arabic(text: str) -> str:
+    if not ANTHROPIC_AVAILABLE:
+        raise RuntimeError("anthropic package not installed")
     api_key = _anthropic_api_key()
     if not api_key:
         raise RuntimeError("ANTHROPIC_API_KEY not found in .env.local or Streamlit secrets")
