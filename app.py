@@ -1539,12 +1539,17 @@ with tab5:
         # ── 4. Full Investor Analysis ─────────────────────────────────────────
         st.markdown("---")
         if st.button(t("🤖 Run Full Investor Analysis"), use_container_width=True, key="pc_run_analysis"):
+            st.write("DEBUG: Analysis button clicked")
             pc_ticker_id = "PRIVATE_" + "".join(c for c in pc_name.upper() if c.isalnum() or c == "_")
             pc_ticker_lw = pc_ticker_id.lower()
 
             project_root  = Path(__file__).resolve().parent
-            examples_root = project_root / "examples"
-            outputs_root  = project_root / "data" / "outputs"
+            # Use /tmp for writable paths — Streamlit Cloud has a read-only repo filesystem
+            tmp_root      = Path("/tmp") / "broker_analysis"
+            examples_root = tmp_root / "examples"
+            outputs_root  = tmp_root / "outputs"
+            examples_root.mkdir(parents=True, exist_ok=True)
+            outputs_root.mkdir(parents=True, exist_ok=True)
             fixtures_root = project_root / "tests" / "fixtures"
             portfolio_ctx = project_root / "examples" / "portfolio_context.yaml"
 
@@ -1632,8 +1637,8 @@ with tab5:
             }
 
             yaml_path = examples_root / f"{pc_ticker_lw}_input.yaml"
-            yaml_path.parent.mkdir(parents=True, exist_ok=True)
             yaml_path.write_text(yaml.dump(pc_yaml_data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+            st.write(f"DEBUG: YAML written to {yaml_path}")
 
             with st.spinner(f"Running five investor agents for {pc_name}..."):
                 try:
