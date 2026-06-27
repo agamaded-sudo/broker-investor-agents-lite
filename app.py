@@ -16,7 +16,7 @@ if str(_SRC) in sys.path:
     sys.path.remove(str(_SRC))
 sys.path.insert(0, str(_SRC))
 
-load_dotenv(".env.local")
+load_dotenv(Path(__file__).resolve().parent / ".env.local")
 
 st.set_page_config(page_title="Broker Investor Agents", layout="wide", page_icon="📊")
 
@@ -55,8 +55,22 @@ if "lang" not in st.session_state:
     st.session_state["lang"] = "en"
 
 
+def _anthropic_api_key() -> str | None:
+    """Return ANTHROPIC_API_KEY from env (loaded via .env.local) or Streamlit secrets."""
+    key = os.getenv("ANTHROPIC_API_KEY")
+    if key:
+        return key
+    try:
+        return st.secrets.get("ANTHROPIC_API_KEY") or None
+    except Exception:
+        return None
+
+
 def translate_to_arabic(text: str) -> str:
-    client = _anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    api_key = _anthropic_api_key()
+    if not api_key:
+        raise RuntimeError("ANTHROPIC_API_KEY not found in .env.local or Streamlit secrets")
+    client = _anthropic.Anthropic(api_key=api_key)
     msg = client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=500,
@@ -73,8 +87,10 @@ def t(text: str) -> str:
     if cache_key not in st.session_state:
         try:
             st.session_state[cache_key] = translate_to_arabic(text)
-        except Exception:
+        except Exception as _e:
+            # Store the error marker so we don't retry every render, but surface it once
             st.session_state[cache_key] = text
+            st.session_state["_translation_error"] = str(_e)
     return st.session_state[cache_key]
 
 
@@ -108,6 +124,11 @@ with _lang_col:
             if _k.startswith("tr_"):
                 del st.session_state[_k]
         st.rerun()
+
+# ── DEBUG (remove after confirming translation works) ─────────────────────────
+st.write(f"DEBUG: lang={st.session_state.get('lang')}, key_loaded={bool(_anthropic_api_key())}")
+if st.session_state.get("_translation_error"):
+    st.warning(f"Translation error: {st.session_state['_translation_error']}")
 
 tab1, tab2, tab3, tab4 = st.tabs([
     t("🔭 Tab 1 — Market Scanner"),
