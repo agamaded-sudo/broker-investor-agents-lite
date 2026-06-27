@@ -153,11 +153,12 @@ if st.session_state.get("_translation_error"):
 st.title("📊 Broker Investor Agents")
 st.caption(t("Investment screening and independent investor analysis system"))
 
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     t("🔭 Tab 1 — Market Scanner"),
     t("📡 Tab 2 — Initial Scan"),
     t("📋 Tab 3 — Five Investor Reports"),
     t("📁 Tab 4 — Portfolio Manager"),
+    t("🏢 Tab 5 — Private Company"),
 ])
 
 
@@ -1298,3 +1299,415 @@ with tab4:
             file_name="portfolio_log.csv",
             mime="text/csv",
         )
+
+
+# ── Tab 5: Private Company Analysis ──────────────────────────────────────────
+
+def _safe_div(num, den):
+    return num / den if den else None
+
+
+def _private_investor_cards(resps: list[dict], execution) -> None:
+    INVESTOR_ICONS = {
+        "buffett": "🏦", "munger": "🧠", "fisher": "🔬",
+        "lynch":   "📊", "bogle":  "📈",
+    }
+    INTEREST_COLORS = {
+        "High Interest":        ("#14532d", "#22c55e"),
+        "Conditional Interest": ("#14532d", "#4ade80"),
+        "Watchlist Interest":   ("#713f12", "#fbbf24"),
+        "Needs More Evidence":  ("#7c2d12", "#fb923c"),
+        "Low Interest":         ("#7f1d1d", "#f87171"),
+        "Not Interested":       ("#3b0764", "#c084fc"),
+    }
+
+    st.markdown(f"### {t('Investor Decisions')}")
+    cols = st.columns(len(resps) if resps else 1)
+    for col, r in zip(cols, resps):
+        investor  = r.get("investor", "?")
+        icon      = INVESTOR_ICONS.get(investor.lower(), "👤")
+        level     = r.get("interest_level", "Unknown")
+        decision  = r.get("final_decision", "—")
+        concern   = r.get("main_concern", "—")
+        bg, badge = INTEREST_COLORS.get(level, ("#1e293b", "#94a3b8"))
+        with col:
+            st.markdown(f"""
+<div style="background:{bg};border-radius:10px;padding:16px;height:100%">
+  <div style="font-size:1.5rem">{icon}</div>
+  <div style="font-weight:700;color:#f1f5f9;margin:4px 0">{t(investor.capitalize())}</div>
+  <span style="background:{badge};color:#0f172a;border-radius:4px;padding:2px 8px;font-size:0.78rem;font-weight:600">{t(level)}</span>
+  <div style="color:#cbd5e1;font-size:0.82rem;margin-top:8px"><strong>{t('Decision')}:</strong> {t(decision)}</div>
+  <div style="color:#94a3b8;font-size:0.78rem;margin-top:4px"><strong>{t('Concern')}:</strong> {t(concern)}</div>
+</div>
+""", unsafe_allow_html=True)
+
+    st.markdown("")
+    st.markdown(f"### {t('Investor Full Details')}")
+    for r in resps:
+        investor = r.get("investor", "?")
+        icon     = INVESTOR_ICONS.get(investor.lower(), "👤")
+        level    = r.get("interest_level", "")
+        with st.expander(f"{icon} {t(investor.capitalize())} — {t(level)}", expanded=False):
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown(f"**{t('Final Decision')}:** {t(r.get('final_decision','—'))}")
+                st.markdown(f"**{t('Confidence')}:** {r.get('confidence','—')}")
+                st.markdown(f"**{t('Main Positive Reason')}:** {t(r.get('main_positive_reason','—'))}")
+            with c2:
+                st.markdown(f"**{t('Main Concern')}:** {t(r.get('main_concern','—'))}")
+                st.markdown(f"**{t('Required Evidence')}:** {t(r.get('required_evidence_before_serious_interest','—'))}")
+                st.markdown(f"**{t('Safety Note')}:** {t(r.get('safety_note','—'))}")
+            items = r.get("broker_follow_up_items") or []
+            if items:
+                st.markdown(f"**{t('Broker Follow-Up Items')}:**")
+                for item in items:
+                    st.write(f"• {t(item)}")
+            if execution:
+                letter_path = execution.workflow_result.investor_response_letter_paths.get(investor.lower())
+                if letter_path and Path(letter_path).exists():
+                    with st.expander(f"📄 {t('Full Response Letter')} — {t(investor.capitalize())}", expanded=False):
+                        st.markdown(Path(letter_path).read_text(encoding="utf-8"))
+
+
+with tab5:
+    st.header(t("Private Company Analysis"))
+    st.caption(t("Manually enter financial data for unlisted or private companies. All metrics are calculated automatically."))
+
+    import pandas as pd
+
+    with st.form("private_co_form"):
+        # ── Section 1: Identity ───────────────────────────────────────────────
+        st.markdown(f"#### {t('Company Identity')}")
+        pc1, pc2 = st.columns(2)
+        with pc1:
+            pc_name     = st.text_input(t("Company Name"), placeholder="e.g. Acme Corp")
+            pc_sector   = st.selectbox(t("Sector"), ["Technology", "Finance", "Healthcare",
+                                                       "Consumer", "Energy", "Industrial",
+                                                       "Real Estate", "Other"])
+            pc_status   = st.selectbox(t("Company Status"), ["Pre-IPO", "Private", "Acquisition Target"])
+        with pc2:
+            pc_currency = st.selectbox(t("Currency"), ["USD", "SAR", "QAR", "EUR", "GBP"])
+            pc_desc     = st.text_area(t("Business Description"),
+                                       placeholder="2–3 lines describing what the company does",
+                                       height=120)
+
+        st.markdown("---")
+
+        # ── Section 2: Income Statement ───────────────────────────────────────
+        st.markdown(f"#### {t('Income Statement')} ({t('all values in thousands')})")
+        is1, is2, is3 = st.columns(3)
+        with is1:
+            pc_rev_cur  = st.number_input(t("Revenue — Current Year"),  min_value=0.0, step=100.0)
+            pc_rev_prev = st.number_input(t("Revenue — Previous Year"), min_value=0.0, step=100.0)
+        with is2:
+            pc_cogs     = st.number_input(t("Cost of Goods Sold (COGS)"), min_value=0.0, step=100.0)
+            pc_opex     = st.number_input(t("Operating Expenses"),         min_value=0.0, step=100.0)
+        with is3:
+            pc_net_inc  = st.number_input(t("Net Income"), step=100.0)
+
+        st.markdown("---")
+
+        # ── Section 3: Cash Flow ──────────────────────────────────────────────
+        st.markdown(f"#### {t('Cash Flow')} ({t('all values in thousands')})")
+        cf1, cf2 = st.columns(2)
+        with cf1:
+            pc_op_cf = st.number_input(t("Operating Cash Flow"),         step=100.0)
+        with cf2:
+            pc_capex = st.number_input(t("Capital Expenditure (Capex)"), min_value=0.0, step=100.0)
+
+        st.markdown("---")
+
+        # ── Section 4: Balance Sheet ──────────────────────────────────────────
+        st.markdown(f"#### {t('Balance Sheet')} ({t('all values in thousands')})")
+        bs1, bs2, bs3 = st.columns(3)
+        with bs1:
+            pc_assets = st.number_input(t("Total Assets"),          min_value=0.0, step=100.0)
+        with bs2:
+            pc_debt   = st.number_input(t("Total Debt"),            min_value=0.0, step=100.0)
+        with bs3:
+            pc_equity = st.number_input(t("Shareholders Equity"),   step=100.0)
+
+        st.markdown("---")
+
+        # ── Section 5: Valuation (optional) ──────────────────────────────────
+        st.markdown(f"#### {t('Valuation')} ({t('optional')})")
+        val1, val2 = st.columns(2)
+        with val1:
+            pc_val    = st.number_input(t("Estimated Company Value / Acquisition Price (thousands)"),
+                                        min_value=0.0, step=1000.0)
+        with val2:
+            pc_shares = st.number_input(t("Number of Shares (if available)"),
+                                        min_value=0.0, step=1000.0)
+
+        submitted = st.form_submit_button(t("📊 Calculate & Analyse"), use_container_width=True)
+
+    # ── Results ───────────────────────────────────────────────────────────────
+    if submitted:
+        if not pc_name.strip():
+            st.error(t("Company Name is required."))
+            st.stop()
+
+        # Auto-calculations
+        rev_growth   = _safe_div(pc_rev_cur - pc_rev_prev, pc_rev_prev) * 100 if pc_rev_prev else None
+        gross_profit = pc_rev_cur - pc_cogs
+        gross_margin = _safe_div(gross_profit, pc_rev_cur) * 100 if pc_rev_cur else None
+        op_income    = pc_rev_cur - pc_cogs - pc_opex
+        op_margin    = _safe_div(op_income, pc_rev_cur) * 100 if pc_rev_cur else None
+        fcf          = pc_op_cf - pc_capex
+        debt_equity  = _safe_div(pc_debt, pc_equity) if pc_equity else None
+        roe          = _safe_div(pc_net_inc, pc_equity) * 100 if pc_equity else None
+        pe           = _safe_div(pc_val, pc_net_inc) if (pc_val and pc_net_inc > 0) else None
+        imp_price    = _safe_div(pc_val, pc_shares / 1000) if (pc_val and pc_shares) else None
+
+        # ── 1. Metrics card ───────────────────────────────────────────────────
+        st.markdown("---")
+        st.markdown(f"### 📐 {t('Calculated Metrics')} — {pc_name}")
+
+        m1, m2, m3, m4 = st.columns(4)
+        with m1:
+            st.metric(t("Revenue Growth %"), f"{rev_growth:.1f}%" if rev_growth is not None else "N/A")
+            st.metric(t("Gross Margin %"),   f"{gross_margin:.1f}%" if gross_margin is not None else "N/A")
+        with m2:
+            st.metric(t("Operating Margin %"), f"{op_margin:.1f}%" if op_margin is not None else "N/A")
+            st.metric(t("ROE %"),              f"{roe:.1f}%" if roe is not None else "N/A")
+        with m3:
+            st.metric(t("Free Cash Flow"),  f"{fcf:,.0f}K {pc_currency}")
+            st.metric(t("Debt / Equity"),   f"{debt_equity:.2f}x" if debt_equity is not None else "N/A")
+        with m4:
+            st.metric(t("P/E (implied)"),        f"{pe:.1f}x" if pe is not None else t("No valuation"))
+            st.metric(t("Implied Price / Share"), f"{imp_price:,.2f} {pc_currency}" if imp_price is not None else "N/A")
+
+        # ── 2. Opportunity Score ──────────────────────────────────────────────
+        st.markdown(f"### 📈 {t('Opportunity Score')}")
+
+        pc_checks: dict[str, bool] = {
+            "FCF > 0":                fcf > 0,
+            "Revenue Growth > 10%":   (rev_growth or 0) > 10,
+            "Net Income > 0":         pc_net_inc > 0,
+            "Operating Margin > 15%": (op_margin or 0) > 15,
+        }
+        if pe is not None:
+            pc_checks["P/E < 30"] = 0 < pe < 30
+
+        pc_passed   = [k for k, v in pc_checks.items() if v]
+        pc_failed   = [k for k, v in pc_checks.items() if not v]
+        pc_score    = len(pc_passed)
+        pc_total    = len(pc_checks)
+        pc_decision = (
+            t("✅ Strong candidate") if pc_score >= pc_total - 1
+            else t("👁 Watch")       if pc_score >= pc_total // 2
+            else t("❌ Weak")
+        )
+
+        sc1, sc2 = st.columns(2)
+        with sc1:
+            st.metric(t("Score"),    f"{pc_score} / {pc_total}")
+            st.metric(t("Decision"), pc_decision)
+        with sc2:
+            st.markdown(f"**{t('✅ Passed')}**")
+            for p in pc_passed:
+                st.write(f"• {p}")
+            st.markdown(f"**{t('❌ Failed')}**")
+            for f in pc_failed:
+                st.write(f"• {f}")
+
+        # ── 3. Golden Triggers ────────────────────────────────────────────────
+        synthetic_info = {
+            "shortName":              pc_name,
+            "totalRevenue":           pc_rev_cur * 1000,
+            "netIncomeToCommon":      pc_net_inc * 1000,
+            "freeCashflow":           fcf * 1000,
+            "operatingMargins":       (op_margin or 0) / 100,
+            "revenueGrowth":          (rev_growth or 0) / 100,
+            "returnOnEquity":         (roe or 0) / 100,
+            "debtToEquity":           (debt_equity or 0) * 100,
+            "trailingPE":             pe,
+            "pegRatio":               None,
+            "earningsGrowth":         (rev_growth or 0) / 100,
+            "sharesPercentSharesOut": 0,
+            "currentPrice":           imp_price,
+            "fiftyTwoWeekHigh":       None,
+            "financialCurrency":      pc_currency,
+        }
+        pc_triggers = golden_triggers(synthetic_info)
+        if pc_triggers:
+            st.markdown(f"#### 🌟 {t('Golden Triggers Detected')}")
+            st.info(t("Strong signals found — stock qualifies even without a full score"))
+            for trig in pc_triggers:
+                st.write(f"• {trig}")
+
+        # ── 4. Full Investor Analysis ─────────────────────────────────────────
+        st.markdown("---")
+        if st.button(t("🤖 Run Full Investor Analysis"), use_container_width=True, key="pc_run_analysis"):
+            pc_ticker_id = "PRIVATE_" + "".join(c for c in pc_name.upper() if c.isalnum() or c == "_")
+            pc_ticker_lw = pc_ticker_id.lower()
+
+            project_root  = Path(__file__).resolve().parent
+            examples_root = project_root / "examples"
+            outputs_root  = project_root / "data" / "outputs"
+            fixtures_root = project_root / "tests" / "fixtures"
+            portfolio_ctx = project_root / "examples" / "portfolio_context.yaml"
+
+            pc_yaml_data = {
+                "metadata": {
+                    "schema_name":            "backoffice_data_pack_v2",
+                    "schema_version":         2,
+                    "company_name":           pc_name,
+                    "ticker":                 pc_ticker_id,
+                    "analysis_date":          date.today().isoformat(),
+                    "latest_annual_period":   "Current Year",
+                    "latest_quarterly_period":"Not available",
+                    "reporting_standard":     "Manual Entry",
+                    "data_entry_mode":        "manual_private_company",
+                    "units":                  "thousands_local_currency",
+                    "notes": [f"Manually entered data. Currency: {pc_currency}. Status: {pc_status}."],
+                },
+                "company_identity": {
+                    "company_name": pc_name, "ticker": pc_ticker_id,
+                    "exchange": "Private", "market": pc_status,
+                    "currency": pc_currency, "sector": pc_sector,
+                    "industry": pc_sector, "fiscal_year_end": "",
+                    "reporting_standard": "Manual Entry",
+                },
+                "business_model": {
+                    "summary": pc_desc or f"{pc_name} operates in the {pc_sector} sector.",
+                    "revenue_model": ["Details from manual entry."],
+                    "neutral_observations": ["Manually entered data — verify with primary sources."],
+                },
+                "products_customers_revenue_segments": {
+                    "segments": [{"name": "Total", "revenue": pc_rev_cur, "operating_income": op_income, "examples": []}],
+                    "customer_groups": ["Not specified."],
+                },
+                "financial_statements_summary": {
+                    "annual": {
+                        "period": "Current Year",
+                        "revenue": pc_rev_cur, "gross_profit": gross_profit,
+                        "operating_income": op_income, "net_income": pc_net_inc,
+                        "operating_cash_flow": pc_op_cf, "capex": pc_capex,
+                        "free_cash_flow": fcf,
+                        "cash_and_short_term_investments": None,
+                        "total_assets": pc_assets, "long_term_debt": pc_debt,
+                        "total_liabilities": None, "shareholders_equity": pc_equity,
+                        "dividends_paid": None, "share_repurchases": None,
+                    },
+                },
+                "calculated_financial_metrics": {
+                    "period": "Current Year",
+                    "gross_margin":               round((gross_margin or 0) / 100, 4),
+                    "operating_margin":           round((op_margin or 0) / 100, 4),
+                    "net_margin":                 round(_safe_div(pc_net_inc, pc_rev_cur) or 0, 4),
+                    "free_cash_flow_margin":      round(_safe_div(fcf, pc_rev_cur) or 0, 4),
+                    "operating_cash_flow_margin": round(_safe_div(pc_op_cf, pc_rev_cur) or 0, 4),
+                    "return_on_equity_proxy":     round((roe or 0) / 100, 4),
+                    "debt_to_equity":             round(debt_equity or 0, 4),
+                    "cash_to_long_term_debt":     None,
+                    "notes": ["Calculated from manually entered data."],
+                },
+                "quality_of_earnings":                  {"observations": ["Manual entry — verify quality."], "gaps": []},
+                "competitive_position_moat_indicators": {"moat_sources": ["Not specified."], "neutral_observations": []},
+                "growth_drivers":                       {"drivers": ["Not specified."], "watch_items": []},
+                "sector_specific_operating_kpis":       {"gaps": ["Not available from manual entry."]},
+                "management_ownership_incentives":      {"management_notes": ["Not specified."], "gaps": []},
+                "capital_allocation":                   {"period": "Current Year", "dividends_paid": None, "share_repurchases": None, "capex": pc_capex, "observations": []},
+                "capex_owner_earnings_proxy":           {"operating_cash_flow": pc_op_cf, "capex": pc_capex, "free_cash_flow": fcf, "owner_earnings_proxy": fcf, "caveat": "Manual entry.", "gaps": []},
+                "historical_valuation":                 {"current_snapshot_only": True, "observations": ["Not available."], "gaps": []},
+                "peer_comparison":                      {"status": "incomplete", "candidate_peers": [], "observations": ["Not available."], "gaps": []},
+                "valuation_snapshot":                   {"status": "manual_entry", "market_cap": pc_val or None, "observations": [f"Estimated value: {pc_val}K {pc_currency}" if pc_val else "No valuation provided."]},
+                "risk_register":                        {"risks": [{"name": "Private company risk", "description": "Limited disclosure and liquidity.", "severity": "medium"}]},
+                "scuttlebutt":                          {"status": "not_applicable", "observations": ["Private company."], "gaps": []},
+                "market_awareness":                     {"observations": ["Private company — no public market data."], "missing_items": []},
+                "index_benchmark_alternative":          {"benchmark_candidates": [], "observations": ["Not applicable for private company."], "gaps": []},
+                "portfolio_context_form":               {"status": "missing", "observations": [], "gaps": []},
+                "investor_data_map": {
+                    "buffett": {"relevant_sections": ["business_model", "calculated_financial_metrics", "capex_owner_earnings_proxy", "valuation_snapshot"]},
+                    "munger":  {"relevant_sections": ["business_model", "competitive_position_moat_indicators", "risk_register"]},
+                    "fisher":  {"relevant_sections": ["growth_drivers", "management_ownership_incentives"]},
+                    "lynch":   {"relevant_sections": ["financial_statements_summary", "calculated_financial_metrics"]},
+                    "bogle":   {"relevant_sections": ["index_benchmark_alternative", "market_awareness"]},
+                },
+                "sources_confidence_data_gaps": {
+                    "source_log": [{"source_id": f"{pc_ticker_lw}_manual", "source_name": "Manual Entry", "source_type": "manual", "retrieved_at": date.today().isoformat(), "confidence": "user_provided", "confidence_score": 0.70, "freshness": "current", "notes": "Entered by user in Tab 5."}],
+                    "known_gaps": ["Historical data missing.", "Peer comparison not available.", "Public market prices unavailable."],
+                },
+            }
+
+            yaml_path = examples_root / f"{pc_ticker_lw}_input.yaml"
+            yaml_path.parent.mkdir(parents=True, exist_ok=True)
+            yaml_path.write_text(yaml.dump(pc_yaml_data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+
+            with st.spinner(f"Running five investor agents for {pc_name}..."):
+                try:
+                    from broker_agents.deals.analyze_stock_intake import (
+                        build_ticker_analyze_stock_intake,
+                        with_financials_provider,
+                    )
+                    from broker_agents.deals.analyze_stock_runner import execute_analyze_stock
+
+                    intake    = build_ticker_analyze_stock_intake(
+                        ticker=pc_ticker_id,
+                        examples_root=examples_root,
+                        outputs_root=outputs_root,
+                        fixtures_root=fixtures_root,
+                        portfolio_context=portfolio_ctx if portfolio_ctx.exists() else None,
+                        financials_provider="sec_fixture",
+                    )
+                    intake    = with_financials_provider(intake, intake.financials_provider, intake.financials_root)
+                    execution = execute_analyze_stock(intake=intake, input_mode="ticker")
+                except Exception as e:
+                    st.error(f"Analysis error: {e}")
+                    import traceback
+                    st.code(traceback.format_exc())
+                    execution = None
+
+            if execution is not None:
+                pkg    = execution.package_payload
+                es     = pkg.get("executive_summary", {})
+                resps  = pkg.get("investor_responses", [])
+                wop    = pkg.get("backoffice_work_order_plan", {})
+
+                readiness   = es.get("backoffice_readiness_label", "Unknown")
+                src_status  = es.get("source_verification_status", "unknown")
+                n_responses = es.get("total_investor_responses", len(resps))
+
+                readiness_lower = readiness.lower()
+                if "ready" in readiness_lower and "needs" not in readiness_lower and "not" not in readiness_lower:
+                    card_color, badge_bg = "#1a4731", "#22c55e"
+                elif "needs work" in readiness_lower or "partial" in readiness_lower:
+                    card_color, badge_bg = "#4a3800", "#f59e0b"
+                else:
+                    card_color, badge_bg = "#4a1010", "#ef4444"
+
+                st.markdown(f"""
+<div style="background:{card_color};border-radius:12px;padding:24px 28px;margin-bottom:20px">
+  <div style="font-size:2rem;font-weight:700;color:#f8fafc">{pc_name} &nbsp;<span style="font-size:1rem;font-weight:400;color:#cbd5e1">{pc_status} · {pc_sector}</span></div>
+  <div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+    <span style="background:{badge_bg};color:#0f172a;border-radius:6px;padding:4px 12px;font-weight:600;font-size:0.9rem">{t(readiness)}</span>
+    <span style="color:#94a3b8;font-size:0.9rem">{t('Source verification')}: <strong style="color:#e2e8f0">{src_status}</strong></span>
+    <span style="color:#94a3b8;font-size:0.9rem">{t('Investor responses')}: <strong style="color:#e2e8f0">{n_responses}</strong></span>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+                _private_investor_cards(resps, execution)
+
+                work_orders = wop.get("work_orders", [])
+                if work_orders:
+                    with st.expander(f"🔧 {t('Backoffice Work Orders')} ({len(work_orders)} {t('total')})", expanded=False):
+                        wo_rows = [{
+                            t("ID"):           wo.get("work_order_id", ""),
+                            t("Evidence"):     wo.get("evidence_item", ""),
+                            t("Priority"):     wo.get("priority", ""),
+                            t("Blocks Promo"): "🚫" if wo.get("blocks_promotion") else "✅",
+                            t("Action"):       wo.get("suggested_backoffice_action", ""),
+                        } for wo in work_orders]
+                        st.dataframe(pd.DataFrame(wo_rows), use_container_width=True, hide_index=True)
+
+                report_path = execution.workflow_result.deal_output_dir / f"{pc_ticker_lw}_broker_deal_package.md"
+                if report_path.exists():
+                    st.markdown("---")
+                    st.download_button(
+                        label=t("💾 Download Full Report (.md)"),
+                        data=report_path.read_text(encoding="utf-8"),
+                        file_name=f"{pc_ticker_id}_broker_report.md",
+                        mime="text/markdown",
+                    )
