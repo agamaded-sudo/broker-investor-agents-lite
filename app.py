@@ -20,6 +20,15 @@ load_dotenv(Path(__file__).resolve().parent / ".env.local")
 
 st.set_page_config(page_title="Broker Investor Agents", layout="wide", page_icon="📊")
 
+# ── DEBUG: sidebar + main-area button (remove once confirmed working) ─────────
+st.sidebar.write("SIDEBAR TEST")
+if st.button("🌐 EN/AR"):
+    if st.session_state.get("lang", "en") == "en":
+        st.session_state["lang"] = "ar"
+    else:
+        st.session_state["lang"] = "en"
+    st.rerun()
+
 # ── Auth gate ─────────────────────────────────────────────────────────────────
 
 def _required_password() -> str | None:
