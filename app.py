@@ -304,6 +304,119 @@ if st.session_state.get("_translation_error"):
 st.title("📊 Broker Investor Agents")
 st.caption(t("Investment screening and independent investor analysis system"))
 
+def run_ai_work_orders(
+    ticker: str,
+    company_data: dict,
+    work_orders: list[dict],
+    progress_placeholder,
+) -> tuple[list[dict], dict]:
+    """
+    Complete each work order with Claude AI. Returns (completed_wos, summary).
+    completed_wos: list of dicts with keys: id, title, finding, confidence,
+                   confidence_pct, gap, investors, blocks_promo, priority.
+    summary: overall reliability stats stored in session_state.
+    """
+    if not ANTHROPIC_AVAILABLE or not _anthropic_api_key():
+        return [], {}
+
+    client = _anthropic.Anthropic(api_key=_anthropic_api_key())
+    company_summary = (
+        f"Company: {company_data.get('name')} ({ticker})\n"
+        f"Sector: {company_data.get('sector')}\n"
+        f"Price: {company_data.get('price')}  P/E: {company_data.get('pe')}\n"
+        f"Revenue growth: {company_data.get('revenue_growth')}%  "
+        f"Operating margin: {company_data.get('operating_margin')}%\n"
+        f"FCF: {company_data.get('fcf')}  ROE: {company_data.get('roe')}%  "
+        f"D/E: {company_data.get('debt_equity')}\n"
+        f"Market cap: {company_data.get('market_cap')}\n"
+        f"Description: {company_data.get('description')}"
+    )
+
+    completed: list[dict] = []
+    total = len(work_orders)
+    batch_size = 5
+
+    for batch_start in range(0, total, batch_size):
+        batch = work_orders[batch_start: batch_start + batch_size]
+        for i, wo in enumerate(batch):
+            idx = batch_start + i + 1
+            wo_id     = wo.get("work_order_id", f"WO-{idx}")
+            evidence  = wo.get("evidence_item", "")
+            action    = wo.get("suggested_backoffice_action", "")
+            task_desc = f"{evidence}. {action}".strip(". ")
+            investors = wo.get("related_investors") or []
+            blocks    = wo.get("blocks_promotion", False)
+            priority  = wo.get("priority", "medium")
+
+            progress_placeholder.caption(
+                f"Completing work order {idx}/{total}: {wo_id}…"
+            )
+
+            prompt = f"""You are an investment research analyst completing a due diligence task.
+
+{company_summary}
+
+Task: {task_desc}
+
+Complete this due diligence task:
+1. FINDING: Your analysis/finding (2-3 sentences using available public information)
+2. CONFIDENCE: High/Medium/Low (XX%) — explain why
+3. GAP: What specific data was unavailable that would improve this analysis
+
+Be specific and factual. If data is truly unavailable, say so clearly.
+Do not fabricate specific numbers you don't have."""
+
+            try:
+                msg = client.messages.create(
+                    model="claude-haiku-4-5-20251001",
+                    max_tokens=350,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                raw = _wo_name_clean(msg.content[0].text)
+            except Exception:
+                raw = "1. FINDING: Analysis unavailable.\n2. CONFIDENCE: Low (0%)\n3. GAP: API error."
+
+            import re as _re
+
+            def _section(label: str, text: str) -> str:
+                m = _re.search(rf"{label}[:\s]+(.*?)(?=\n\d\.|$)", text, _re.S | _re.I)
+                return m.group(1).strip() if m else text.strip()
+
+            finding    = _section("FINDING", raw)
+            confidence = _section("CONFIDENCE", raw)
+            gap        = _section("GAP", raw)
+            conf_pct   = _parse_confidence_pct(confidence)
+
+            completed.append({
+                "id":             wo_id,
+                "title":          evidence[:80],
+                "finding":        finding,
+                "confidence":     confidence,
+                "confidence_pct": conf_pct,
+                "gap":            gap,
+                "investors":      investors,
+                "blocks_promo":   blocks,
+                "priority":       priority,
+            })
+
+    progress_placeholder.empty()
+
+    high    = [w for w in completed if w["confidence_pct"] >= 70]
+    medium  = [w for w in completed if 40 <= w["confidence_pct"] < 70]
+    low     = [w for w in completed if w["confidence_pct"] < 40]
+    overall = round(sum(w["confidence_pct"] for w in completed) / max(len(completed), 1))
+    key_gaps = [w["gap"] for w in low if w["gap"] and len(w["gap"]) > 10][:5]
+
+    summary = {
+        "high_confidence":    [w["id"] for w in high],
+        "medium_confidence":  [w["id"] for w in medium],
+        "low_confidence":     [w["id"] for w in low],
+        "key_gaps":           key_gaps,
+        "overall_reliability": overall,
+    }
+    return completed, summary
+
+
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     t("🔭 Tab 1 — Market Scanner"),
     t("📡 Tab 2 — Initial Scan"),
@@ -1563,122 +1676,6 @@ def _parse_confidence_pct(confidence_str: str) -> int:
     return int(m.group(1)) if m else {"high": 75, "medium": 50, "low": 25}.get(
         confidence_str.lower().split()[0], 50
     )
-
-
-def run_ai_work_orders(
-    ticker: str,
-    company_data: dict,
-    work_orders: list[dict],
-    progress_placeholder,
-) -> tuple[list[dict], dict]:
-    """
-    Complete each work order with Claude AI. Returns (completed_wos, summary).
-    completed_wos: list of dicts with keys: id, title, finding, confidence,
-                   confidence_pct, gap, investors, blocks_promo, priority.
-    summary: overall reliability stats stored in session_state.
-    """
-    if not ANTHROPIC_AVAILABLE or not _anthropic_api_key():
-        return [], {}
-
-    client = _anthropic.Anthropic(api_key=_anthropic_api_key())
-    company_summary = (
-        f"Company: {company_data.get('name')} ({ticker})\n"
-        f"Sector: {company_data.get('sector')}\n"
-        f"Price: {company_data.get('price')}  P/E: {company_data.get('pe')}\n"
-        f"Revenue growth: {company_data.get('revenue_growth')}%  "
-        f"Operating margin: {company_data.get('operating_margin')}%\n"
-        f"FCF: {company_data.get('fcf')}  ROE: {company_data.get('roe')}%  "
-        f"D/E: {company_data.get('debt_equity')}\n"
-        f"Market cap: {company_data.get('market_cap')}\n"
-        f"Description: {company_data.get('description')}"
-    )
-
-    completed: list[dict] = []
-    total = len(work_orders)
-    batch_size = 5
-
-    for batch_start in range(0, total, batch_size):
-        batch = work_orders[batch_start: batch_start + batch_size]
-        for i, wo in enumerate(batch):
-            idx = batch_start + i + 1
-            wo_id    = wo.get("work_order_id", f"WO-{idx}")
-            evidence = wo.get("evidence_item", "")
-            action   = wo.get("suggested_backoffice_action", "")
-            task_desc = f"{evidence}. {action}".strip(". ")
-            investors = wo.get("related_investors") or []
-            blocks    = wo.get("blocks_promotion", False)
-            priority  = wo.get("priority", "medium")
-
-            progress_placeholder.caption(
-                f"Completing work order {idx}/{total}: {wo_id}…"
-            )
-
-            prompt = f"""You are an investment research analyst completing a due diligence task.
-
-{company_summary}
-
-Task: {task_desc}
-
-Complete this due diligence task:
-1. FINDING: Your analysis/finding (2-3 sentences using available public information)
-2. CONFIDENCE: High/Medium/Low (XX%) — explain why
-3. GAP: What specific data was unavailable that would improve this analysis
-
-Be specific and factual. If data is truly unavailable, say so clearly.
-Do not fabricate specific numbers you don't have."""
-
-            try:
-                msg = client.messages.create(
-                    model="claude-haiku-4-5-20251001",
-                    max_tokens=350,
-                    messages=[{"role": "user", "content": prompt}],
-                )
-                raw = _wo_name_clean(msg.content[0].text)
-            except Exception:
-                raw = "1. FINDING: Analysis unavailable.\n2. CONFIDENCE: Low (0%)\n3. GAP: API error."
-
-            # Parse sections
-            def _section(label: str, text: str) -> str:
-                import re
-                m = re.search(
-                    rf"{label}[:\s]+(.*?)(?=\n\d\.|$)", text, re.S | re.I
-                )
-                return m.group(1).strip() if m else text.strip()
-
-            finding    = _section("FINDING", raw)
-            confidence = _section("CONFIDENCE", raw)
-            gap        = _section("GAP", raw)
-            conf_pct   = _parse_confidence_pct(confidence)
-
-            completed.append({
-                "id":             wo_id,
-                "title":          evidence[:80],
-                "finding":        finding,
-                "confidence":     confidence,
-                "confidence_pct": conf_pct,
-                "gap":            gap,
-                "investors":      investors,
-                "blocks_promo":   blocks,
-                "priority":       priority,
-            })
-
-    progress_placeholder.empty()
-
-    # Build summary
-    high   = [w for w in completed if w["confidence_pct"] >= 70]
-    medium = [w for w in completed if 40 <= w["confidence_pct"] < 70]
-    low    = [w for w in completed if w["confidence_pct"] < 40]
-    overall = round(sum(w["confidence_pct"] for w in completed) / max(len(completed), 1))
-    key_gaps = [w["gap"] for w in low if w["gap"] and len(w["gap"]) > 10][:5]
-
-    summary = {
-        "high_confidence":   [w["id"] for w in high],
-        "medium_confidence": [w["id"] for w in medium],
-        "low_confidence":    [w["id"] for w in low],
-        "key_gaps":          key_gaps,
-        "overall_reliability": overall,
-    }
-    return completed, summary
 
 
 def _show_rule_based(r: dict, investor: str, execution) -> None:
