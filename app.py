@@ -304,6 +304,116 @@ if st.session_state.get("_translation_error"):
 st.title("📊 Broker Investor Agents")
 st.caption(t("Investment screening and independent investor analysis system"))
 
+def _clean_report_text(text: str) -> str:
+    """Sanitise a broker deal package MD before download."""
+    import re
+
+    # Issue 1 — strip absolute deployment paths
+    text = text.replace("/mount/src/broker-investor-agents-lite/", "")
+    # catch any remaining long absolute paths, keep only the trailing filename
+    text = re.sub(r"/[^\s\"'|]+/([^\s\"'/|]+\.\w+)", r"\1", text)
+
+    # Issue 2 & 6 — Fisher-style / -style patterns → methodology note
+    _style_map = {
+        "The Value Seeker-style":  "Value Seeker methodology:",
+        "The Rationalist-style":   "Rationalist methodology:",
+        "The Growth Hunter-style": "Growth Hunter methodology:",
+        "The Story Finder-style":  "Story Finder methodology:",
+        "The Index Keeper-style":  "Index Keeper methodology:",
+        # original names in case they appear before persona substitution
+        "Buffett-style":  "Value Seeker methodology:",
+        "Munger-style":   "Rationalist methodology:",
+        "Fisher-style":   "Growth Hunter methodology:",
+        "Lynch-style":    "Story Finder methodology:",
+        "Bogle-style":    "Index Keeper methodology:",
+    }
+    for old, new in _style_map.items():
+        text = text.replace(old, new)
+
+    # Issue 3 — "the <Name>" → avoid "the The ..." double article
+    _the_map = {
+        "the Buffett": "The Value Seeker",
+        "the Munger":  "The Rationalist",
+        "the Fisher":  "The Growth Hunter",
+        "the Lynch":   "the Story Finder",
+        "the Bogle":   "The Index Keeper",
+    }
+    for old, new in _the_map.items():
+        text = text.replace(old, new)
+
+    # Issue 4 — filename slugs in tables
+    _slug_map = {
+        "_buffett_": "_value_seeker_",
+        "_munger_":  "_rationalist_",
+        "_fisher_":  "_growth_hunter_",
+        "_lynch_":   "_story_finder_",
+        "_bogle_":   "_index_keeper_",
+    }
+    for old, new in _slug_map.items():
+        text = text.replace(old, new)
+
+    # Core name substitution (must come after -style and slug fixes)
+    _name_map = {
+        "Buffett": "The Value Seeker",
+        "Munger":  "The Rationalist",
+        "Fisher":  "The Growth Hunter",
+        "Lynch":   "The Story Finder",
+        "Bogle":   "The Index Keeper",
+    }
+    for old, new in _name_map.items():
+        text = text.replace(old, new)
+
+    return text
+
+
+def generate_ai_next_actions(wo_summary: dict, company_data: dict) -> list[str]:
+    """Generate 5-7 specific, prioritised next actions from WO gaps via Claude."""
+    if not ANTHROPIC_AVAILABLE or not _anthropic_api_key():
+        return []
+
+    low_ids  = wo_summary.get("low_confidence", [])
+    med_ids  = wo_summary.get("medium_confidence", [])
+    gaps     = wo_summary.get("key_gaps", [])
+    overall  = wo_summary.get("overall_reliability", 50)
+
+    gaps_text = "\n".join(f"- {g}" for g in gaps) if gaps else "None identified"
+    low_text  = ", ".join(low_ids[:8]) if low_ids else "none"
+    med_text  = ", ".join(med_ids[:8]) if med_ids else "none"
+
+    prompt = f"""You are an investment research coordinator reviewing due diligence gaps.
+
+Company: {company_data.get('name')} ({company_data.get('ticker')})
+Sector: {company_data.get('sector')}
+Overall data reliability: {overall}%
+
+Low-confidence work orders (need most attention): {low_text}
+Medium-confidence work orders: {med_text}
+Key data gaps identified:
+{gaps_text}
+
+Generate 5-7 specific, prioritised next actions to address these gaps.
+Each action should:
+- Be concrete and actionable (who does what, where to find it)
+- Reference specific work order IDs where relevant
+- Be ordered by priority (most critical first)
+
+Format: one action per line, starting with "Priority N: " or "Optional: ".
+Do not use bullet points. Return only the action lines."""
+
+    try:
+        client = _anthropic.Anthropic(api_key=_anthropic_api_key())
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=400,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = msg.content[0].text.strip()
+        actions = [ln.strip() for ln in raw.splitlines() if ln.strip()]
+        return [_wo_name_clean(a) for a in actions]
+    except Exception:
+        return []
+
+
 _WO_NAME_SUB = {
     "Buffett": "The Value Seeker",
     "Munger":  "The Rationalist",
@@ -314,6 +424,28 @@ _WO_NAME_SUB = {
 
 
 def _wo_name_clean(text: str) -> str:
+    """Clean investor names and awkward patterns from any UI string."""
+    # -style patterns first (before core name swap)
+    _style = {
+        "Buffett-style": "Value Seeker methodology:",
+        "Munger-style":  "Rationalist methodology:",
+        "Fisher-style":  "Growth Hunter methodology:",
+        "Lynch-style":   "Story Finder methodology:",
+        "Bogle-style":   "Index Keeper methodology:",
+    }
+    for old, new in _style.items():
+        text = text.replace(old, new)
+    # "the Name" double-article fix
+    _the = {
+        "the Buffett": "The Value Seeker",
+        "the Munger":  "The Rationalist",
+        "the Fisher":  "The Growth Hunter",
+        "the Lynch":   "the Story Finder",
+        "the Bogle":   "The Index Keeper",
+    }
+    for old, new in _the.items():
+        text = text.replace(old, new)
+    # core name substitution
     for raw, disp in _WO_NAME_SUB.items():
         text = text.replace(raw, disp)
     return text
@@ -1234,7 +1366,7 @@ with tab3:
                         t("Category"):      c.get("category", ""),
                         t("Status"):        c.get("status", ""),
                         t("Blocks Promo"):  "🚫 Yes" if c.get("blocks_promotion") else "✅ No",
-                        t("Broker Action"): c.get("broker_action", ""),
+                        t("Broker Action"): _wo_name_clean(c.get("broker_action", "")),
                     } for c in svm_cats]
                     st.dataframe(pd.DataFrame(svm_rows), use_container_width=True, hide_index=True)
 
@@ -1321,29 +1453,28 @@ with tab3:
                         } for wo in work_orders]
                         st.dataframe(pd.DataFrame(wo_rows), use_container_width=True, hide_index=True)
 
-            # Next Actions
+            # Next Actions — AI-generated when WO summary is available
             next_actions = es.get("backoffice_next_actions") or []
-            if next_actions:
+            _ai_next_actions = []
+            if _ai_available and "_wo_summary" in st.session_state:
+                with st.spinner(t("Generating AI next actions...")):
+                    _ai_next_actions = generate_ai_next_actions(
+                        st.session_state["_wo_summary"], _company_data
+                    )
+            display_actions = _ai_next_actions or [_wo_name_clean(a) for a in next_actions]
+            if display_actions:
                 with st.expander(f"📋 {t('Next Actions')}", expanded=False):
-                    for action in next_actions:
-                        st.write(f"• {t(action)}")
+                    for action in display_actions:
+                        st.write(f"• {action}")
 
             # ── 5. Download ───────────────────────────────────────────────────
-            _PERSONA_NAME_MAP = {
-                "Buffett": "The Value Seeker",
-                "Munger":  "The Rationalist",
-                "Fisher":  "The Growth Hunter",
-                "Lynch":   "The Story Finder",
-                "Bogle":   "The Index Keeper",
-            }
             report_path = (
                 execution.workflow_result.deal_output_dir
                 / f"{ticker_lw}_broker_deal_package.md"
             )
             if report_path.exists():
                 report_text = report_path.read_text(encoding="utf-8")
-                for _raw, _display in _PERSONA_NAME_MAP.items():
-                    report_text = report_text.replace(_raw, _display)
+                report_text = _clean_report_text(report_text)
                 st.markdown("---")
                 st.download_button(
                     label=t("💾 Download Full Report (.md)"),
