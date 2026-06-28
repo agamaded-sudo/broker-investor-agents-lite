@@ -1537,7 +1537,8 @@ with tab5:
                 st.write(f"• {trig}")
 
         # ── 4. Store data for Run button (which lives outside if-submitted) ──
-        _pc_ticker_id = "PRIVATE_" + "".join(c for c in pc_name.upper() if c.isalnum() or c == "_")
+        # Ticker must match [A-Z0-9.-]+ — underscores are invalid, use hyphen
+        _pc_ticker_id = "PVT-" + "".join(c for c in pc_name.upper() if c.isalnum())
         _pc_ticker_lw = _pc_ticker_id.lower()
         st.session_state["_pc_data"] = {
             "name":      pc_name,
