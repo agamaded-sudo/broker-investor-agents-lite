@@ -1103,54 +1103,69 @@ with tab3:
                         st.write(f"• {t(action)}")
 
             # ── 4. Download ──────────────────────────────────────────────────
+            _PERSONA_NAME_MAP = {
+                "Buffett": "The Value Seeker",
+                "Munger":  "The Rationalist",
+                "Fisher":  "The Growth Hunter",
+                "Lynch":   "The Story Finder",
+                "Bogle":   "The Index Keeper",
+            }
             report_path = (
                 execution.workflow_result.deal_output_dir
                 / f"{ticker_lw}_broker_deal_package.md"
             )
             if report_path.exists():
+                report_text = report_path.read_text(encoding="utf-8")
+                for _raw, _display in _PERSONA_NAME_MAP.items():
+                    report_text = report_text.replace(_raw, _display)
                 st.markdown("---")
                 st.download_button(
                     label=t("💾 Download Full Report (.md)"),
-                    data=report_path.read_text(encoding="utf-8"),
+                    data=report_text,
                     file_name=f"{ticker_up}_broker_report.md",
                     mime="text/markdown"
                 )
 
-            # ── 5. AI Deep Analysis ──────────────────────────────────────────
-            st.markdown("---")
-            st.markdown(f"### 🤖 {t('AI-Powered Deep Analysis')}")
-            st.caption(t("Real analysis using each analyst's investment philosophy via Claude AI"))
+            # Store company data so the AI button (outside this block) can use it
+            ticker_info_ai = yf.Ticker(ticker_up).info
+            st.session_state["_ai_company_data"] = {
+                "name":             ticker_info_ai.get("shortName", ticker_up),
+                "ticker":           ticker_up,
+                "sector":           ticker_info_ai.get("sector", "N/A"),
+                "price":            ticker_info_ai.get("currentPrice", "N/A"),
+                "pe":               ticker_info_ai.get("trailingPE", "N/A"),
+                "revenue_growth":   round((ticker_info_ai.get("revenueGrowth", 0) or 0) * 100, 1),
+                "operating_margin": round((ticker_info_ai.get("operatingMargins", 0) or 0) * 100, 1),
+                "fcf":              ticker_info_ai.get("freeCashflow", "N/A"),
+                "roe":              round((ticker_info_ai.get("returnOnEquity", 0) or 0) * 100, 1),
+                "debt_equity":      ticker_info_ai.get("debtToEquity", "N/A"),
+                "market_cap":       ticker_info_ai.get("marketCap", "N/A"),
+                "description":      (ticker_info_ai.get("longBusinessSummary", "N/A") or "N/A")[:500],
+            }
 
-            if st.button(t("🧠 Run AI Analysis"), key="ai_analysis_btn"):
-                if not _anthropic_api_key():
-                    st.warning(t("ANTHROPIC_API_KEY not configured — add it to Streamlit secrets or .env.local"))
-                else:
-                    ticker_info_ai = yf.Ticker(ticker_up).info
-                    company_data_ai = {
-                        "name":             ticker_info_ai.get("shortName", ticker_up),
-                        "ticker":           ticker_up,
-                        "sector":           ticker_info_ai.get("sector", "N/A"),
-                        "price":            ticker_info_ai.get("currentPrice", "N/A"),
-                        "pe":               ticker_info_ai.get("trailingPE", "N/A"),
-                        "revenue_growth":   round((ticker_info_ai.get("revenueGrowth", 0) or 0) * 100, 1),
-                        "operating_margin": round((ticker_info_ai.get("operatingMargins", 0) or 0) * 100, 1),
-                        "fcf":              ticker_info_ai.get("freeCashflow", "N/A"),
-                        "roe":              round((ticker_info_ai.get("returnOnEquity", 0) or 0) * 100, 1),
-                        "debt_equity":      ticker_info_ai.get("debtToEquity", "N/A"),
-                        "market_cap":       ticker_info_ai.get("marketCap", "N/A"),
-                        "description":      (ticker_info_ai.get("longBusinessSummary", "N/A") or "N/A")[:500],
-                    }
-                    for _pk in ["buffett", "munger", "fisher", "lynch", "bogle"]:
-                        with st.expander(
-                            f"{persona_icon(_pk)} {persona_display(_pk)} — {t('AI Analysis')}",
-                            expanded=True,
-                        ):
-                            with st.spinner(f"{t('Analyzing with')} {persona_display(_pk)} {t('philosophy')}..."):
-                                ai_result = run_ai_investor_analysis(_pk, company_data_ai)
-                            if ai_result:
-                                st.markdown(ai_result)
-                            else:
-                                st.warning(t("AI analysis unavailable — showing rule-based analysis only"))
+    # ── AI Deep Analysis (outside if-rep_btn so button click works) ──────────
+    # Company data is stored in session_state when "Analyze" runs above.
+    if "_ai_company_data" in st.session_state:
+        st.markdown("---")
+        st.markdown(f"### 🤖 {t('AI-Powered Deep Analysis')}")
+        st.caption(t("Real analysis using each analyst's investment philosophy via Claude AI"))
+
+        if st.button(t("🧠 Run AI Analysis"), key="ai_analysis_btn"):
+            if not _anthropic_api_key():
+                st.warning(t("ANTHROPIC_API_KEY not configured — add it to Streamlit secrets or .env.local"))
+            else:
+                _cd = st.session_state["_ai_company_data"]
+                for _pk in ["buffett", "munger", "fisher", "lynch", "bogle"]:
+                    with st.expander(
+                        f"{persona_icon(_pk)} {persona_display(_pk)} — {t('AI Analysis')}",
+                        expanded=True,
+                    ):
+                        with st.spinner(f"{t('Analyzing with')} {persona_display(_pk)} {t('philosophy')}..."):
+                            ai_result = run_ai_investor_analysis(_pk, _cd)
+                        if ai_result:
+                            st.markdown(ai_result)
+                        else:
+                            st.warning(t("AI analysis unavailable — showing rule-based analysis only"))
 
 
 # ── Tab 3: Market Scanner ─────────────────────────────────────────────────────
