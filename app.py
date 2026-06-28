@@ -304,6 +304,34 @@ if st.session_state.get("_translation_error"):
 st.title("📊 Broker Investor Agents")
 st.caption(t("Investment screening and independent investor analysis system"))
 
+_WO_NAME_SUB = {
+    "Buffett": "The Value Seeker",
+    "Munger":  "The Rationalist",
+    "Fisher":  "The Growth Hunter",
+    "Lynch":   "The Story Finder",
+    "Bogle":   "The Index Keeper",
+}
+
+
+def _wo_name_clean(text: str) -> str:
+    for raw, disp in _WO_NAME_SUB.items():
+        text = text.replace(raw, disp)
+    return text
+
+
+def _parse_confidence_pct(confidence_str: str) -> int:
+    import re
+    m = re.search(r"(\d+)\s*%", confidence_str or "")
+    if m:
+        return min(100, max(0, int(m.group(1))))
+    text_lower = (confidence_str or "").lower()
+    if "high" in text_lower:
+        return 75
+    if "medium" in text_lower:
+        return 50
+    return 25
+
+
 def run_ai_work_orders(
     ticker: str,
     company_data: dict,
@@ -1654,28 +1682,6 @@ def _safe_div(num, den):
     return num / den if den else None
 
 
-_WO_NAME_SUB = {
-    "Buffett": "The Value Seeker",
-    "Munger":  "The Rationalist",
-    "Fisher":  "The Growth Hunter",
-    "Lynch":   "The Story Finder",
-    "Bogle":   "The Index Keeper",
-}
-
-
-def _wo_name_clean(text: str) -> str:
-    for raw, disp in _WO_NAME_SUB.items():
-        text = text.replace(raw, disp)
-    return text
-
-
-def _parse_confidence_pct(confidence_str: str) -> int:
-    """Extract numeric percentage from a confidence string like 'High (75%)'."""
-    import re
-    m = re.search(r"(\d+)%", confidence_str)
-    return int(m.group(1)) if m else {"high": 75, "medium": 50, "low": 25}.get(
-        confidence_str.lower().split()[0], 50
-    )
 
 
 def _show_rule_based(r: dict, investor: str, execution) -> None:
