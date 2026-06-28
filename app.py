@@ -242,6 +242,13 @@ Provide a structured analysis with:
 Be specific to this company's actual data. Do not give generic responses.
 Format your response clearly with these 5 labeled sections."""
 
+    _NAME_SUB = {
+        "Buffett": "The Value Seeker",
+        "Munger":  "The Rationalist",
+        "Fisher":  "The Growth Hunter",
+        "Lynch":   "The Story Finder",
+        "Bogle":   "The Index Keeper",
+    }
     try:
         client = _anthropic.Anthropic(api_key=api_key)
         msg = client.messages.create(
@@ -249,7 +256,10 @@ Format your response clearly with these 5 labeled sections."""
             max_tokens=600,
             messages=[{"role": "user", "content": prompt}],
         )
-        return msg.content[0].text
+        text = msg.content[0].text
+        for _raw, _disp in _NAME_SUB.items():
+            text = text.replace(_raw, _disp)
+        return text
     except Exception:
         return None
 
@@ -1003,7 +1013,7 @@ with tab3:
 </div>
 """, unsafe_allow_html=True)
 
-            # ── 2. Investor decision cards ───────────────────────────────────
+            # ── 2. Investor decision cards (summary row) ─────────────────────
             INTEREST_COLORS = {
                 "High Interest":       ("#14532d", "#22c55e"),
                 "Conditional Interest":("#14532d", "#4ade80"),
@@ -1016,13 +1026,13 @@ with tab3:
             st.markdown(f"### {t('Investor Decisions')}")
             cols = st.columns(len(resps) if resps else 1)
             for col, r in zip(cols, resps):
-                investor   = r.get("investor", "?")
-                icon       = persona_icon(investor)
-                disp_name  = persona_display(investor)
-                level      = r.get("interest_level", "Unknown")
-                decision   = r.get("final_decision", "—")
-                concern    = r.get("main_concern", "—")
-                bg, badge  = INTEREST_COLORS.get(level, ("#1e293b", "#94a3b8"))
+                investor  = r.get("investor", "?")
+                icon      = persona_icon(investor)
+                disp_name = persona_display(investor)
+                level     = r.get("interest_level", "Unknown")
+                decision  = r.get("final_decision", "—")
+                concern   = r.get("main_concern", "—")
+                bg, badge = INTEREST_COLORS.get(level, ("#1e293b", "#94a3b8"))
                 with col:
                     st.markdown(f"""
 <div style="background:{bg};border-radius:10px;padding:16px;height:100%">
@@ -1036,8 +1046,44 @@ with tab3:
 
             st.markdown("")  # spacer
 
-            # ── 3. Expandable sections ───────────────────────────────────────
+            # ── 3. Unified per-analyst AI expanders ──────────────────────────
+            # Build company_data once from yfinance for all AI calls
+            _ticker_info = yf.Ticker(ticker_up).info
+            _company_data = {
+                "name":             _ticker_info.get("shortName", ticker_up),
+                "ticker":           ticker_up,
+                "sector":           _ticker_info.get("sector", "N/A"),
+                "price":            _ticker_info.get("currentPrice", "N/A"),
+                "pe":               _ticker_info.get("trailingPE", "N/A"),
+                "revenue_growth":   round((_ticker_info.get("revenueGrowth", 0) or 0) * 100, 1),
+                "operating_margin": round((_ticker_info.get("operatingMargins", 0) or 0) * 100, 1),
+                "fcf":              _ticker_info.get("freeCashflow", "N/A"),
+                "roe":              round((_ticker_info.get("returnOnEquity", 0) or 0) * 100, 1),
+                "debt_equity":      _ticker_info.get("debtToEquity", "N/A"),
+                "market_cap":       _ticker_info.get("marketCap", "N/A"),
+                "description":      (_ticker_info.get("longBusinessSummary", "N/A") or "N/A")[:500],
+            }
+            _ai_available = bool(ANTHROPIC_AVAILABLE and _anthropic_api_key())
 
+            st.markdown(f"### {t('Investor Full Details')}")
+            for r in resps:
+                investor  = r.get("investor", "?")
+                icon      = persona_icon(investor)
+                disp_name = persona_display(investor)
+                level     = r.get("interest_level", "")
+                with st.expander(f"{icon} {disp_name} — {t(level)}", expanded=False):
+                    if _ai_available:
+                        with st.spinner(f"{t('Running AI deep analysis')}..."):
+                            ai_text = run_ai_investor_analysis(investor, _company_data)
+                        if ai_text:
+                            st.markdown(ai_text)
+                        else:
+                            st.caption(t("AI analysis unavailable — showing rule-based details"))
+                            _show_rule_based(r, investor, execution)
+                    else:
+                        _show_rule_based(r, investor, execution)
+
+            # ── 4. Supporting sections ────────────────────────────────────────
             # Source Verification Matrix
             svm_cats = svm.get("categories", [])
             if svm_cats:
@@ -1050,35 +1096,6 @@ with tab3:
                         t("Broker Action"): c.get("broker_action", ""),
                     } for c in svm_cats]
                     st.dataframe(pd.DataFrame(svm_rows), use_container_width=True, hide_index=True)
-
-            # Per-investor full details
-            st.markdown(f"### {t('Investor Full Details')}")
-            for r in resps:
-                investor  = r.get("investor", "?")
-                icon      = persona_icon(investor)
-                disp_name = persona_display(investor)
-                level     = r.get("interest_level", "")
-                with st.expander(f"{icon} {disp_name} — {t(level)}", expanded=False):
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        st.markdown(f"**{t('Final Decision')}:** {t(r.get('final_decision','—'))}")
-                        st.markdown(f"**{t('Interest Type')}:** {r.get('interest_type','—')}")
-                        st.markdown(f"**{t('Confidence')}:** {r.get('confidence','—')}")
-                        st.markdown(f"**{t('Main Positive Reason')}:** {t(r.get('main_positive_reason','—'))}")
-                    with c2:
-                        st.markdown(f"**{t('Main Concern')}:** {t(r.get('main_concern','—'))}")
-                        st.markdown(f"**{t('Required Evidence')}:** {t(r.get('required_evidence_before_serious_interest','—'))}")
-                        st.markdown(f"**{t('Safety Note')}:** {t(r.get('safety_note','—'))}")
-                    items = r.get("broker_follow_up_items") or []
-                    if items:
-                        st.markdown(f"**{t('Broker Follow-Up Items')}:**")
-                        for item in items:
-                            st.write(f"• {t(item)}")
-                    # Full response letter
-                    letter_path = execution.workflow_result.investor_response_letter_paths.get(investor.lower())
-                    if letter_path and Path(letter_path).exists():
-                        with st.expander(f"📄 {t('Full Response Letter')} — {disp_name}", expanded=False):
-                            st.markdown(Path(letter_path).read_text(encoding="utf-8"))
 
             # Backoffice Work Orders
             work_orders = wop.get("work_orders", [])
@@ -1102,7 +1119,7 @@ with tab3:
                     for action in next_actions:
                         st.write(f"• {t(action)}")
 
-            # ── 4. Download ──────────────────────────────────────────────────
+            # ── 5. Download ───────────────────────────────────────────────────
             _PERSONA_NAME_MAP = {
                 "Buffett": "The Value Seeker",
                 "Munger":  "The Rationalist",
@@ -1125,47 +1142,6 @@ with tab3:
                     file_name=f"{ticker_up}_broker_report.md",
                     mime="text/markdown"
                 )
-
-            # Store company data so the AI button (outside this block) can use it
-            ticker_info_ai = yf.Ticker(ticker_up).info
-            st.session_state["_ai_company_data"] = {
-                "name":             ticker_info_ai.get("shortName", ticker_up),
-                "ticker":           ticker_up,
-                "sector":           ticker_info_ai.get("sector", "N/A"),
-                "price":            ticker_info_ai.get("currentPrice", "N/A"),
-                "pe":               ticker_info_ai.get("trailingPE", "N/A"),
-                "revenue_growth":   round((ticker_info_ai.get("revenueGrowth", 0) or 0) * 100, 1),
-                "operating_margin": round((ticker_info_ai.get("operatingMargins", 0) or 0) * 100, 1),
-                "fcf":              ticker_info_ai.get("freeCashflow", "N/A"),
-                "roe":              round((ticker_info_ai.get("returnOnEquity", 0) or 0) * 100, 1),
-                "debt_equity":      ticker_info_ai.get("debtToEquity", "N/A"),
-                "market_cap":       ticker_info_ai.get("marketCap", "N/A"),
-                "description":      (ticker_info_ai.get("longBusinessSummary", "N/A") or "N/A")[:500],
-            }
-
-    # ── AI Deep Analysis (outside if-rep_btn so button click works) ──────────
-    # Company data is stored in session_state when "Analyze" runs above.
-    if "_ai_company_data" in st.session_state:
-        st.markdown("---")
-        st.markdown(f"### 🤖 {t('AI-Powered Deep Analysis')}")
-        st.caption(t("Real analysis using each analyst's investment philosophy via Claude AI"))
-
-        if st.button(t("🧠 Run AI Analysis"), key="ai_analysis_btn"):
-            if not _anthropic_api_key():
-                st.warning(t("ANTHROPIC_API_KEY not configured — add it to Streamlit secrets or .env.local"))
-            else:
-                _cd = st.session_state["_ai_company_data"]
-                for _pk in ["buffett", "munger", "fisher", "lynch", "bogle"]:
-                    with st.expander(
-                        f"{persona_icon(_pk)} {persona_display(_pk)} — {t('AI Analysis')}",
-                        expanded=True,
-                    ):
-                        with st.spinner(f"{t('Analyzing with')} {persona_display(_pk)} {t('philosophy')}..."):
-                            ai_result = run_ai_investor_analysis(_pk, _cd)
-                        if ai_result:
-                            st.markdown(ai_result)
-                        else:
-                            st.warning(t("AI analysis unavailable — showing rule-based analysis only"))
 
 
 # ── Tab 3: Market Scanner ─────────────────────────────────────────────────────
@@ -1495,6 +1471,31 @@ with tab4:
 
 def _safe_div(num, den):
     return num / den if den else None
+
+
+def _show_rule_based(r: dict, investor: str, execution) -> None:
+    """Render the rule-based detail fields inside an investor expander."""
+    disp_name = persona_display(investor)
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown(f"**{t('Final Decision')}:** {t(r.get('final_decision','—'))}")
+        st.markdown(f"**{t('Interest Type')}:** {r.get('interest_type','—')}")
+        st.markdown(f"**{t('Confidence')}:** {r.get('confidence','—')}")
+        st.markdown(f"**{t('Main Positive Reason')}:** {t(r.get('main_positive_reason','—'))}")
+    with c2:
+        st.markdown(f"**{t('Main Concern')}:** {t(r.get('main_concern','—'))}")
+        st.markdown(f"**{t('Required Evidence')}:** {t(r.get('required_evidence_before_serious_interest','—'))}")
+        st.markdown(f"**{t('Safety Note')}:** {t(r.get('safety_note','—'))}")
+    items = r.get("broker_follow_up_items") or []
+    if items:
+        st.markdown(f"**{t('Broker Follow-Up Items')}:**")
+        for item in items:
+            st.write(f"• {t(item)}")
+    if execution:
+        letter_path = execution.workflow_result.investor_response_letter_paths.get(investor.lower())
+        if letter_path and Path(letter_path).exists():
+            with st.expander(f"📄 {t('Full Response Letter')} — {disp_name}", expanded=False):
+                st.markdown(Path(letter_path).read_text(encoding="utf-8"))
 
 
 def _private_investor_cards(resps: list[dict], execution) -> None:
