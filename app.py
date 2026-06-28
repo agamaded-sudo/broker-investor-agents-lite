@@ -113,6 +113,147 @@ def t(text: str) -> str:
     return st.session_state[cache_key]
 
 
+# ── Investor Personas ─────────────────────────────────────────────────────────
+
+PERSONAS = {
+    "buffett": {
+        "internal": "Warren Buffett",
+        "en": "The Value Seeker",
+        "ar": "باحث القيمة",
+        "icon": "🏛️",
+        "philosophy": """You are an investment analyst who applies the investment \
+philosophy and methodology of Warren Buffett. Analyze using these principles:
+- Durable competitive advantage (economic moat)
+- Strong and consistent free cash flow
+- Honest, capable, and shareholder-friendly management
+- Intrinsic value with margin of safety
+- Long-term business quality over short-term price movements
+- Return on equity and capital allocation discipline""",
+    },
+    "munger": {
+        "internal": "Charlie Munger",
+        "en": "The Rationalist",
+        "ar": "العقلاني",
+        "icon": "🧠",
+        "philosophy": """You are an investment analyst who applies the investment \
+philosophy and methodology of Charlie Munger. Analyze using these principles:
+- Business quality and simplicity over complexity
+- Management incentives and integrity
+- Mental models and inversion thinking (what could go wrong?)
+- Avoiding psychological biases and errors
+- Concentrated positions in truly great businesses
+- Patience and discipline — fewer but better decisions""",
+    },
+    "fisher": {
+        "internal": "Philip Fisher",
+        "en": "The Growth Hunter",
+        "ar": "صائد النمو",
+        "icon": "🔬",
+        "philosophy": """You are an investment analyst who applies the investment \
+philosophy and methodology of Philip Fisher. Analyze using these principles:
+- Long-term qualitative growth potential
+- Management depth, integrity, and research culture
+- Scuttlebutt method: customer, supplier, competitor insights
+- Sales organization strength and product pipeline
+- Profit margins sustainability and improvement trends
+- Conservative accounting and financial transparency""",
+    },
+    "lynch": {
+        "internal": "Peter Lynch",
+        "en": "The Story Finder",
+        "ar": "كاشف القصص",
+        "icon": "📊",
+        "philosophy": """You are an investment analyst who applies the investment \
+philosophy and methodology of Peter Lynch. Analyze using these principles:
+- Invest in what you understand — clear business story
+- PEG ratio as primary valuation tool
+- Category classification: slow grower, stalwart, fast grower, cyclical, turnaround, asset play
+- Earnings growth durability and consistency
+- Avoid over-diversification — focus on best ideas
+- Institutional neglect as opportunity signal""",
+    },
+    "bogle": {
+        "internal": "John Bogle",
+        "en": "The Index Keeper",
+        "ar": "حارس المؤشر",
+        "icon": "📈",
+        "philosophy": """You are an investment analyst who applies the investment \
+philosophy and methodology of John Bogle. Analyze using these principles:
+- Cost efficiency — fees and expenses matter enormously
+- Broad diversification over concentration
+- Individual stock vs broad index comparison
+- Long-term market returns vs active management
+- Simplicity and discipline over complexity
+- Benchmark exposure: does owning this add value vs just buying the index?""",
+    },
+}
+
+
+def persona_display(key: str) -> str:
+    """Return the display name for a persona in the current language."""
+    lang = st.session_state.get("lang", "en")
+    p = PERSONAS.get(key.lower(), {})
+    return p.get(lang, p.get("en", key))
+
+
+def persona_icon(key: str) -> str:
+    return PERSONAS.get(key.lower(), {}).get("icon", "👤")
+
+
+def run_ai_investor_analysis(persona_key: str, company_data: dict) -> str | None:
+    """Run real AI analysis using Claude API with investor philosophy. Returns None on failure."""
+    if not ANTHROPIC_AVAILABLE:
+        return None
+    api_key = _anthropic_api_key()
+    if not api_key:
+        return None
+
+    persona = PERSONAS.get(persona_key.lower(), {})
+    philosophy = persona.get("philosophy", "")
+
+    company_info = f"""
+Company: {company_data.get('name', 'Unknown')}
+Ticker: {company_data.get('ticker', 'N/A')}
+Sector: {company_data.get('sector', 'N/A')}
+Current Price: {company_data.get('price', 'N/A')}
+P/E Ratio: {company_data.get('pe', 'N/A')}
+Revenue Growth: {company_data.get('revenue_growth', 'N/A')}%
+Operating Margin: {company_data.get('operating_margin', 'N/A')}%
+Free Cash Flow: {company_data.get('fcf', 'N/A')}
+ROE: {company_data.get('roe', 'N/A')}%
+Debt/Equity: {company_data.get('debt_equity', 'N/A')}
+Market Cap: {company_data.get('market_cap', 'N/A')}
+Business Description: {company_data.get('description', 'N/A')}
+"""
+
+    prompt = f"""{philosophy}
+
+Analyze this company and provide your assessment:
+
+{company_info}
+
+Provide a structured analysis with:
+1. DECISION: One of [Strong Interest / Conditional Interest / Watchlist / Needs More Evidence / Low Interest / Pass]
+2. MAIN POSITIVE: Key strength from your philosophy perspective (2-3 sentences)
+3. MAIN CONCERN: Primary concern or blocker (2-3 sentences)
+4. REQUIRED EVIDENCE: What additional information would change your view (1-2 sentences)
+5. SUMMARY: Overall 3-4 sentence investment thesis from your philosophical perspective
+
+Be specific to this company's actual data. Do not give generic responses.
+Format your response clearly with these 5 labeled sections."""
+
+    try:
+        client = _anthropic.Anthropic(api_key=api_key)
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=600,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return msg.content[0].text
+    except Exception:
+        return None
+
+
 # RTL CSS injection for Arabic
 if st.session_state["lang"] == "ar":
     st.markdown("""
@@ -863,10 +1004,6 @@ with tab3:
 """, unsafe_allow_html=True)
 
             # ── 2. Investor decision cards ───────────────────────────────────
-            INVESTOR_ICONS = {
-                "buffett": "🏦", "munger": "🧠", "fisher": "🔬",
-                "lynch":   "📊", "bogle":  "📈",
-            }
             INTEREST_COLORS = {
                 "High Interest":       ("#14532d", "#22c55e"),
                 "Conditional Interest":("#14532d", "#4ade80"),
@@ -880,7 +1017,8 @@ with tab3:
             cols = st.columns(len(resps) if resps else 1)
             for col, r in zip(cols, resps):
                 investor   = r.get("investor", "?")
-                icon       = INVESTOR_ICONS.get(investor.lower(), "👤")
+                icon       = persona_icon(investor)
+                disp_name  = persona_display(investor)
                 level      = r.get("interest_level", "Unknown")
                 decision   = r.get("final_decision", "—")
                 concern    = r.get("main_concern", "—")
@@ -889,7 +1027,7 @@ with tab3:
                     st.markdown(f"""
 <div style="background:{bg};border-radius:10px;padding:16px;height:100%">
   <div style="font-size:1.5rem">{icon}</div>
-  <div style="font-weight:700;color:#f1f5f9;margin:4px 0">{t(investor.capitalize())}</div>
+  <div style="font-weight:700;color:#f1f5f9;margin:4px 0">{disp_name}</div>
   <span style="background:{badge};color:#0f172a;border-radius:4px;padding:2px 8px;font-size:0.78rem;font-weight:600">{t(level)}</span>
   <div style="color:#cbd5e1;font-size:0.82rem;margin-top:8px"><strong>{t('Decision')}:</strong> {t(decision)}</div>
   <div style="color:#94a3b8;font-size:0.78rem;margin-top:4px"><strong>{t('Concern')}:</strong> {t(concern)}</div>
@@ -916,10 +1054,11 @@ with tab3:
             # Per-investor full details
             st.markdown(f"### {t('Investor Full Details')}")
             for r in resps:
-                investor = r.get("investor", "?")
-                icon     = INVESTOR_ICONS.get(investor.lower(), "👤")
-                level    = r.get("interest_level", "")
-                with st.expander(f"{icon} {t(investor.capitalize())} — {t(level)}", expanded=False):
+                investor  = r.get("investor", "?")
+                icon      = persona_icon(investor)
+                disp_name = persona_display(investor)
+                level     = r.get("interest_level", "")
+                with st.expander(f"{icon} {disp_name} — {t(level)}", expanded=False):
                     c1, c2 = st.columns(2)
                     with c1:
                         st.markdown(f"**{t('Final Decision')}:** {t(r.get('final_decision','—'))}")
@@ -938,7 +1077,7 @@ with tab3:
                     # Full response letter
                     letter_path = execution.workflow_result.investor_response_letter_paths.get(investor.lower())
                     if letter_path and Path(letter_path).exists():
-                        with st.expander(f"📄 {t('Full Response Letter')} — {t(investor.capitalize())}", expanded=False):
+                        with st.expander(f"📄 {t('Full Response Letter')} — {disp_name}", expanded=False):
                             st.markdown(Path(letter_path).read_text(encoding="utf-8"))
 
             # Backoffice Work Orders
@@ -976,6 +1115,42 @@ with tab3:
                     file_name=f"{ticker_up}_broker_report.md",
                     mime="text/markdown"
                 )
+
+            # ── 5. AI Deep Analysis ──────────────────────────────────────────
+            st.markdown("---")
+            st.markdown(f"### 🤖 {t('AI-Powered Deep Analysis')}")
+            st.caption(t("Real analysis using each analyst's investment philosophy via Claude AI"))
+
+            if st.button(t("🧠 Run AI Analysis"), key="ai_analysis_btn"):
+                if not _anthropic_api_key():
+                    st.warning(t("ANTHROPIC_API_KEY not configured — add it to Streamlit secrets or .env.local"))
+                else:
+                    ticker_info_ai = yf.Ticker(ticker_up).info
+                    company_data_ai = {
+                        "name":             ticker_info_ai.get("shortName", ticker_up),
+                        "ticker":           ticker_up,
+                        "sector":           ticker_info_ai.get("sector", "N/A"),
+                        "price":            ticker_info_ai.get("currentPrice", "N/A"),
+                        "pe":               ticker_info_ai.get("trailingPE", "N/A"),
+                        "revenue_growth":   round((ticker_info_ai.get("revenueGrowth", 0) or 0) * 100, 1),
+                        "operating_margin": round((ticker_info_ai.get("operatingMargins", 0) or 0) * 100, 1),
+                        "fcf":              ticker_info_ai.get("freeCashflow", "N/A"),
+                        "roe":              round((ticker_info_ai.get("returnOnEquity", 0) or 0) * 100, 1),
+                        "debt_equity":      ticker_info_ai.get("debtToEquity", "N/A"),
+                        "market_cap":       ticker_info_ai.get("marketCap", "N/A"),
+                        "description":      (ticker_info_ai.get("longBusinessSummary", "N/A") or "N/A")[:500],
+                    }
+                    for _pk in ["buffett", "munger", "fisher", "lynch", "bogle"]:
+                        with st.expander(
+                            f"{persona_icon(_pk)} {persona_display(_pk)} — {t('AI Analysis')}",
+                            expanded=True,
+                        ):
+                            with st.spinner(f"{t('Analyzing with')} {persona_display(_pk)} {t('philosophy')}..."):
+                                ai_result = run_ai_investor_analysis(_pk, company_data_ai)
+                            if ai_result:
+                                st.markdown(ai_result)
+                            else:
+                                st.warning(t("AI analysis unavailable — showing rule-based analysis only"))
 
 
 # ── Tab 3: Market Scanner ─────────────────────────────────────────────────────
@@ -1308,10 +1483,6 @@ def _safe_div(num, den):
 
 
 def _private_investor_cards(resps: list[dict], execution) -> None:
-    INVESTOR_ICONS = {
-        "buffett": "🏦", "munger": "🧠", "fisher": "🔬",
-        "lynch":   "📊", "bogle":  "📈",
-    }
     INTEREST_COLORS = {
         "High Interest":        ("#14532d", "#22c55e"),
         "Conditional Interest": ("#14532d", "#4ade80"),
@@ -1325,7 +1496,8 @@ def _private_investor_cards(resps: list[dict], execution) -> None:
     cols = st.columns(len(resps) if resps else 1)
     for col, r in zip(cols, resps):
         investor  = r.get("investor", "?")
-        icon      = INVESTOR_ICONS.get(investor.lower(), "👤")
+        icon      = persona_icon(investor)
+        disp_name = persona_display(investor)
         level     = r.get("interest_level", "Unknown")
         decision  = r.get("final_decision", "—")
         concern   = r.get("main_concern", "—")
@@ -1334,7 +1506,7 @@ def _private_investor_cards(resps: list[dict], execution) -> None:
             st.markdown(f"""
 <div style="background:{bg};border-radius:10px;padding:16px;height:100%">
   <div style="font-size:1.5rem">{icon}</div>
-  <div style="font-weight:700;color:#f1f5f9;margin:4px 0">{t(investor.capitalize())}</div>
+  <div style="font-weight:700;color:#f1f5f9;margin:4px 0">{disp_name}</div>
   <span style="background:{badge};color:#0f172a;border-radius:4px;padding:2px 8px;font-size:0.78rem;font-weight:600">{t(level)}</span>
   <div style="color:#cbd5e1;font-size:0.82rem;margin-top:8px"><strong>{t('Decision')}:</strong> {t(decision)}</div>
   <div style="color:#94a3b8;font-size:0.78rem;margin-top:4px"><strong>{t('Concern')}:</strong> {t(concern)}</div>
@@ -1344,10 +1516,11 @@ def _private_investor_cards(resps: list[dict], execution) -> None:
     st.markdown("")
     st.markdown(f"### {t('Investor Full Details')}")
     for r in resps:
-        investor = r.get("investor", "?")
-        icon     = INVESTOR_ICONS.get(investor.lower(), "👤")
-        level    = r.get("interest_level", "")
-        with st.expander(f"{icon} {t(investor.capitalize())} — {t(level)}", expanded=False):
+        investor  = r.get("investor", "?")
+        icon      = persona_icon(investor)
+        disp_name = persona_display(investor)
+        level     = r.get("interest_level", "")
+        with st.expander(f"{icon} {disp_name} — {t(level)}", expanded=False):
             c1, c2 = st.columns(2)
             with c1:
                 st.markdown(f"**{t('Final Decision')}:** {t(r.get('final_decision','—'))}")
@@ -1365,7 +1538,7 @@ def _private_investor_cards(resps: list[dict], execution) -> None:
             if execution:
                 letter_path = execution.workflow_result.investor_response_letter_paths.get(investor.lower())
                 if letter_path and Path(letter_path).exists():
-                    with st.expander(f"📄 {t('Full Response Letter')} — {t(investor.capitalize())}", expanded=False):
+                    with st.expander(f"📄 {t('Full Response Letter')} — {disp_name}", expanded=False):
                         st.markdown(Path(letter_path).read_text(encoding="utf-8"))
 
 
