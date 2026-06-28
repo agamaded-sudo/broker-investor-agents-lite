@@ -1097,20 +1097,88 @@ with tab3:
                     } for c in svm_cats]
                     st.dataframe(pd.DataFrame(svm_rows), use_container_width=True, hide_index=True)
 
-            # Backoffice Work Orders
+            # ── AI-Completed Work Orders ──────────────────────────────────────
             work_orders = wop.get("work_orders", [])
             if work_orders:
-                with st.expander(f"🔧 {t('Backoffice Work Orders')} ({len(work_orders)} {t('total')})", expanded=False):
-                    import pandas as pd
-                    wo_rows = [{
-                        t("ID"):           wo.get("work_order_id", ""),
-                        t("Evidence"):     wo.get("evidence_item", ""),
-                        t("Priority"):     wo.get("priority", ""),
-                        t("Blocks Promo"): "🚫" if wo.get("blocks_promotion") else "✅",
-                        t("Investors"):    ", ".join(wo.get("related_investors") or []),
-                        t("Action"):       wo.get("suggested_backoffice_action", ""),
-                    } for wo in work_orders]
-                    st.dataframe(pd.DataFrame(wo_rows), use_container_width=True, hide_index=True)
+                st.markdown(f"### 🔧 {t('AI-Completed Work Orders')}")
+                if _ai_available:
+                    _wo_progress = st.empty()
+                    _completed_wos, _wo_summary = run_ai_work_orders(
+                        ticker_up, _company_data, work_orders, _wo_progress
+                    )
+                    st.session_state["_wo_summary"] = _wo_summary
+
+                    for wo in _completed_wos:
+                        conf_pct = wo["confidence_pct"]
+                        if conf_pct >= 70:
+                            conf_icon, conf_color = "🟢", "#14532d"
+                        elif conf_pct >= 40:
+                            conf_icon, conf_color = "🟡", "#713f12"
+                        else:
+                            conf_icon, conf_color = "🔴", "#7f1d1d"
+                        blocks_str = "🚫 Blocks" if wo["blocks_promo"] else "✅ OK"
+                        label = (
+                            f"{conf_icon} {wo['id']} — {wo['title']}"
+                            f"  [{wo['priority'].upper()}] {blocks_str}"
+                        )
+                        with st.expander(label, expanded=False):
+                            st.markdown(f"**{t('Finding')}:** {wo['finding']}")
+                            st.markdown(
+                                f"<span style='background:{conf_color};color:#f8fafc;"
+                                f"border-radius:4px;padding:2px 8px;font-size:0.82rem'>"
+                                f"{conf_icon} {t('Confidence')}: {wo['confidence']}</span>",
+                                unsafe_allow_html=True,
+                            )
+                            if wo["gap"]:
+                                st.caption(f"⚠️ {t('Gap')}: {wo['gap']}")
+                            if wo["investors"]:
+                                st.caption(
+                                    f"{t('Related analysts')}: "
+                                    + ", ".join(_wo_name_clean(v) for v in wo["investors"])
+                                )
+
+                    # Confidence Summary card
+                    if _wo_summary:
+                        st.markdown(f"### 📊 {t('Data Confidence Summary')}")
+                        overall = _wo_summary.get("overall_reliability", 0)
+                        n_high   = len(_wo_summary.get("high_confidence", []))
+                        n_med    = len(_wo_summary.get("medium_confidence", []))
+                        n_low    = len(_wo_summary.get("low_confidence", []))
+                        if overall >= 70:
+                            sum_color = "#14532d"
+                        elif overall >= 40:
+                            sum_color = "#713f12"
+                        else:
+                            sum_color = "#7f1d1d"
+                        st.markdown(
+                            f"<div style='background:{sum_color};border-radius:10px;"
+                            f"padding:16px 20px;margin-bottom:12px'>"
+                            f"<span style='font-size:1.6rem;font-weight:700;color:#f8fafc'>"
+                            f"{overall}% {t('Overall Reliability')}</span><br>"
+                            f"<span style='color:#cbd5e1;font-size:0.9rem'>"
+                            f"🟢 {n_high} {t('High')} &nbsp;|&nbsp; "
+                            f"🟡 {n_med} {t('Medium')} &nbsp;|&nbsp; "
+                            f"🔴 {n_low} {t('Low')}</span></div>",
+                            unsafe_allow_html=True,
+                        )
+                        gaps = _wo_summary.get("key_gaps", [])
+                        if gaps:
+                            with st.expander(f"⚠️ {t('Key Data Gaps')}", expanded=False):
+                                for g in gaps:
+                                    st.write(f"• {g}")
+                else:
+                    # No AI — fall back to plain table
+                    with st.expander(f"🔧 {t('Backoffice Work Orders')} ({len(work_orders)} {t('total')})", expanded=False):
+                        import pandas as pd
+                        wo_rows = [{
+                            t("ID"):           wo.get("work_order_id", ""),
+                            t("Evidence"):     wo.get("evidence_item", ""),
+                            t("Priority"):     wo.get("priority", ""),
+                            t("Blocks Promo"): "🚫" if wo.get("blocks_promotion") else "✅",
+                            t("Investors"):    ", ".join(wo.get("related_investors") or []),
+                            t("Action"):       wo.get("suggested_backoffice_action", ""),
+                        } for wo in work_orders]
+                        st.dataframe(pd.DataFrame(wo_rows), use_container_width=True, hide_index=True)
 
             # Next Actions
             next_actions = es.get("backoffice_next_actions") or []
@@ -1471,6 +1539,146 @@ with tab4:
 
 def _safe_div(num, den):
     return num / den if den else None
+
+
+_WO_NAME_SUB = {
+    "Buffett": "The Value Seeker",
+    "Munger":  "The Rationalist",
+    "Fisher":  "The Growth Hunter",
+    "Lynch":   "The Story Finder",
+    "Bogle":   "The Index Keeper",
+}
+
+
+def _wo_name_clean(text: str) -> str:
+    for raw, disp in _WO_NAME_SUB.items():
+        text = text.replace(raw, disp)
+    return text
+
+
+def _parse_confidence_pct(confidence_str: str) -> int:
+    """Extract numeric percentage from a confidence string like 'High (75%)'."""
+    import re
+    m = re.search(r"(\d+)%", confidence_str)
+    return int(m.group(1)) if m else {"high": 75, "medium": 50, "low": 25}.get(
+        confidence_str.lower().split()[0], 50
+    )
+
+
+def run_ai_work_orders(
+    ticker: str,
+    company_data: dict,
+    work_orders: list[dict],
+    progress_placeholder,
+) -> tuple[list[dict], dict]:
+    """
+    Complete each work order with Claude AI. Returns (completed_wos, summary).
+    completed_wos: list of dicts with keys: id, title, finding, confidence,
+                   confidence_pct, gap, investors, blocks_promo, priority.
+    summary: overall reliability stats stored in session_state.
+    """
+    if not ANTHROPIC_AVAILABLE or not _anthropic_api_key():
+        return [], {}
+
+    client = _anthropic.Anthropic(api_key=_anthropic_api_key())
+    company_summary = (
+        f"Company: {company_data.get('name')} ({ticker})\n"
+        f"Sector: {company_data.get('sector')}\n"
+        f"Price: {company_data.get('price')}  P/E: {company_data.get('pe')}\n"
+        f"Revenue growth: {company_data.get('revenue_growth')}%  "
+        f"Operating margin: {company_data.get('operating_margin')}%\n"
+        f"FCF: {company_data.get('fcf')}  ROE: {company_data.get('roe')}%  "
+        f"D/E: {company_data.get('debt_equity')}\n"
+        f"Market cap: {company_data.get('market_cap')}\n"
+        f"Description: {company_data.get('description')}"
+    )
+
+    completed: list[dict] = []
+    total = len(work_orders)
+    batch_size = 5
+
+    for batch_start in range(0, total, batch_size):
+        batch = work_orders[batch_start: batch_start + batch_size]
+        for i, wo in enumerate(batch):
+            idx = batch_start + i + 1
+            wo_id    = wo.get("work_order_id", f"WO-{idx}")
+            evidence = wo.get("evidence_item", "")
+            action   = wo.get("suggested_backoffice_action", "")
+            task_desc = f"{evidence}. {action}".strip(". ")
+            investors = wo.get("related_investors") or []
+            blocks    = wo.get("blocks_promotion", False)
+            priority  = wo.get("priority", "medium")
+
+            progress_placeholder.caption(
+                f"Completing work order {idx}/{total}: {wo_id}…"
+            )
+
+            prompt = f"""You are an investment research analyst completing a due diligence task.
+
+{company_summary}
+
+Task: {task_desc}
+
+Complete this due diligence task:
+1. FINDING: Your analysis/finding (2-3 sentences using available public information)
+2. CONFIDENCE: High/Medium/Low (XX%) — explain why
+3. GAP: What specific data was unavailable that would improve this analysis
+
+Be specific and factual. If data is truly unavailable, say so clearly.
+Do not fabricate specific numbers you don't have."""
+
+            try:
+                msg = client.messages.create(
+                    model="claude-haiku-4-5-20251001",
+                    max_tokens=350,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                raw = _wo_name_clean(msg.content[0].text)
+            except Exception:
+                raw = "1. FINDING: Analysis unavailable.\n2. CONFIDENCE: Low (0%)\n3. GAP: API error."
+
+            # Parse sections
+            def _section(label: str, text: str) -> str:
+                import re
+                m = re.search(
+                    rf"{label}[:\s]+(.*?)(?=\n\d\.|$)", text, re.S | re.I
+                )
+                return m.group(1).strip() if m else text.strip()
+
+            finding    = _section("FINDING", raw)
+            confidence = _section("CONFIDENCE", raw)
+            gap        = _section("GAP", raw)
+            conf_pct   = _parse_confidence_pct(confidence)
+
+            completed.append({
+                "id":             wo_id,
+                "title":          evidence[:80],
+                "finding":        finding,
+                "confidence":     confidence,
+                "confidence_pct": conf_pct,
+                "gap":            gap,
+                "investors":      investors,
+                "blocks_promo":   blocks,
+                "priority":       priority,
+            })
+
+    progress_placeholder.empty()
+
+    # Build summary
+    high   = [w for w in completed if w["confidence_pct"] >= 70]
+    medium = [w for w in completed if 40 <= w["confidence_pct"] < 70]
+    low    = [w for w in completed if w["confidence_pct"] < 40]
+    overall = round(sum(w["confidence_pct"] for w in completed) / max(len(completed), 1))
+    key_gaps = [w["gap"] for w in low if w["gap"] and len(w["gap"]) > 10][:5]
+
+    summary = {
+        "high_confidence":   [w["id"] for w in high],
+        "medium_confidence": [w["id"] for w in medium],
+        "low_confidence":    [w["id"] for w in low],
+        "key_gaps":          key_gaps,
+        "overall_reliability": overall,
+    }
+    return completed, summary
 
 
 def _show_rule_based(r: dict, investor: str, execution) -> None:
