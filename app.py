@@ -1536,29 +1536,22 @@ with tab5:
             for trig in pc_triggers:
                 st.write(f"• {trig}")
 
-        # ── 4. Full Investor Analysis ─────────────────────────────────────────
-        st.markdown("---")
-        if st.button(t("🤖 Run Full Investor Analysis"), use_container_width=True, key="pc_run_analysis"):
-            st.write("DEBUG: Analysis button clicked")
-            pc_ticker_id = "PRIVATE_" + "".join(c for c in pc_name.upper() if c.isalnum() or c == "_")
-            pc_ticker_lw = pc_ticker_id.lower()
-
-            project_root  = Path(__file__).resolve().parent
-            # Use /tmp for writable paths — Streamlit Cloud has a read-only repo filesystem
-            tmp_root      = Path("/tmp") / "broker_analysis"
-            examples_root = tmp_root / "examples"
-            outputs_root  = tmp_root / "outputs"
-            examples_root.mkdir(parents=True, exist_ok=True)
-            outputs_root.mkdir(parents=True, exist_ok=True)
-            fixtures_root = project_root / "tests" / "fixtures"
-            portfolio_ctx = project_root / "examples" / "portfolio_context.yaml"
-
-            pc_yaml_data = {
+        # ── 4. Store data for Run button (which lives outside if-submitted) ──
+        _pc_ticker_id = "PRIVATE_" + "".join(c for c in pc_name.upper() if c.isalnum() or c == "_")
+        _pc_ticker_lw = _pc_ticker_id.lower()
+        st.session_state["_pc_data"] = {
+            "name":      pc_name,
+            "ticker_id": _pc_ticker_id,
+            "ticker_lw": _pc_ticker_lw,
+            "currency":  pc_currency,
+            "status":    pc_status,
+            "sector":    pc_sector,
+            "yaml_data": {
                 "metadata": {
                     "schema_name":            "backoffice_data_pack_v2",
                     "schema_version":         2,
                     "company_name":           pc_name,
-                    "ticker":                 pc_ticker_id,
+                    "ticker":                 _pc_ticker_id,
                     "analysis_date":          date.today().isoformat(),
                     "latest_annual_period":   "Current Year",
                     "latest_quarterly_period":"Not available",
@@ -1568,7 +1561,7 @@ with tab5:
                     "notes": [f"Manually entered data. Currency: {pc_currency}. Status: {pc_status}."],
                 },
                 "company_identity": {
-                    "company_name": pc_name, "ticker": pc_ticker_id,
+                    "company_name": pc_name, "ticker": _pc_ticker_id,
                     "exchange": "Private", "market": pc_status,
                     "currency": pc_currency, "sector": pc_sector,
                     "industry": pc_sector, "fiscal_year_end": "",
@@ -1631,17 +1624,44 @@ with tab5:
                     "bogle":   {"relevant_sections": ["index_benchmark_alternative", "market_awareness"]},
                 },
                 "sources_confidence_data_gaps": {
-                    "source_log": [{"source_id": f"{pc_ticker_lw}_manual", "source_name": "Manual Entry", "source_type": "manual", "retrieved_at": date.today().isoformat(), "confidence": "user_provided", "confidence_score": 0.70, "freshness": "current", "notes": "Entered by user in Tab 5."}],
+                    "source_log": [{"source_id": f"{_pc_ticker_lw}_manual", "source_name": "Manual Entry", "source_type": "manual", "retrieved_at": date.today().isoformat(), "confidence": "user_provided", "confidence_score": 0.70, "freshness": "current", "notes": "Entered by user in Tab 5."}],
                     "known_gaps": ["Historical data missing.", "Peer comparison not available.", "Public market prices unavailable."],
                 },
-            }
+            },
+        }
+        st.markdown("---")
+        st.info(t("✅ Data ready — click **Run Full Investor Analysis** below to run the five investor agents."))
 
-            yaml_path = examples_root / f"{pc_ticker_lw}_input.yaml"
-            yaml_path.write_text(yaml.dump(pc_yaml_data, sort_keys=False, allow_unicode=True), encoding="utf-8")
-            st.write(f"DEBUG: YAML written to {yaml_path}")
+    # ── Full Investor Analysis button (outside if-submitted so click works) ──
+    # The form's if-submitted block is False when this button is clicked, so
+    # the button and its handler must live at the same level as `if submitted:`.
+    if "_pc_data" in st.session_state:
+        _pc = st.session_state["_pc_data"]
+        if st.button(t("🤖 Run Full Investor Analysis"), use_container_width=True, key="pc_run_analysis"):
+            try:
+                st.write("Step 1: Button clicked")
+                _pc_name      = _pc["name"]
+                _pc_ticker_id = _pc["ticker_id"]
+                _pc_ticker_lw = _pc["ticker_lw"]
+                _pc_currency  = _pc["currency"]
+                _pc_status    = _pc["status"]
+                _pc_sector    = _pc["sector"]
+                _pc_yaml_data = _pc["yaml_data"]
 
-            with st.spinner(f"Running five investor agents for {pc_name}..."):
-                try:
+                project_root  = Path(__file__).resolve().parent
+                tmp_root      = Path("/tmp") / "broker_analysis"
+                examples_root = tmp_root / "examples"
+                outputs_root  = tmp_root / "outputs"
+                examples_root.mkdir(parents=True, exist_ok=True)
+                outputs_root.mkdir(parents=True, exist_ok=True)
+                fixtures_root = project_root / "tests" / "fixtures"
+                portfolio_ctx = project_root / "examples" / "portfolio_context.yaml"
+
+                yaml_path = examples_root / f"{_pc_ticker_lw}_input.yaml"
+                yaml_path.write_text(yaml.dump(_pc_yaml_data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+                st.write(f"Step 2: YAML written to {yaml_path}")
+
+                with st.spinner(f"Running five investor agents for {_pc_name}..."):
                     from broker_agents.deals.analyze_stock_intake import (
                         build_ticker_analyze_stock_intake,
                         with_financials_provider,
@@ -1649,7 +1669,7 @@ with tab5:
                     from broker_agents.deals.analyze_stock_runner import execute_analyze_stock
 
                     intake    = build_ticker_analyze_stock_intake(
-                        ticker=pc_ticker_id,
+                        ticker=_pc_ticker_id,
                         examples_root=examples_root,
                         outputs_root=outputs_root,
                         fixtures_root=fixtures_root,
@@ -1658,13 +1678,8 @@ with tab5:
                     )
                     intake    = with_financials_provider(intake, intake.financials_provider, intake.financials_root)
                     execution = execute_analyze_stock(intake=intake, input_mode="ticker")
-                except Exception as e:
-                    st.error(f"Analysis error: {e}")
-                    import traceback
-                    st.code(traceback.format_exc())
-                    execution = None
+                    st.write("Step 3: Analysis complete")
 
-            if execution is not None:
                 pkg    = execution.package_payload
                 es     = pkg.get("executive_summary", {})
                 resps  = pkg.get("investor_responses", [])
@@ -1684,7 +1699,7 @@ with tab5:
 
                 st.markdown(f"""
 <div style="background:{card_color};border-radius:12px;padding:24px 28px;margin-bottom:20px">
-  <div style="font-size:2rem;font-weight:700;color:#f8fafc">{pc_name} &nbsp;<span style="font-size:1rem;font-weight:400;color:#cbd5e1">{pc_status} · {pc_sector}</span></div>
+  <div style="font-size:2rem;font-weight:700;color:#f8fafc">{_pc_name} &nbsp;<span style="font-size:1rem;font-weight:400;color:#cbd5e1">{_pc_status} · {_pc_sector}</span></div>
   <div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
     <span style="background:{badge_bg};color:#0f172a;border-radius:6px;padding:4px 12px;font-weight:600;font-size:0.9rem">{t(readiness)}</span>
     <span style="color:#94a3b8;font-size:0.9rem">{t('Source verification')}: <strong style="color:#e2e8f0">{src_status}</strong></span>
@@ -1707,12 +1722,17 @@ with tab5:
                         } for wo in work_orders]
                         st.dataframe(pd.DataFrame(wo_rows), use_container_width=True, hide_index=True)
 
-                report_path = execution.workflow_result.deal_output_dir / f"{pc_ticker_lw}_broker_deal_package.md"
+                report_path = execution.workflow_result.deal_output_dir / f"{_pc_ticker_lw}_broker_deal_package.md"
                 if report_path.exists():
                     st.markdown("---")
                     st.download_button(
                         label=t("💾 Download Full Report (.md)"),
                         data=report_path.read_text(encoding="utf-8"),
-                        file_name=f"{pc_ticker_id}_broker_report.md",
+                        file_name=f"{_pc_ticker_id}_broker_report.md",
                         mime="text/markdown",
                     )
+
+            except Exception as e:
+                st.error(f"FULL ERROR: {type(e).__name__}: {e}")
+                import traceback
+                st.code(traceback.format_exc())
