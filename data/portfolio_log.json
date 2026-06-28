@@ -2,22 +2,20 @@
   {
     "ticker": "MSFT",
     "company": "Microsoft Corporation",
-    "date_added": "2026-06-27",
+    "date_added": "2026-06-28",
     "market": "US Market",
     "currency": "USD",
     "price_at_analysis": 372.97,
-    "opportunity_score": 9,
-    "golden_triggers": 6,
+    "opportunity_score": 0,
+    "golden_triggers": 0,
     "buffett_decision": "Watchlist Interest",
     "munger_decision": "Conditional Interest",
     "fisher_decision": "Needs More Evidence",
     "lynch_decision": "Watchlist Interest",
     "bogle_decision": "Low Interest",
     "save_reason": [
-      "score>=6",
       "munger=conditional",
-      "buffett>=watchlist",
-      "golden_triggers=6"
+      "buffett>=watchlist"
     ],
     "status": "watching",
     "notes": ""
