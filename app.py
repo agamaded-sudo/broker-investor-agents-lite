@@ -1640,7 +1640,6 @@ with tab5:
         _pc = st.session_state["_pc_data"]
         if st.button(t("🤖 Run Full Investor Analysis"), use_container_width=True, key="pc_run_analysis"):
             try:
-                st.write("Step 1: Button clicked")
                 _pc_name      = _pc["name"]
                 _pc_ticker_id = _pc["ticker_id"]
                 _pc_ticker_lw = _pc["ticker_lw"]
@@ -1660,7 +1659,6 @@ with tab5:
 
                 yaml_path = examples_root / f"{_pc_ticker_lw}_input.yaml"
                 yaml_path.write_text(yaml.dump(_pc_yaml_data, sort_keys=False, allow_unicode=True), encoding="utf-8")
-                st.write(f"Step 2: YAML written to {yaml_path}")
 
                 with st.spinner(f"Running five investor agents for {_pc_name}..."):
                     from broker_agents.deals.analyze_stock_intake import (
@@ -1679,7 +1677,6 @@ with tab5:
                     )
                     intake    = with_financials_provider(intake, intake.financials_provider, intake.financials_root)
                     execution = execute_analyze_stock(intake=intake, input_mode="ticker")
-                    st.write("Step 3: Analysis complete")
 
                 pkg    = execution.package_payload
                 es     = pkg.get("executive_summary", {})
