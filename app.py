@@ -404,7 +404,7 @@ Do not use bullet points. Return only the action lines."""
         client = _anthropic.Anthropic(api_key=_anthropic_api_key())
         msg = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=400,
+            max_tokens=1500,
             messages=[{"role": "user", "content": prompt}],
         )
         raw = msg.content[0].text.strip()
