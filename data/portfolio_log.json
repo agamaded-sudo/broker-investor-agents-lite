@@ -314,5 +314,26 @@
       "data_reliability": 54,
       "generated_at": "2026-06-29"
     }
+  },
+  {
+    "ticker": "KO",
+    "company": "The Coca-Cola Company",
+    "date_added": "2026-06-29",
+    "market": "US Market",
+    "currency": "USD",
+    "price_at_analysis": 82.65,
+    "opportunity_score": 0,
+    "golden_triggers": 0,
+    "buffett_decision": "Watchlist Interest",
+    "munger_decision": "Conditional Interest",
+    "fisher_decision": "Needs More Evidence",
+    "lynch_decision": "Watchlist Interest",
+    "bogle_decision": "Low Interest",
+    "save_reason": [
+      "munger=conditional",
+      "buffett>=watchlist"
+    ],
+    "status": "watching",
+    "notes": ""
   }
 ]
