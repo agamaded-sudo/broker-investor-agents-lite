@@ -2,10 +2,10 @@
   {
     "ticker": "MSFT",
     "company": "Microsoft Corporation",
-    "date_added": "2026-06-28",
+    "date_added": "2026-06-29",
     "market": "US Market",
     "currency": "USD",
-    "price_at_analysis": 372.97,
+    "price_at_analysis": 368.57,
     "opportunity_score": 0,
     "golden_triggers": 0,
     "buffett_decision": "Watchlist Interest",
@@ -18,7 +18,8 @@
       "buffett>=watchlist"
     ],
     "status": "watching",
-    "notes": ""
+    "notes": "",
+    "portfolio_decision": null
   },
   {
     "ticker": "NVDA",
