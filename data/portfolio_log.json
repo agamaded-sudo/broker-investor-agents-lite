@@ -268,6 +268,18 @@
       "buffett>=watchlist"
     ],
     "status": "watching",
-    "notes": ""
+    "notes": "",
+    "portfolio_decision": {
+      "decision": "Watch",
+      "suggested_weight": "0%",
+      "conviction": "Low",
+      "risk_level": "High",
+      "key_risk": "Data reliability of only 59% combined with missing critical unit economics (CAC, LTV, cohort retention by geography) creates insufficient analytical foundation for conviction-based entry.",
+      "entry_conditions": "(1) Data reliability improves to 75%+ with disclosed subscriber cohort retention and CAC/LTV by major geographic markets; (2) Operating margin sustains above 30% while revenue growth remains above 12%; (3) Analyst consensus strengthens to at least 3 of 5 showing \"Interest\" or higher conviction.",
+      "exit_triggers": "Operating margin falls below 25%; revenue growth declines below 8%; data reliability drops further; competitive pressure from Disney+/Max materially impacts subscriber growth rates.",
+      "rationale": "While Netflix demonstrates strong operational metrics (32.3% operating margin, 16.2% revenue growth) with mixed analyst support, the 59% data reliability and absence of critical SaaS metrics (CAC/LTV dynamics, geographic unit economics) prevent confident portfolio entry. The P/E unavailability and data gaps are particularly problematic for a mature growth company requiring precise subscriber cohort analytics. Position on watchlist pending improved data transparency and stronger analyst consensus.",
+      "data_reliability": 59,
+      "generated_at": "2026-06-29"
+    }
   }
 ]
