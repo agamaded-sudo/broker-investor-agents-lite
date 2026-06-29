@@ -19,5 +19,28 @@
     ],
     "status": "watching",
     "notes": ""
+  },
+  {
+    "ticker": "NVDA",
+    "company": "NVIDIA Corporation",
+    "date_added": "2026-06-29",
+    "market": "US Market",
+    "currency": "USD",
+    "price_at_analysis": 194.9,
+    "opportunity_score": 9,
+    "golden_triggers": 4,
+    "buffett_decision": "Watchlist Interest",
+    "munger_decision": "Conditional Interest",
+    "fisher_decision": "Needs More Evidence",
+    "lynch_decision": "Watchlist Interest",
+    "bogle_decision": "Low Interest",
+    "save_reason": [
+      "score>=6",
+      "munger=conditional",
+      "buffett>=watchlist",
+      "golden_triggers=4"
+    ],
+    "status": "watching",
+    "notes": ""
   }
 ]
