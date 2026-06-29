@@ -41,6 +41,18 @@
       "golden_triggers=4"
     ],
     "status": "watching",
-    "notes": ""
+    "notes": "",
+    "portfolio_decision": {
+      "decision": "Watch",
+      "suggested_weight": "0%",
+      "conviction": "Low",
+      "risk_level": "High",
+      "key_risk": "Exceptional valuations and growth assumptions are highly vulnerable to demand normalization, competitive pressure, or macroeconomic contraction in AI/data center markets.",
+      "entry_conditions": "(1) P/E ratio becomes calculable and falls below 35x forward earnings; (2) Data reliability improves to ≥75%; (3) Customer concentration risk by segment is disclosed, showing no single segment >60% of revenue; (4) Operating margin sustains above 50% through a full business cycle; (5) Analyst consensus achieves at least 4 of 5 \"Enter\" or \"Conditional Interest\" votes.",
+      "exit_triggers": "(1) Revenue growth declines below 30% YoY; (2) Operating margin falls below 45%; (3) Data center customer concentration exceeds 70% of revenue; (4) Quarterly guidance miss >10%; (5) Major competitive loss to AMD or emerging AI chip vendors; (6) Macroeconomic recession signals materialize.",
+      "rationale": "NVIDIA exhibits exceptional operational performance (85% revenue growth, 66% operating margin) but presents unacceptable analytical uncertainty for entry: P/E unavailability, 55% data reliability, and analyst consensus divided across lower conviction levels. The extraordinary growth and margins suggest significant valuation risk with limited margin of safety. A watchlist position allows capture of upside while waiting for either valuation compression, improved data transparency, or confirmed sustainable competitive moats before committing capital.",
+      "data_reliability": 55,
+      "generated_at": "2026-06-29"
+    }
   }
 ]
