@@ -214,18 +214,27 @@
       "buffett>=watchlist"
     ],
     "status": "watching",
-    "notes": "",
-    "portfolio_decision": {
-      "decision": "Watch",
-      "suggested_weight": "0%",
-      "conviction": "Medium",
-      "risk_level": "Medium",
-      "key_risk": "Premium valuation (P/E unavailable suggests elevated pricing) limits margin of safety despite strong fundamentals and operating margins.",
-      "entry_conditions": "P/E ratio clarification and confirmation below 35x; analyst consensus shifts to \"Conditional Interest\" or stronger; revenue growth sustains above 15% YoY; data reliability improves above 75%.",
-      "exit_triggers": "Operating margin compression below 60%; revenue growth declines below 10% YoY; competitive threat from fintech payment disruptors; macro recession reducing transaction volumes.",
-      "rationale": "Visa demonstrates exceptional operational efficiency (67.3% operating margin) and healthy growth (17.1%), supported by two analysts recommending watchlist positioning. However, the missing P/E ratio, split analyst sentiment, and 62% data reliability warrant monitoring rather than immediate entry. Position for entry once valuation metrics are transparent and analyst consensus strengthens.",
-      "data_reliability": 62,
-      "generated_at": "2026-06-29"
-    }
+    "notes": ""
+  },
+  {
+    "ticker": "MA",
+    "company": "Mastercard Incorporated",
+    "date_added": "2026-06-29",
+    "market": "US Market",
+    "currency": "USD",
+    "price_at_analysis": 509.64,
+    "opportunity_score": 0,
+    "golden_triggers": 0,
+    "buffett_decision": "Watchlist Interest",
+    "munger_decision": "Conditional Interest",
+    "fisher_decision": "Needs More Evidence",
+    "lynch_decision": "Watchlist Interest",
+    "bogle_decision": "Low Interest",
+    "save_reason": [
+      "munger=conditional",
+      "buffett>=watchlist"
+    ],
+    "status": "watching",
+    "notes": ""
   }
 ]
