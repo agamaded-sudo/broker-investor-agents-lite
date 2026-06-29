@@ -158,6 +158,18 @@
       "golden_triggers=3"
     ],
     "status": "watching",
-    "notes": ""
+    "notes": "",
+    "portfolio_decision": {
+      "decision": "Watch",
+      "suggested_weight": "0%",
+      "conviction": "Low",
+      "risk_level": "Medium",
+      "key_risk": "Data reliability at 62% creates material uncertainty around financial metrics and growth sustainability.",
+      "entry_conditions": "(1) Data reliability improves to ≥80%; (2) P/E ratio becomes available for valuation comparison; (3) Growth Hunter upgrades to conditional interest with clarified evidence; (4) Operating margin sustains above 35% through next earnings cycle.",
+      "exit_triggers": "Operating margin compression below 30%; revenue growth declines below 15% YoY; regulatory headwinds materialize affecting core business; data reliability drops further.",
+      "rationale": "While GOOGL's 21.8% revenue growth and 36.1% operating margin are attractive, the 62% data reliability score and missing P/E ratio prevent confident valuation assessment. Analyst consensus is mixed (2 Watchlist, 1 Conditional, 1 Needs Evidence, 1 Low), indicating insufficient conviction. Entry should await improved data quality and clearer analyst alignment before committing capital.",
+      "data_reliability": 62,
+      "generated_at": "2026-06-29"
+    }
   }
 ]
