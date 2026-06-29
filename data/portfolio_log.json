@@ -334,6 +334,7 @@
       "buffett>=watchlist"
     ],
     "status": "watching",
-    "notes": ""
+    "notes": "",
+    "portfolio_decision": null
   }
 ]
