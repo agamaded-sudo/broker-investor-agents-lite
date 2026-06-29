@@ -1887,8 +1887,8 @@ with tab4:
                 t("Current Price"):    round(curr_price, 2) if curr_price else "N/A",
                 t("Change %"):         chg_str,
                 t("Opp Score"):        e.get("opportunity_score", ""),
-                t("Buffett"):          e.get("buffett_decision", ""),
-                t("Munger"):           e.get("munger_decision", ""),
+                t("Value Seeker"):     e.get("buffett_decision", ""),
+                t("Rationalist"):      e.get("munger_decision", ""),
                 t("Status"):           e.get("status", "watching"),
             })
 
