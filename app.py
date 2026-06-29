@@ -577,6 +577,83 @@ Do not fabricate specific numbers you don't have."""
     return completed, summary
 
 
+def generate_portfolio_decision(
+    ticker: str,
+    company_name: str,
+    analyst_decisions: dict,
+    wo_summary: dict,
+    company_data: dict,
+) -> dict | None:
+    """Call Claude to produce a structured portfolio entry decision."""
+    if not ANTHROPIC_AVAILABLE or not _anthropic_api_key():
+        return None
+    try:
+        decisions_text = "\n".join(
+            f"- {persona_display(k)}: {v}" for k, v in analyst_decisions.items()
+        )
+        gaps = wo_summary.get("key_gaps", [])
+        gaps_text = "\n".join(f"- {g}" for g in gaps) if gaps else "None identified"
+        overall = wo_summary.get("overall_reliability", 50)
+        sector = company_data.get("sector", "Unknown")
+        pe = company_data.get("pe_ratio", "N/A")
+        revenue_growth = company_data.get("revenue_growth", "N/A")
+        margin = company_data.get("operating_margin", "N/A")
+
+        prompt = f"""You are a senior portfolio manager reviewing analyst inputs for a portfolio entry decision.
+
+Company: {company_name} ({ticker})
+Sector: {sector}
+P/E Ratio: {pe}
+Revenue Growth: {revenue_growth}
+Operating Margin: {margin}
+Data Reliability: {overall}%
+
+Analyst Decisions:
+{decisions_text}
+
+Key Due Diligence Gaps:
+{gaps_text}
+
+Based on the above, provide a structured portfolio decision. Respond with EXACTLY these labeled lines, no extra text:
+
+DECISION: [one of: Enter Now / Watch / Do Not Enter / Exit]
+WEIGHT: [suggested portfolio weight, e.g. 2-3% or 0%]
+CONVICTION: [High / Medium / Low]
+RISK_LEVEL: [High / Medium / Low]
+KEY_RISK: [one-sentence summary of the most critical risk]
+ENTRY_CONDITIONS: [specific, measurable conditions that must be met before entry]
+EXIT_TRIGGERS: [specific triggers that would cause exit]
+RATIONALE: [2-3 sentence rationale summarising the decision]"""
+
+        client = _anthropic.Anthropic(api_key=_anthropic_api_key())
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=600,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = msg.content[0].text.strip()
+
+        def _extract(label: str) -> str:
+            import re
+            m = re.search(rf"^{label}:\s*(.+)$", raw, re.MULTILINE | re.IGNORECASE)
+            return m.group(1).strip() if m else ""
+
+        return {
+            "decision":          _extract("DECISION"),
+            "suggested_weight":  _extract("WEIGHT"),
+            "conviction":        _extract("CONVICTION"),
+            "risk_level":        _extract("RISK_LEVEL"),
+            "key_risk":          _extract("KEY_RISK"),
+            "entry_conditions":  _extract("ENTRY_CONDITIONS"),
+            "exit_triggers":     _extract("EXIT_TRIGGERS"),
+            "rationale":         _extract("RATIONALE"),
+            "data_reliability":  overall,
+            "generated_at":      date.today().isoformat(),
+        }
+    except Exception:
+        return None
+
+
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     t("🔭 Tab 1 — Market Scanner"),
     t("📡 Tab 2 — Initial Scan"),
@@ -1008,6 +1085,7 @@ def _upsert_portfolio_entry(entry: dict) -> str:
         if e.get("ticker") == entry["ticker"]:
             entry.setdefault("status", e.get("status", "watching"))
             entry.setdefault("notes", e.get("notes", ""))
+            entry.setdefault("portfolio_decision", e.get("portfolio_decision"))
             entries[i] = entry
             msg = f"Portfolio update: {entry['ticker']} {entry.get('status','watching')} {entry.get('date_added','')}"
             _save_portfolio(entries, msg)
@@ -1467,7 +1545,29 @@ with tab3:
                     for action in display_actions:
                         st.write(f"• {action}")
 
-            # ── 5. Download ───────────────────────────────────────────────────
+            # ── 5. AI Portfolio Decision ──────────────────────────────────────
+            if _ai_available and "_wo_summary" in st.session_state:
+                with st.spinner(t("Generating AI portfolio decision...")):
+                    _pd = generate_portfolio_decision(
+                        ticker_up, company,
+                        inv_decisions,
+                        st.session_state["_wo_summary"],
+                        _company_data,
+                    )
+                if _pd:
+                    st.session_state[f"_portfolio_decision_{ticker_up}"] = _pd
+                    # persist to portfolio log if entry exists
+                    _entries = _load_portfolio()
+                    for _i, _e in enumerate(_entries):
+                        if _e.get("ticker") == ticker_up:
+                            _entries[_i]["portfolio_decision"] = _pd
+                            _save_portfolio(
+                                _entries,
+                                f"Portfolio update: {ticker_up} AI decision {date.today()}"
+                            )
+                            break
+
+            # ── 6. Download ───────────────────────────────────────────────────
             report_path = (
                 execution.workflow_result.deal_output_dir
                 / f"{ticker_lw}_broker_deal_package.md"
@@ -1705,7 +1805,60 @@ with tab4:
 
         st.markdown("---")
 
-        # ── 2. Watchlist table with live prices ───────────────────────────────
+        # ── 2. AI Portfolio Decisions ─────────────────────────────────────────
+        _pd_entries = [e for e in active if e.get("portfolio_decision")]
+        _pd_session  = {
+            k.replace("_portfolio_decision_", ""): v
+            for k, v in st.session_state.items()
+            if k.startswith("_portfolio_decision_")
+        }
+        # merge session decisions with persisted ones
+        _all_pd: dict[str, dict] = {}
+        for _e in active:
+            _t = _e["ticker"]
+            if _e.get("portfolio_decision"):
+                _all_pd[_t] = (_e["portfolio_decision"], _e.get("company", _t))
+        for _t, _pd in _pd_session.items():
+            if _t not in _all_pd:
+                _match = next((e for e in active if e["ticker"] == _t), None)
+                _co = _match.get("company", _t) if _match else _t
+                _all_pd[_t] = (_pd, _co)
+
+        if _all_pd:
+            st.markdown(f"### 🧠 {t('AI Portfolio Decisions')}")
+            _DECISION_COLORS = {
+                "Enter Now":    ("#14532d", "#22c55e"),
+                "Watch":        ("#713f12", "#fbbf24"),
+                "Do Not Enter": ("#7f1d1d", "#f87171"),
+                "Exit":         ("#3b0764", "#c084fc"),
+            }
+            for _ticker_k, (_pd_v, _company_v) in _all_pd.items():
+                _dec  = _pd_v.get("decision", "Watch")
+                _bg, _badge = _DECISION_COLORS.get(_dec, ("#1e293b", "#94a3b8"))
+                with st.expander(
+                    f"**{_ticker_k}** — {_company_v}  ·  "
+                    f"{'🟢' if _dec == 'Enter Now' else '🟡' if _dec == 'Watch' else '🔴' if _dec == 'Do Not Enter' else '🟣'} {t(_dec)}",
+                    expanded=False,
+                ):
+                    st.markdown(f"""
+<div style="background:{_bg};border-radius:10px;padding:18px 22px;margin-bottom:10px">
+  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+    <span style="background:{_badge};color:#0f172a;border-radius:4px;padding:3px 10px;font-weight:700;font-size:0.88rem">{t(_dec)}</span>
+    <span style="color:#e2e8f0;font-size:0.85rem"><strong>{t('Weight')}:</strong> {_pd_v.get('suggested_weight','—')}</span>
+    <span style="color:#e2e8f0;font-size:0.85rem"><strong>{t('Conviction')}:</strong> {_pd_v.get('conviction','—')}</span>
+    <span style="color:#e2e8f0;font-size:0.85rem"><strong>{t('Risk')}:</strong> {_pd_v.get('risk_level','—')}</span>
+    <span style="color:#94a3b8;font-size:0.82rem">{t('Data reliability')}: {_pd_v.get('data_reliability','—')}%</span>
+    <span style="color:#64748b;font-size:0.78rem">{_pd_v.get('generated_at','')}</span>
+  </div>
+  <div style="color:#cbd5e1;font-size:0.85rem;margin-top:10px"><strong>{t('Key Risk')}:</strong> {_pd_v.get('key_risk','—')}</div>
+  <div style="color:#cbd5e1;font-size:0.85rem;margin-top:6px"><strong>{t('Rationale')}:</strong> {_pd_v.get('rationale','—')}</div>
+  <div style="color:#94a3b8;font-size:0.82rem;margin-top:8px"><strong>{t('Entry Conditions')}:</strong> {_pd_v.get('entry_conditions','—')}</div>
+  <div style="color:#94a3b8;font-size:0.82rem;margin-top:4px"><strong>{t('Exit Triggers')}:</strong> {_pd_v.get('exit_triggers','—')}</div>
+</div>
+""", unsafe_allow_html=True)
+            st.markdown("---")
+
+        # ── 3. Watchlist table with live prices ───────────────────────────────
         st.markdown(f"### {t('Watchlist')}")
 
         @st.cache_data(ttl=300)
@@ -1742,7 +1895,7 @@ with tab4:
         df_watch = pd.DataFrame(table_rows)
         st.dataframe(df_watch, use_container_width=True, hide_index=True)
 
-        # ── 3. Per-stock actions ──────────────────────────────────────────────
+        # ── 4. Per-stock actions ──────────────────────────────────────────────
         st.markdown(f"### {t('Actions')}")
         for idx, e in enumerate(entries):
             ticker  = e["ticker"]
@@ -1796,7 +1949,7 @@ with tab4:
                     f"**Bogle:** {e.get('bogle_decision','—')}"
                 )
 
-        # ── 4. Export ─────────────────────────────────────────────────────────
+        # ── 5. Export ─────────────────────────────────────────────────────────
         st.markdown("---")
         csv_export = pd.DataFrame(entries).to_csv(index=False)
         st.download_button(
