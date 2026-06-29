@@ -248,5 +248,26 @@
       "data_reliability": 60,
       "generated_at": "2026-06-29"
     }
+  },
+  {
+    "ticker": "NFLX",
+    "company": "Netflix, Inc.",
+    "date_added": "2026-06-29",
+    "market": "US Market",
+    "currency": "USD",
+    "price_at_analysis": 73.78,
+    "opportunity_score": 0,
+    "golden_triggers": 0,
+    "buffett_decision": "Watchlist Interest",
+    "munger_decision": "Conditional Interest",
+    "fisher_decision": "Needs More Evidence",
+    "lynch_decision": "Watchlist Interest",
+    "bogle_decision": "Low Interest",
+    "save_reason": [
+      "munger=conditional",
+      "buffett>=watchlist"
+    ],
+    "status": "watching",
+    "notes": ""
   }
 ]
