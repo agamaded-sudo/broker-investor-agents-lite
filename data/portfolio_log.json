@@ -66,5 +66,28 @@
       "data_reliability": 55,
       "generated_at": "2026-06-29"
     }
+  },
+  {
+    "ticker": "4030.SR",
+    "company": "The National Shipping Company of Saudi Arabia",
+    "date_added": "2026-06-29",
+    "market": "Saudi (Tadawul)",
+    "currency": "SAR",
+    "price_at_analysis": 31.9,
+    "opportunity_score": 9,
+    "golden_triggers": 4,
+    "buffett_decision": "Watchlist Interest",
+    "munger_decision": "Conditional Interest",
+    "fisher_decision": "Needs More Evidence",
+    "lynch_decision": "Watchlist Interest",
+    "bogle_decision": "Low Interest",
+    "save_reason": [
+      "score>=6",
+      "munger=conditional",
+      "buffett>=watchlist",
+      "golden_triggers=4"
+    ],
+    "status": "watching",
+    "notes": ""
   }
 ]
