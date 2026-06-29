@@ -101,5 +101,28 @@
       "data_reliability": 43,
       "generated_at": "2026-06-29"
     }
+  },
+  {
+    "ticker": "META",
+    "company": "Meta Platforms, Inc.",
+    "date_added": "2026-06-29",
+    "market": "US Market",
+    "currency": "USD",
+    "price_at_analysis": 562.6,
+    "opportunity_score": 9,
+    "golden_triggers": 6,
+    "buffett_decision": "Watchlist Interest",
+    "munger_decision": "Conditional Interest",
+    "fisher_decision": "Needs More Evidence",
+    "lynch_decision": "Watchlist Interest",
+    "bogle_decision": "Low Interest",
+    "save_reason": [
+      "score>=6",
+      "munger=conditional",
+      "buffett>=watchlist",
+      "golden_triggers=6"
+    ],
+    "status": "watching",
+    "notes": ""
   }
 ]
