@@ -123,6 +123,18 @@
       "golden_triggers=6"
     ],
     "status": "watching",
-    "notes": ""
+    "notes": "",
+    "portfolio_decision": {
+      "decision": "Watch",
+      "suggested_weight": "0%",
+      "conviction": "Low",
+      "risk_level": "High",
+      "key_risk": "Cannot reliably assess market volatility, drawdown exposure, or beta relative to benchmarks due to missing historical price data and risk metrics; operational strength masks unknown market-based risks.",
+      "entry_conditions": "(1) Obtain 3-year historical price series to calculate beta and volatility vs. S&P 500; (2) Confirm P/E ratio alongside earnings quality assessment; (3) Validate operating margin sustainability through sector peer comparison; (4) Assess correlation to portfolio existing holdings.",
+      "exit_triggers": "Operating margin compression below 35%; Revenue growth deceleration below 15% YoY; Beta >1.5 vs. benchmark; Analyst consensus downgrade on earnings outlook.",
+      "rationale": "While META demonstrates strong fundamentals (33% revenue growth, 40.6% operating margin, 32.9% ROE), the absence of critical market risk metrics—beta, volatility, drawdown history—prevents proper portfolio integration assessment. With 61% data reliability and mixed analyst sentiment (2 watchlist, 1 conditional, 1 needs evidence, 1 low interest), the position requires completion of risk due diligence before commitment. A watchlist posture allows entry once risk-adjusted return profile can be properly quantified against portfolio objectives.",
+      "data_reliability": 61,
+      "generated_at": "2026-06-29"
+    }
   }
 ]
