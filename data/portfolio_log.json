@@ -301,6 +301,18 @@
       "buffett>=watchlist"
     ],
     "status": "watching",
-    "notes": ""
+    "notes": "",
+    "portfolio_decision": {
+      "decision": "Watch",
+      "suggested_weight": "0%",
+      "conviction": "Low",
+      "risk_level": "High",
+      "key_risk": "Critical SaaS health metrics (NDR, subscription revenue mix) and third-party cloud infrastructure dependency are unmeasured, creating blind spots in valuation and operational resilience.",
+      "entry_conditions": "(1) Publish NDR rate ≥120% with ≥70% subscription revenue mix; (2) Disclose cloud infrastructure supplier concentration (top 3 providers <60% of spend) and redundancy strategy; (3) Achieve P/E <16x or demonstrate revenue growth acceleration to ≥18% YoY; (4) Resolve analyst consensus (currently split 4 of 5 show interest, but The Growth Hunter requires evidence).",
+      "exit_triggers": "(1) NDR falls below 110%; (2) Operating margin contracts below 18%; (3) D/E ratio exceeds 140% without offsetting profitability gains; (4) Single cloud provider represents >50% infrastructure spend without contractual redundancy provisions; (5) Subscription revenue mix falls below 65%.",
+      "rationale": "While Salesforce demonstrates solid fundamentals (21.8% operating margin, 16.9% ROE, $129.3B market cap), the 54% data reliability and absence of critical SaaS metrics (NDR, subscription/services split, cloud segmentation growth) create unacceptable analytical blind spots. The high financial leverage (D/E: 124.3%) combined with hidden supplier concentration risk warrants watchlist status pending disclosure of these material gaps rather than immediate entry.",
+      "data_reliability": 54,
+      "generated_at": "2026-06-29"
+    }
   }
 ]
