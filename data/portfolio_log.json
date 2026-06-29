@@ -235,6 +235,18 @@
       "buffett>=watchlist"
     ],
     "status": "watching",
-    "notes": ""
+    "notes": "",
+    "portfolio_decision": {
+      "decision": "Watch",
+      "suggested_weight": "0%",
+      "conviction": "Low",
+      "risk_level": "Medium",
+      "key_risk": "Hidden supplier concentration or technology vendor dependency could materially impact operations without adequate disclosure or contingency planning.",
+      "entry_conditions": "(1) Mastercard provides supplier concentration disclosure (% revenue exposure to top vendors) in next 10-K filing; (2) Management articulates technology vendor diversification strategy and supply chain resilience framework; (3) Data reliability improves to >75% with independent validation of operational continuity safeguards; (4) Revenue growth sustains >12% while operating margins remain >55%.",
+      "exit_triggers": "(1) Disclosure of material supplier concentration (>20% revenue from single vendor outside payment networks); (2) Operating margin compression >300bps absent clear reinvestment drivers; (3) Evidence of unplanned technology disruptions or vendor disputes; (4) Revenue growth decelerates below 10% for two consecutive quarters.",
+      "rationale": "Mastercard demonstrates strong financial metrics (60.8% operating margin, 15.8% revenue growth) and network defensibility, but critical due diligence gaps around supplier relationships and technology dependencies cannot be resolved with current public data (60% reliability). The asset-light model is a strength, but concentration risk in undisclosed technology vendors or payment network partners represents a blind spot. Watch for enhanced supply chain transparency and vendor diversity disclosures before committing capital.",
+      "data_reliability": 60,
+      "generated_at": "2026-06-29"
+    }
   }
 ]
