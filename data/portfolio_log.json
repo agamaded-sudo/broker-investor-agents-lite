@@ -335,6 +335,17 @@
     ],
     "status": "watching",
     "notes": "",
-    "portfolio_decision": null
+    "portfolio_decision": {
+      "decision": "Watch",
+      "suggested_weight": "0%",
+      "conviction": "Low",
+      "risk_level": "Medium",
+      "key_risk": "Elevated leverage (D/E 124.9) combined with premium valuation (P/E 25.99) creates vulnerability to interest rate shocks and margin compression in economic downturns.",
+      "entry_conditions": "(1) Obtain 5-10 year historical P/E and EV/EBITDA to establish whether current 25.99 P/E represents compression or expansion; (2) Validate D/E sustainability via debt maturity schedule and interest coverage ratio; (3) P/E must decline to ≤22x or operating margin expand to ≥37% with revenue growth sustained ≥10%; (4) Increase data reliability from 56% to ≥75%.",
+      "exit_triggers": "Operating margin decline below 32%; D/E ratio exceeds 130; P/E expansion to >27x without earnings acceleration; dividend cut; missed quarterly revenue growth targets.",
+      "rationale": "KO exhibits strong operational fundamentals (35.1% margin, 12.1% growth) and defensive sector positioning, generating watchlist-level interest from three analysts. However, the combination of low data reliability (56%), missing historical valuation context, and elevated leverage relative to premium valuation creates insufficient conviction for portfolio entry. Watch for valuation compression or margin expansion while gathering complete 10-year historical metrics to support a future entry decision.",
+      "data_reliability": 56,
+      "generated_at": "2026-06-29"
+    }
   }
 ]
