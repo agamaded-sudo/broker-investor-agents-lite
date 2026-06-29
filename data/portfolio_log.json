@@ -171,5 +171,28 @@
       "data_reliability": 62,
       "generated_at": "2026-06-29"
     }
+  },
+  {
+    "ticker": "GOOG",
+    "company": "Alphabet Inc.",
+    "date_added": "2026-06-29",
+    "market": "US Market",
+    "currency": "USD",
+    "price_at_analysis": 351.28,
+    "opportunity_score": 9,
+    "golden_triggers": 3,
+    "buffett_decision": "Watchlist Interest",
+    "munger_decision": "Conditional Interest",
+    "fisher_decision": "Needs More Evidence",
+    "lynch_decision": "Watchlist Interest",
+    "bogle_decision": "Low Interest",
+    "save_reason": [
+      "score>=6",
+      "munger=conditional",
+      "buffett>=watchlist",
+      "golden_triggers=3"
+    ],
+    "status": "watching",
+    "notes": ""
   }
 ]
