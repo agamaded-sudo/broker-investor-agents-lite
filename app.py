@@ -261,15 +261,24 @@ Format your response clearly with these 6 labeled sections."""
         "Lynch":   "The Story Finder",
         "Bogle":   "The Index Keeper",
     }
+    _INSPIRED_SUB = {
+        "The Index Keeper-Inspired":  "The Index Keeper",
+        "The Value Seeker-Inspired":  "The Value Seeker",
+        "The Story Finder-Inspired":  "The Story Finder",
+        "The Growth Hunter-Inspired": "The Growth Hunter",
+        "The Rationalist-Inspired":   "The Rationalist",
+    }
     try:
         client = _anthropic.Anthropic(api_key=api_key)
         msg = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=900,
+            max_tokens=1200,
             messages=[{"role": "user", "content": prompt}],
         )
         raw = msg.content[0].text
         for _raw, _disp in _NAME_SUB.items():
+            raw = raw.replace(_raw, _disp)
+        for _raw, _disp in _INSPIRED_SUB.items():
             raw = raw.replace(_raw, _disp)
 
         # Split section 6 from the rest
@@ -1450,7 +1459,7 @@ with tab3:
                         with st.spinner(f"{t('Running AI deep analysis')}..."):
                             ai_result = run_ai_investor_analysis(investor, _company_data)
                         if ai_result:
-                            st.markdown(ai_result["text"])
+                            st.markdown(ai_result["text"].replace("$", "\\$"))
                             if ai_result.get("hidden_risks"):
                                 _hr = ai_result["hidden_risks"]
                                 _all_hidden_risks.append(f"{disp_name}: {_hr}")
