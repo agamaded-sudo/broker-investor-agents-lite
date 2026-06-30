@@ -24,12 +24,12 @@
       "suggested_weight": "0%",
       "conviction": "Low",
       "risk_level": "Medium",
-      "key_risk": "Data reliability at 58% is insufficient for high-conviction entry decision on a mega-cap position; missing P/E ratio limits valuation assessment.",
-      "entry_conditions": "(1) Data reliability improves to ≥75%; (2) P/E ratio clarified and compared to historical 5-year range; (3) Azure growth rate >25% YoY confirmed; (4) Operating margin trajectory stabilizes or improves; (5) Analyst consensus shifts to majority \"Conditional Interest\" or stronger.",
-      "exit_triggers": "Operating margin compression below 40%; Azure growth decelerates below 20% YoY; data reliability drops further; valuation metrics indicate overextension relative to growth; macro environment signals recession with enterprise IT budget cuts.",
-      "rationale": "While Microsoft's 18.3% revenue growth and 46.3% operating margin demonstrate strong fundamentals, the 58% data reliability and missing P/E valuation metric create unacceptable uncertainty for portfolio entry. Analyst sentiment is mixed (3 watchlist/conditional, 2 low/needs evidence), reflecting incomplete conviction. Place on watchlist pending data completion and clarity on cloud segment metrics before committing capital.",
-      "data_reliability": 58,
-      "generated_at": "2026-06-29"
+      "key_risk": "Missing P/E ratio and insider ownership data prevent proper valuation assessment and governance risk evaluation despite strong operational fundamentals.",
+      "entry_conditions": "(1) Obtain current P/E ratio and historical valuation multiples; (2) Secure latest proxy statement with insider ownership, board composition, and executive tenure details; (3) Achieve minimum 75% data reliability; (4) Resolve analyst consensus with at least 3 of 5 showing \"Interest\" or higher.",
+      "exit_triggers": "Data reliability falls below 55%; operating margin compresses below 40%; revenue growth declines below 10% YoY; any material insider selling or governance concerns emerge from proxy filings.",
+      "rationale": "Microsoft demonstrates strong operational metrics (46.3% operating margin, 18.3% revenue growth) but fragmented analyst sentiment and critical data gaps—particularly valuation metrics and governance transparency—prevent confident portfolio entry. The 55% data reliability is insufficient for a position of material size; obtaining missing P/E and insider data is prerequisite to reassessment.",
+      "data_reliability": 55,
+      "generated_at": "2026-06-30"
     }
   },
   {
