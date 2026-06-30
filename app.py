@@ -200,8 +200,12 @@ def persona_icon(key: str) -> str:
     return PERSONAS.get(key.lower(), {}).get("icon", "👤")
 
 
-def run_ai_investor_analysis(persona_key: str, company_data: dict) -> str | None:
-    """Run real AI analysis using Claude API with investor philosophy. Returns None on failure."""
+def run_ai_investor_analysis(persona_key: str, company_data: dict) -> dict | None:
+    """Run real AI analysis using Claude API with investor philosophy.
+
+    Returns dict with keys 'text' (sections 1-5) and 'hidden_risks' (section 6),
+    or None on failure.
+    """
     if not ANTHROPIC_AVAILABLE:
         return None
     api_key = _anthropic_api_key()
@@ -238,9 +242,17 @@ Provide a structured analysis with:
 3. MAIN CONCERN: Primary concern or blocker (2-3 sentences)
 4. REQUIRED EVIDENCE: What additional information would change your view (1-2 sentences)
 5. SUMMARY: Overall 3-4 sentence investment thesis from your philosophical perspective
+6. HIDDEN RISKS: What structural business risks are NOT visible in the financial ratios? Consider:
+- Business model obsolescence risk
+- Competitive moat erosion (invisible in current numbers)
+- Management/governance red flags
+- Regulatory or disruption threats
+- Customer concentration or dependency risks
+- Debt structure complexity beyond D/E ratio
+Be specific to this company. If none identified, say why the business model appears structurally sound.
 
 Be specific to this company's actual data. Do not give generic responses.
-Format your response clearly with these 5 labeled sections."""
+Format your response clearly with these 6 labeled sections."""
 
     _NAME_SUB = {
         "Buffett": "The Value Seeker",
@@ -253,13 +265,20 @@ Format your response clearly with these 5 labeled sections."""
         client = _anthropic.Anthropic(api_key=api_key)
         msg = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=600,
+            max_tokens=900,
             messages=[{"role": "user", "content": prompt}],
         )
-        text = msg.content[0].text
+        raw = msg.content[0].text
         for _raw, _disp in _NAME_SUB.items():
-            text = text.replace(_raw, _disp)
-        return text
+            raw = raw.replace(_raw, _disp)
+
+        # Split section 6 from the rest
+        import re as _re
+        _split = _re.split(r"\n\s*6\.\s*HIDDEN RISKS\s*[:\-]?\s*", raw, maxsplit=1, flags=_re.IGNORECASE)
+        main_text     = _split[0].strip()
+        hidden_risks  = _split[1].strip() if len(_split) > 1 else ""
+
+        return {"text": main_text, "hidden_risks": hidden_risks}
     except Exception:
         return None
 
@@ -613,6 +632,9 @@ Analyst Decisions:
 
 Key Due Diligence Gaps:
 {gaps_text}
+
+Structural Risks Identified (not visible in ratios):
+{company_data.get('hidden_risks') or 'None reported by analysts'}
 
 Based on the above, provide a structured portfolio decision. Respond with EXACTLY these labeled lines, no extra text:
 
@@ -1417,6 +1439,7 @@ with tab3:
             _ai_available = bool(ANTHROPIC_AVAILABLE and _anthropic_api_key())
 
             st.markdown(f"### {t('Investor Full Details')}")
+            _all_hidden_risks: list[str] = []
             for r in resps:
                 investor  = r.get("investor", "?")
                 icon      = persona_icon(investor)
@@ -1425,14 +1448,26 @@ with tab3:
                 with st.expander(f"{icon} {disp_name} — {t(level)}", expanded=False):
                     if _ai_available:
                         with st.spinner(f"{t('Running AI deep analysis')}..."):
-                            ai_text = run_ai_investor_analysis(investor, _company_data)
-                        if ai_text:
-                            st.markdown(ai_text)
+                            ai_result = run_ai_investor_analysis(investor, _company_data)
+                        if ai_result:
+                            st.markdown(ai_result["text"])
+                            if ai_result.get("hidden_risks"):
+                                _hr = ai_result["hidden_risks"]
+                                _all_hidden_risks.append(f"{disp_name}: {_hr}")
+                                st.markdown(f"""
+<div style="background:#431407;border:1px solid #ea580c;border-radius:8px;padding:14px 18px;margin-top:14px">
+  <div style="color:#fb923c;font-weight:700;font-size:0.9rem;margin-bottom:6px">🔍 {t('Structural Risks Not in the Numbers')}</div>
+  <div style="color:#fed7aa;font-size:0.85rem;white-space:pre-wrap">{_hr}</div>
+</div>
+""", unsafe_allow_html=True)
                         else:
                             st.caption(t("AI analysis unavailable — showing rule-based details"))
                             _show_rule_based(r, investor, execution)
                     else:
                         _show_rule_based(r, investor, execution)
+            # Attach aggregated hidden risks to company_data for portfolio decision
+            if _all_hidden_risks:
+                _company_data["hidden_risks"] = "\n\n".join(_all_hidden_risks)
 
             # ── 4. Supporting sections ────────────────────────────────────────
             # Source Verification Matrix
